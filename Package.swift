@@ -236,6 +236,10 @@ let package = Package(
         // MARK: - Tests
         // ══════════════════════════════════════════════════════════════
         .testTarget(
+            name: "SwooshApprovalsTests",
+            dependencies: ["SwooshApprovals", "SwooshTools"]
+        ),
+        .testTarget(
             name: "SwooshTUITests",
             dependencies: ["SwooshTUI"]
         ),

@@ -16,7 +16,7 @@ public struct Workflow: Codable, Sendable, Identifiable {
     public var steps: [WorkflowStep]
     public var requiredTools: Set<String>
     public var requiredPermissions: Set<SwooshPermission>
-    public var trigger: WorkflowTrigger?
+    public var trigger: WorkflowTriggerLegacy?
     public var modelRoute: ModelRoute
     public var testFixture: WorkflowTestFixture?
     public var failureRules: [FailureRule]
@@ -33,7 +33,7 @@ public struct Workflow: Codable, Sendable, Identifiable {
         steps: [WorkflowStep] = [],
         requiredTools: Set<String> = [],
         requiredPermissions: Set<SwooshPermission> = [],
-        trigger: WorkflowTrigger? = nil,
+        trigger: WorkflowTriggerLegacy? = nil,
         modelRoute: ModelRoute = .auto,
         testFixture: WorkflowTestFixture? = nil,
         failureRules: [FailureRule] = [],
@@ -84,9 +84,9 @@ public enum WorkflowAction: Codable, Sendable {
     case conditional(condition: String, ifTrue: UUID, ifFalse: UUID)
 }
 
-// MARK: - Triggers
+// MARK: - Triggers (legacy stub — replaced by WorkflowTrigger in WorkflowTriggerTypes.swift)
 
-public enum WorkflowTrigger: Codable, Sendable {
+public enum WorkflowTriggerLegacy: Codable, Sendable {
     // Time-based
     case cron(expression: String)
     case naturalLanguage(schedule: String)
