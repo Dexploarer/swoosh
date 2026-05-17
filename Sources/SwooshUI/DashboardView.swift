@@ -91,7 +91,7 @@ public struct DashboardView: View {
         case .skills:      PlaceholderPane(title: "Skills", icon: "star")
         case .tools:       PlaceholderPane(title: "Tools", icon: "wrench.and.screwdriver")
         case .firewall:    PlaceholderPane(title: "Agent Firewall", icon: "shield.checkered")
-        case .providers:   PlaceholderPane(title: "Providers", icon: "cloud")
+        case .providers:   ProviderStatusPane()
         case .localModels: PlaceholderPane(title: "Local Models", icon: "cpu")
         case .mcp:         PlaceholderPane(title: "MCP Servers", icon: "cable.connector")
         case .plugins:     PlaceholderPane(title: "Plugins", icon: "puzzlepiece")

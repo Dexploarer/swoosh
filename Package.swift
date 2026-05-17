@@ -242,7 +242,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow"]
+            dependencies: ["SwooshCore", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders"]
         ),
 
         // ══════════════════════════════════════════════════════════════
