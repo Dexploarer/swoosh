@@ -1,0 +1,6 @@
+.build
+.env
+Backend/SwooshDB/target
+Swoosh.xcodeproj/project.xcworkspace
+.DS_Store
+Backend/SwooshDB/.build

@@ -1,0 +1,1 @@
+// \(basename Sources/SwooshAPI) — placeholder
