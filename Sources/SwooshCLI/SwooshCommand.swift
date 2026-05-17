@@ -13,6 +13,9 @@ import SwooshConfig
 import SwooshScout
 import SwooshStorage
 import SwooshTUI
+import SwooshProviders
+import SwooshSecrets
+import SwooshTools
 import Foundation
 
 @main
@@ -32,6 +35,7 @@ struct SwooshCommand: AsyncParsableCommand {
             ChatCommand.self,
             SelfTestCommand.self,
             PermissionsCommand.self,
+            ProviderCommand.self,
         ],
         defaultSubcommand: ChatCommand.self
     )
@@ -458,10 +462,70 @@ struct ChatCommand: AsyncParsableCommand {
 
         // Hardware detection for model status
         let hw = HardwareDetector().detect()
-        if hw.hasAppleSilicon {
-            let recs = hw.recommendedLocalModels.filter { $0.fits == .recommended || $0.fits == .feasible }
-            if !recs.isEmpty {
-                status.model = "not configured (MLX-capable: \(recs.map(\.sizeLabel).joined(separator: ", ")))"
+
+        // ── Provider detection & wiring ──
+        let secrets = KeychainSecretStore()
+        var agentHandler: AgentHandler? = nil
+
+        if let active = await ProviderFactory.detectActiveProvider(secrets: secrets) {
+            status.model = active.model
+            status.providerStatus = active.name
+
+            // Build full provider stack
+            let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
+            let bridge = ProviderBridgeAdapter(router: router, role: .primaryChat, modelName: active.model)
+
+            // Build agent kernel
+            let memoryLoader = InMemoryMemoryLoader()
+            let reportLoader = InMemoryReportLoader()
+            let permSummarizer = InMemoryPermSummarizer()
+            let sessionStore = InMemorySessionStore()
+            let auditLogger = InMemoryResponseAuditor()
+
+            // Try loading from real storage
+            if let store = try? SwooshStateStore() {
+                let storageMem = StorageMemoryLoader(store: store)
+                let storageReport = StorageReportLoader(store: store)
+                let storagePerm = StoragePermissionSummarizer(store: store)
+
+                let kernel = AgentKernel(
+                    memoryLoader: storageMem,
+                    reportLoader: storageReport,
+                    permSummarizer: storagePerm,
+                    sessionStore: sessionStore,
+                    auditLogger: auditLogger,
+                    modelProvider: bridge
+                )
+
+                agentHandler = { input, sessionID in
+                    let request = AgentRequest(sessionID: sessionID, input: input)
+                    let response = try await kernel.run(request)
+                    return (response: response.message, model: response.modelUsed)
+                }
+            } else {
+                // Fallback: in-memory context
+                let kernel = AgentKernel(
+                    memoryLoader: memoryLoader,
+                    reportLoader: reportLoader,
+                    permSummarizer: permSummarizer,
+                    sessionStore: sessionStore,
+                    auditLogger: auditLogger,
+                    modelProvider: bridge
+                )
+
+                agentHandler = { input, sessionID in
+                    let request = AgentRequest(sessionID: sessionID, input: input)
+                    let response = try await kernel.run(request)
+                    return (response: response.message, model: response.modelUsed)
+                }
+            }
+        } else {
+            // No provider detected
+            if hw.hasAppleSilicon {
+                let recs = hw.recommendedLocalModels.filter { $0.fits == .recommended || $0.fits == .feasible }
+                if !recs.isEmpty {
+                    status.model = "not configured (MLX-capable: \(recs.map(\.sizeLabel).joined(separator: ", ")))"
+                }
             }
         }
 
@@ -469,8 +533,8 @@ struct ChatCommand: AsyncParsableCommand {
         let registry = SlashCommandRegistry()
         await registerDefaultCommands(on: registry)
 
-        // Launch shell
-        let shell = SwooshShell(registry: registry, status: status)
+        // Launch shell with agent handler
+        let shell = SwooshShell(registry: registry, status: status, agentHandler: agentHandler)
         await shell.run()
     }
 }
@@ -488,26 +552,50 @@ struct AskCommand: AsyncParsableCommand {
         print("  \u{001B}[36m⟳\u{001B}[0m Processing: \(question)")
         print("")
 
-        guard let store = try? SwooshStateStore() else {
-            print("  \u{001B}[31m✗\u{001B}[0m Could not open state store.")
-            return
+        // Build provider
+        let secrets = KeychainSecretStore()
+        let modelProvider: SwooshCore.ModelProvider
+
+        if let _ = await ProviderFactory.detectActiveProvider(secrets: secrets) {
+            let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
+            modelProvider = ProviderBridgeAdapter(router: router)
+        } else {
+            // Fallback to stub
+            modelProvider = LocalStubProvider()
         }
 
-        // Build kernel with real storage + stub provider
+        // Build kernel
+        let memoryLoader: any MemoryContextLoading
+        let reportLoader: any SetupReportLoading
+        let permSummarizer: any PermissionSummarizing
+
+        if let store = try? SwooshStateStore() {
+            memoryLoader = StorageMemoryLoader(store: store)
+            reportLoader = StorageReportLoader(store: store)
+            permSummarizer = StoragePermissionSummarizer(store: store)
+        } else {
+            memoryLoader = InMemoryMemoryLoader()
+            reportLoader = InMemoryReportLoader()
+            permSummarizer = InMemoryPermSummarizer()
+        }
+
         let kernel = AgentKernel(
-            memoryLoader: StorageMemoryLoader(store: store),
-            reportLoader: StorageReportLoader(store: store),
-            permSummarizer: StoragePermissionSummarizer(store: store),
+            memoryLoader: memoryLoader,
+            reportLoader: reportLoader,
+            permSummarizer: permSummarizer,
             sessionStore: InMemorySessionStore(),
             auditLogger: InMemoryResponseAuditor(),
-            modelProvider: LocalStubProvider()
+            modelProvider: modelProvider
         )
 
         let request = AgentRequest(input: question)
         let response = try await kernel.run(request)
 
         // Display response
-        print("  \u{001B}[32m✓\u{001B}[0m Response (model: \(response.modelUsed)):")
+        let isStub = response.modelUsed.contains("stub")
+        let icon = isStub ? "○" : "✓"
+        let modelNote = isStub ? " (stub — run `swoosh provider auth` to configure)" : ""
+        print("  \u{001B}[32m\(icon)\u{001B}[0m Response (model: \(response.modelUsed)\(modelNote)):")
         print("")
         for line in response.message.components(separatedBy: "\n") {
             print("    \(line)")

@@ -62,6 +62,8 @@ let package = Package(
                 "SwooshStorage",
                 "SwooshDBClient",
                 "SwooshTUI",
+                "SwooshProviders",
+                "SwooshSecrets",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
@@ -155,7 +157,8 @@ let package = Package(
             ]
         ),
         .target(name: "SwooshFoundation", dependencies: []),   // Apple Foundation Models adapter
-        .target(name: "SwooshProviders",  dependencies: []),   // OpenAI / Anthropic / OpenRouter etc.
+        .target(name: "SwooshSecrets",    dependencies: []),   // Keychain + SecretRef
+        .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets"]),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Tools
@@ -188,6 +191,10 @@ let package = Package(
         ),
         .target(name: "SwooshTriggers", dependencies: []),
         .target(
+            name: "SwooshWorkers",
+            dependencies: ["SwooshTools"]
+        ),
+        .target(
             name: "SwooshApprovals",
             dependencies: ["SwooshTools"]
         ),
@@ -204,11 +211,17 @@ let package = Package(
         // MARK: - Infrastructure
         // ══════════════════════════════════════════════════════════════
         .target(name: "SwooshGateway",  dependencies: []),
-        .target(name: "SwooshMCP",      dependencies: []),
+        .target(name: "SwooshMCP",      dependencies: ["SwooshTools"]),
         .target(name: "SwooshSandbox",  dependencies: []),
         .target(name: "SwooshBrowser",  dependencies: []),
         .target(name: "SwooshMedia",    dependencies: []),
-        .target(name: "SwooshPlugins",  dependencies: []),
+        .target(name: "SwooshPlugins",  dependencies: ["SwooshTools"]),
+        .target(name: "SwooshMCPAuth",  dependencies: ["SwooshTools"]),
+        .target(name: "SwooshNetworkPolicy", dependencies: ["SwooshTools"]),
+        .target(name: "SwooshIntegrations",  dependencies: ["SwooshTools"]),
+        .target(name: "SwooshSetup",         dependencies: ["SwooshTools"]),
+        .target(name: "SwooshDoctor",        dependencies: ["SwooshTools"]),
+        .target(name: "SwooshInstaller",     dependencies: ["SwooshTools"]),
         .target(name: "SwooshLSP",      dependencies: []),
         .target(name: "SwooshBridge",   dependencies: ["SwooshTools"]),
         .target(name: "SwooshBench",    dependencies: ["SwooshTools"]),
@@ -240,6 +253,46 @@ let package = Package(
             dependencies: ["SwooshApprovals", "SwooshTools"]
         ),
         .testTarget(
+            name: "SwooshBoardTests",
+            dependencies: ["SwooshBoard", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshWorkersTests",
+            dependencies: ["SwooshWorkers", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshMCPTests",
+            dependencies: ["SwooshMCP", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshPluginsTests",
+            dependencies: ["SwooshPlugins", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshMCPAuthTests",
+            dependencies: ["SwooshMCPAuth", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshNetworkPolicyTests",
+            dependencies: ["SwooshNetworkPolicy", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshIntegrationsTests",
+            dependencies: ["SwooshIntegrations", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshSetupTests",
+            dependencies: ["SwooshSetup", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshDoctorTests",
+            dependencies: ["SwooshDoctor", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshInstallerTests",
+            dependencies: ["SwooshInstaller", "SwooshTools"]
+        ),
+        .testTarget(
             name: "SwooshTUITests",
             dependencies: ["SwooshTUI"]
         ),
@@ -262,6 +315,14 @@ let package = Package(
         .testTarget(
             name: "SwooshFlowTests",
             dependencies: ["SwooshFlow", "SwooshTools", "SwooshFirewall"]
+        ),
+        .testTarget(
+            name: "SwooshSecretsTests",
+            dependencies: ["SwooshSecrets"]
+        ),
+        .testTarget(
+            name: "SwooshProvidersTests",
+            dependencies: ["SwooshProviders", "SwooshSecrets", "SwooshTools"]
         ),
     ]
 )
