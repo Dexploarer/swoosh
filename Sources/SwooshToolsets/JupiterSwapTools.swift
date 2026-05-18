@@ -1,7 +1,6 @@
 // SwooshToolsets/JupiterSwapTools.swift
 // Jupiter DEX swap tools powered by JupSwift.
-// Hard rules: NO private key ingestion. Signing is humanOnly.
-// Agent can query routes and build orders; execution requires human approval.
+// Hard rules: NO private key ingestion — signing flows through WalletBridge only.
 
 import Foundation
 import SwooshTools
@@ -10,10 +9,10 @@ import JupSwift
 // MARK: - Input/Output types
 
 public struct JupiterQuoteInput: Codable, Sendable {
-    public let inputMint: String        // SPL mint address or "SOL"
-    public let outputMint: String       // SPL mint address or "SOL"
-    public let amountLamports: String   // amount in smallest unit (string to avoid overflow)
-    public let slippageBps: Int         // slippage in basis points (e.g. 50 = 0.5%)
+    public let inputMint: String
+    public let outputMint: String
+    public let amountLamports: String
+    public let slippageBps: Int
     public init(inputMint: String, outputMint: String, amountLamports: String, slippageBps: Int = 50) {
         self.inputMint = inputMint; self.outputMint = outputMint
         self.amountLamports = amountLamports; self.slippageBps = slippageBps
@@ -21,11 +20,38 @@ public struct JupiterQuoteInput: Codable, Sendable {
 }
 
 public struct JupiterQuoteOutput: Codable, Sendable {
-    public let inputAmount: String
-    public let outputAmount: String
-    public let priceImpactPct: Double
-    public let marketInfos: [String]
+    public let inputMint: String
+    public let outputMint: String
+    public let inAmount: String
+    public let outAmount: String
+    public let priceImpactPct: String
+    public let slippageBps: Int
     public let routeLabel: String
+    public let feeLamports: Int
+}
+
+/// Full end-to-end swap: quote → build → sign (via WalletBridge) → broadcast
+public struct JupiterSwapInput: Codable, Sendable {
+    public let inputMint: String
+    public let outputMint: String
+    public let amountLamports: String
+    public let walletSessionID: String
+    public let slippageBps: Int
+    public init(inputMint: String, outputMint: String, amountLamports: String,
+                walletSessionID: String, slippageBps: Int = 50) {
+        self.inputMint = inputMint; self.outputMint = outputMint
+        self.amountLamports = amountLamports; self.walletSessionID = walletSessionID
+        self.slippageBps = slippageBps
+    }
+}
+
+public struct JupiterSwapOutput: Codable, Sendable {
+    public let signature: SolanaSignature
+    public let status: String
+    public let slot: String?
+    public let inAmount: String
+    public let outAmount: String
+    public let priceImpactPct: String
 }
 
 public struct JupiterOrderInput: Codable, Sendable {
@@ -34,7 +60,8 @@ public struct JupiterOrderInput: Codable, Sendable {
     public let amountLamports: String
     public let takerAddress: SolanaPubkey
     public let slippageBps: Int
-    public init(inputMint: String, outputMint: String, amountLamports: String, takerAddress: SolanaPubkey, slippageBps: Int = 50) {
+    public init(inputMint: String, outputMint: String, amountLamports: String,
+                takerAddress: SolanaPubkey, slippageBps: Int = 50) {
         self.inputMint = inputMint; self.outputMint = outputMint
         self.amountLamports = amountLamports; self.takerAddress = takerAddress
         self.slippageBps = slippageBps
@@ -44,23 +71,26 @@ public struct JupiterOrderInput: Codable, Sendable {
 public struct JupiterOrderOutput: Codable, Sendable {
     public let requestId: String
     public let unsignedTransactionBase64: String
-    public let inputAmount: String
-    public let outputAmount: String
-    public let priceImpactPct: Double
-    public let expiresAt: Date?
+    public let inAmount: String
+    public let outAmount: String
+    public let priceImpactPct: String
+    public let feeLamports: Int
 }
 
 public struct JupiterExecuteInput: Codable, Sendable {
     public let requestId: String
-    public let signedTransactionBase64: String  // must be human-signed
+    public let signedTransactionBase64: String
     public init(requestId: String, signedTransactionBase64: String) {
         self.requestId = requestId; self.signedTransactionBase64 = signedTransactionBase64
     }
 }
 
 public struct JupiterExecuteOutput: Codable, Sendable {
-    public let signature: SolanaSignature
+    public let signature: SolanaSignature?
     public let status: String
+    public let slot: String?
+    public let inputAmountResult: String?
+    public let outputAmountResult: String?
 }
 
 public struct JupiterBalancesInput: Codable, Sendable {
@@ -69,25 +99,24 @@ public struct JupiterBalancesInput: Codable, Sendable {
 }
 
 public struct JupiterBalancesOutput: Codable, Sendable {
-    public let tokens: [JupiterTokenBalance]
+    public let balances: [String: JupiterTokenBalance]
 }
 
 public struct JupiterTokenBalance: Codable, Sendable {
-    public let mint: String
-    public let symbol: String
+    public let amount: String
     public let uiAmount: Double
-    public let usdValue: Double?
+    public let isFrozen: Bool
 }
 
 // MARK: - Tools
 
-/// Get a Jupiter swap quote (read-only, no approval needed)
+/// Read-only quote — no signing, no approval required
 public struct JupiterQuoteTool: SwooshTool {
     public typealias Input = JupiterQuoteInput
     public typealias Output = JupiterQuoteOutput
     public static let name: ToolName = "jupiter.quote"
     public static let displayName = "Jupiter Quote"
-    public static let description = "Get a swap quote from Jupiter DEX aggregator"
+    public static let description = "Get a swap quote from Jupiter DEX aggregator (read-only)"
     public static let permission = SwooshPermission.solanaRead
     public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never
@@ -98,28 +127,113 @@ public struct JupiterQuoteTool: SwooshTool {
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         let result = try await JupiterApi.order(
-            inputMint: input.inputMint,
-            outputMint: input.outputMint,
-            amount: input.amountLamports,
-            taker: ""  // empty for quote-only
+            inputMint: input.inputMint, outputMint: input.outputMint,
+            amount: input.amountLamports, taker: nil
         )
         return JupiterQuoteOutput(
-            inputAmount: input.amountLamports,
-            outputAmount: "\(result.outAmount ?? 0)",
-            priceImpactPct: result.priceImpactPct ?? 0,
-            marketInfos: result.routePlan?.map { $0.swapInfo?.label ?? "unknown" } ?? [],
-            routeLabel: result.routePlan?.first?.swapInfo?.label ?? "Jupiter"
+            inputMint: result.inputMint, outputMint: result.outputMint,
+            inAmount: result.inAmount, outAmount: result.outAmount,
+            priceImpactPct: result.priceImpactPct, slippageBps: result.slippageBps,
+            routeLabel: result.routePlan.first?.swapInfo.label ?? "Jupiter",
+            feeLamports: result.prioritizationFeeLamports
         )
     }
 }
 
-/// Build a Jupiter swap order (produces unsigned tx, humanOnly to execute)
+/// End-to-end agent swap: quote → build → sign (WalletBridge) → broadcast.
+/// Requires approval every time — shows exact amounts before signing.
+public struct JupiterSwapTool: SwooshTool {
+    public typealias Input = JupiterSwapInput
+    public typealias Output = JupiterSwapOutput
+    public static let name: ToolName = "jupiter.swap"
+    public static let displayName = "Jupiter Swap"
+    public static let description = "Execute a Jupiter DEX swap end-to-end: quote, sign via wallet, broadcast"
+    public static let permission = SwooshPermission.solanaBroadcast
+    public static let risk = ToolRisk.critical
+    public static let approval = ApprovalPolicy.askEveryTime
+    public static let toolset = ToolsetID.solana
+
+    let dependencies: ToolDependencies
+    public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
+
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        guard let wallet = dependencies.walletBridge else {
+            throw ToolError.executionFailed("No wallet bridge connected — connect a Solana wallet first")
+        }
+
+        // 1. Resolve taker address from active wallet session
+        let accounts = try await wallet.solanaAccounts(sessionID: input.walletSessionID)
+        guard let taker = accounts.first else {
+            throw ToolError.executionFailed("No Solana accounts in session \(input.walletSessionID)")
+        }
+
+        // 2. Get order + unsigned transaction from Jupiter
+        let order = try await JupiterApi.order(
+            inputMint: input.inputMint, outputMint: input.outputMint,
+            amount: input.amountLamports, taker: taker.base58
+        )
+        guard let unsignedTx = order.transaction else {
+            throw ToolError.executionFailed("Jupiter returned no transaction — taker address may be invalid")
+        }
+
+        // 3. Build a human-readable risk summary for the approval prompt
+        let risk = TransactionRiskSummary(
+            network: "Solana", isMainnet: true,
+            from: taker.base58, to: "Jupiter",
+            asset: "\(input.inputMint) → \(input.outputMint)",
+            amountHuman: "\(input.amountLamports) lamports → ~\(order.outAmount)",
+            estimatedFeeHuman: "\(order.prioritizationFeeLamports) lamports",
+            warnings: Double(order.priceImpactPct) ?? 0 > 1.0
+                ? ["⚠️ Price impact \(order.priceImpactPct)%"] : [],
+            requiresExplicitUserConfirmation: true
+        )
+
+        // 4. Sign via WalletBridge (no private key ever touches this layer)
+        let solanaUnsigned = SolanaUnsignedTransaction(
+            clusterID: "mainnet-beta",
+            feePayer: taker,
+            instructions: [SolanaInstructionPreview(
+                programID: SolanaPubkey("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"),
+                name: "Jupiter Swap",
+                accounts: [taker],
+                humanSummary: "Swap \(input.amountLamports) lamports of \(input.inputMint) → \(order.outAmount) of \(input.outputMint) via Jupiter"
+            )],
+            recentBlockhash: nil,
+            serializedMessageBase64: unsignedTx,
+            riskSummary: risk
+        )
+        let signedTx = try await wallet.requestSolanaSignature(
+            transaction: solanaUnsigned,
+            sessionID: input.walletSessionID,
+            confirmationText: "Swap \(input.amountLamports) lamports of \(input.inputMint) → ~\(order.outAmount) of \(input.outputMint). Impact: \(order.priceImpactPct)%"
+        )
+
+        // 5. Broadcast
+        let resp = try await JupiterApi.execute(
+            signedTransaction: signedTx,
+            requestId: order.requestId
+        )
+        guard let sig = resp.signature else {
+            throw ToolError.executionFailed("Broadcast returned no signature — status: \(resp.status)")
+        }
+        return JupiterSwapOutput(
+            signature: SolanaSignature(sig),
+            status: resp.status,
+            slot: resp.slot,
+            inAmount: resp.inputAmountResult ?? order.inAmount,
+            outAmount: resp.outputAmountResult ?? order.outAmount,
+            priceImpactPct: order.priceImpactPct
+        )
+    }
+}
+
+/// Low-level: build unsigned order only (agent sees the tx before deciding to sign)
 public struct JupiterBuildOrderTool: SwooshTool {
     public typealias Input = JupiterOrderInput
     public typealias Output = JupiterOrderOutput
     public static let name: ToolName = "jupiter.build_order"
     public static let displayName = "Jupiter Build Order"
-    public static let description = "Build an unsigned Jupiter swap transaction for human review"
+    public static let description = "Build an unsigned Jupiter swap transaction (inspect before signing)"
     public static let permission = SwooshPermission.solanaBuildTransaction
     public static let risk = ToolRisk.high
     public static let approval = ApprovalPolicy.askEveryTime
@@ -130,67 +244,57 @@ public struct JupiterBuildOrderTool: SwooshTool {
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         let result = try await JupiterApi.order(
-            inputMint: input.inputMint,
-            outputMint: input.outputMint,
-            amount: input.amountLamports,
-            taker: input.takerAddress.base58
+            inputMint: input.inputMint, outputMint: input.outputMint,
+            amount: input.amountLamports, taker: input.takerAddress.base58
         )
-        guard let tx = result.transaction, let reqId = result.requestId else {
-            throw ToolError.executionFailed("Jupiter order returned no transaction")
+        guard let tx = result.transaction else {
+            throw ToolError.executionFailed("Jupiter order returned no transaction — taker address required")
         }
         return JupiterOrderOutput(
-            requestId: reqId,
-            unsignedTransactionBase64: tx,
-            inputAmount: input.amountLamports,
-            outputAmount: "\(result.outAmount ?? 0)",
-            priceImpactPct: result.priceImpactPct ?? 0,
-            expiresAt: nil
+            requestId: result.requestId, unsignedTransactionBase64: tx,
+            inAmount: result.inAmount, outAmount: result.outAmount,
+            priceImpactPct: result.priceImpactPct,
+            feeLamports: result.prioritizationFeeLamports
         )
     }
 }
 
-/// Execute a Jupiter swap — humanOnly, requires pre-signed transaction
+/// Low-level: broadcast a pre-signed transaction
 public struct JupiterExecuteTool: SwooshTool {
     public typealias Input = JupiterExecuteInput
     public typealias Output = JupiterExecuteOutput
     public static let name: ToolName = "jupiter.execute"
     public static let displayName = "Jupiter Execute Swap"
-    public static let description = "Submit a human-signed Jupiter swap transaction to the network"
+    public static let description = "Submit a signed Jupiter swap transaction to the Solana network"
     public static let permission = SwooshPermission.solanaBroadcast
     public static let risk = ToolRisk.critical
-    public static let approval = ApprovalPolicy.humanOnly
+    public static let approval = ApprovalPolicy.askEveryTime
     public static let toolset = ToolsetID.solana
 
     let dependencies: ToolDependencies
     public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        return try await withCheckedThrowingContinuation { cont in
-            JupiterApi.execute(
-                signedTransaction: input.signedTransactionBase64,
-                requestId: input.requestId
-            ) { result in
-                switch result {
-                case .success(let resp):
-                    cont.resume(returning: JupiterExecuteOutput(
-                        signature: SolanaSignature(resp.signature ?? ""),
-                        status: resp.status ?? "submitted"
-                    ))
-                case .failure(let error):
-                    cont.resume(throwing: ToolError.executionFailed(error.localizedDescription))
-                }
-            }
-        }
+        let resp = try await JupiterApi.execute(
+            signedTransaction: input.signedTransactionBase64,
+            requestId: input.requestId
+        )
+        return JupiterExecuteOutput(
+            signature: resp.signature.map { SolanaSignature($0) },
+            status: resp.status, slot: resp.slot,
+            inputAmountResult: resp.inputAmountResult,
+            outputAmountResult: resp.outputAmountResult
+        )
     }
 }
 
-/// Get Jupiter token balances for a wallet
+/// Read-only: get all SPL token balances for a wallet
 public struct JupiterBalancesTool: SwooshTool {
     public typealias Input = JupiterBalancesInput
     public typealias Output = JupiterBalancesOutput
     public static let name: ToolName = "jupiter.balances"
     public static let displayName = "Jupiter Balances"
-    public static let description = "Get all token balances for a Solana address via Jupiter"
+    public static let description = "Get all SPL token balances for a Solana address via Jupiter"
     public static let permission = SwooshPermission.solanaRead
     public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never
@@ -200,15 +304,10 @@ public struct JupiterBalancesTool: SwooshTool {
     public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        let result = try await JupiterApi.balances(account: input.account.base58)
-        let tokens = result.tokens?.map { t in
-            JupiterTokenBalance(
-                mint: t.mint ?? "",
-                symbol: t.symbol ?? "?",
-                uiAmount: t.uiAmount ?? 0,
-                usdValue: t.usdValue
-            )
-        } ?? []
-        return JupiterBalancesOutput(tokens: tokens)
+        let resp = try await JupiterApi.balances(account: input.account.base58)
+        let balances = resp.balances.mapValues { tb in
+            JupiterTokenBalance(amount: tb.amount, uiAmount: tb.uiAmount, isFrozen: tb.isFrozen)
+        }
+        return JupiterBalancesOutput(balances: balances)
     }
 }

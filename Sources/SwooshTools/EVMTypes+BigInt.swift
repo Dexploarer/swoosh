@@ -22,6 +22,8 @@ public struct EVMQuantity: Codable, Sendable, Hashable, CustomStringConvertible 
     }
 
     public var hexString: String { "0x" + String(value, radix: 16) }
+    /// Compatibility alias — prefer hexString in new code
+    public var hex: String { hexString }
     public var description: String { value.description }
 
     /// Convert to ETH from wei

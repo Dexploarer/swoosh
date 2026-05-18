@@ -78,6 +78,17 @@ public struct ProcessResult: Codable, Sendable {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MARK: - Secret resolving (Keychain abstraction)
+// ═══════════════════════════════════════════════════════════════════
+
+/// Resolves secret references (e.g. Keychain labels) into their raw values.
+/// Implementations live in SwooshSecrets; tools never store the value.
+public protocol SecretResolving: Sendable {
+    /// Resolve a named secret reference. Throws if not found or access denied.
+    func resolve(ref: String) async throws -> String
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // MARK: - Tool dependencies
 // ═══════════════════════════════════════════════════════════════════
 
@@ -92,6 +103,8 @@ public struct ToolDependencies: Sendable {
     public let evmClient: (any EVMRPCClient)?
     public let solanaClient: (any SolanaRPCClient)?
     public let walletBridge: (any WalletBridge)?
+    /// Resolves Keychain secret refs — used by trade tools that need a private key at call time.
+    public let secrets: any SecretResolving
 
     public init(
         firewall: any Firewall,
@@ -102,7 +115,8 @@ public struct ToolDependencies: Sendable {
         processRunner: any ProcessRunning,
         evmClient: (any EVMRPCClient)? = nil,
         solanaClient: (any SolanaRPCClient)? = nil,
-        walletBridge: (any WalletBridge)? = nil
+        walletBridge: (any WalletBridge)? = nil,
+        secrets: any SecretResolving = NullSecretResolver()
     ) {
         self.firewall = firewall
         self.audit = audit
@@ -113,5 +127,14 @@ public struct ToolDependencies: Sendable {
         self.evmClient = evmClient
         self.solanaClient = solanaClient
         self.walletBridge = walletBridge
+        self.secrets = secrets
+    }
+}
+
+/// Default no-op resolver — always throws. Real implementation lives in SwooshSecrets.
+public struct NullSecretResolver: SecretResolving {
+    public init() {}
+    public func resolve(ref: String) async throws -> String {
+        throw ToolError.executionFailed("No SecretResolver configured — cannot access secret '\(ref)'")
     }
 }

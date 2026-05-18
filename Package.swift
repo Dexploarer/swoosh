@@ -53,6 +53,8 @@ let package = Package(
         .package(url: "https://github.com/jauyou/JupSwift.git", from: "1.2.0"),
         // BigInt — arbitrary-precision integers for EVM/Solana quantities
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
+        // Hyperliquid — perp/spot DEX (macOS .v12+, secp256k1 + CryptoSwift)
+        .package(url: "https://github.com/tranhoangpich/hyperliquid-swift-sdk.git", from: "1.6.0"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -173,7 +175,8 @@ let package = Package(
         ]),
         .target(name: "SwooshToolsets", dependencies: [
             "SwooshTools",
-            .product(name: "JupSwift", package: "JupSwift")
+            .product(name: "JupSwift", package: "JupSwift"),
+            .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
         ]),
 
         // ══════════════════════════════════════════════════════════════

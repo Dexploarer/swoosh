@@ -35,6 +35,8 @@ public enum ToolsetID: String, Codable, Sendable, CaseIterable {
     case workflow
     case evm
     case solana
+    case hyperliquid
+    case uniswap
     case mcp
 }
 

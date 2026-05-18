@@ -11,6 +11,8 @@
 // 8. Build tools return unsigned transactions only.
 
 import Foundation
+import BigInt
+// Note: EVMQuantity and Lamports are defined in EVMTypes+BigInt.swift (BigInt-backed)
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Transaction risk summary (shared)
@@ -84,15 +86,6 @@ public struct EVMHexData: Codable, Sendable, Hashable {
     public init(_ hex: String) { self.hex = hex }
 }
 
-public struct EVMQuantity: Codable, Sendable, Hashable {
-    public let hex: String
-    public init(_ hex: String) { self.hex = hex }
-
-    /// Create from a decimal UInt64.
-    public init(decimal: UInt64) {
-        self.hex = "0x" + String(decimal, radix: 16)
-    }
-}
 
 public enum EVMBlockTag: String, Codable, Sendable {
     case latest

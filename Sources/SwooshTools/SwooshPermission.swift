@@ -76,6 +76,11 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case solanaRequestSignature
     case solanaBroadcast
     case solanaMainnetWrite
+
+    // ── Hyperliquid ───────────────────────────────────────────────
+    case networkRead              // generic authenticated read (no key)
+    case hyperliquidTrade         // place/cancel orders, update leverage
+    case hyperliquidTransfer      // USD/spot transfers, bridge withdraw (high-risk)
 }
 
 // MARK: - Permission state
