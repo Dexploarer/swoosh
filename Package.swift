@@ -34,6 +34,7 @@ let package = Package(
         .library(name: "SwooshUI",        targets: ["SwooshUI"]),
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
         .library(name: "SwooshWidgets",  targets: ["SwooshWidgets"]),
+        .library(name: "SwooshActantBackend", targets: ["SwooshActantBackend"]),
     ],
     dependencies: [
         // CLI
@@ -55,6 +56,8 @@ let package = Package(
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
         // Hyperliquid — perp/spot DEX (macOS .v12+, secp256k1 + CryptoSwift)
         .package(url: "https://github.com/tranhoangpich/hyperliquid-swift-sdk.git", from: "1.6.0"),
+        // ActantDB — event-sourced agent backend (sibling repo, local path)
+        .package(path: "../actantDB/sdks/swift"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -263,6 +266,17 @@ let package = Package(
         ),
 
         // ══════════════════════════════════════════════════════════════
+        // MARK: - ActantDB backend adapter
+        // ══════════════════════════════════════════════════════════════
+        .target(
+            name: "SwooshActantBackend",
+            dependencies: [
+                "SwooshCore",
+                .product(name: "ActantDB", package: "swift"),
+            ]
+        ),
+
+        // ══════════════════════════════════════════════════════════════
         // MARK: - Tests
         // ══════════════════════════════════════════════════════════════
         .testTarget(
@@ -340,6 +354,22 @@ let package = Package(
         .testTarget(
             name: "SwooshProvidersTests",
             dependencies: ["SwooshProviders", "SwooshSecrets", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshUITests",
+            dependencies: ["SwooshUI"]
+        ),
+        .testTarget(
+            name: "SwooshWidgetsTests",
+            dependencies: ["SwooshWidgets"]
+        ),
+        .testTarget(
+            name: "SwooshActantBackendTests",
+            dependencies: [
+                "SwooshActantBackend",
+                "SwooshCore",
+                .product(name: "ActantDB", package: "swift"),
+            ]
         ),
     ]
 )

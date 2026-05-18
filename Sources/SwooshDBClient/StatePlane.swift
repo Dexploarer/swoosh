@@ -1,11 +1,13 @@
 // SwooshDBClient/StatePlane.swift — Abstract state plane protocol
 //
 // This is the key abstraction: Swoosh.app, CLI, and swooshd talk to
-// the state plane, not directly to SQLite or SpacetimeDB.
+// the state plane, not directly to a specific backend.
 //
 // Implementations:
-//   SQLiteStatePlane    — current v0.1 default
-//   SpacetimeStatePlane — spike v0.2A
+//   SQLiteStatePlane — local-first default
+//
+// The SpacetimeDB spike was retired in favor of ActantDB; see
+// ../SwooshActantBackend/ for the event-sourced ledger adapters.
 
 import Foundation
 
@@ -78,7 +80,8 @@ public struct ScoutRecordRow: Sendable, Identifiable, Codable {
 // MARK: - State plane protocol
 
 /// The abstraction that decouples Swoosh from any specific database backend.
-/// Both SQLite and SpacetimeDB implement this.
+/// `SQLiteStatePlane` is the local-first default; ActantDB-backed equivalents
+/// for the ledger surface live in `SwooshActantBackend`.
 public protocol SwooshStatePlane: Sendable {
 
     // ── Memory candidates ────────────────────────────────────

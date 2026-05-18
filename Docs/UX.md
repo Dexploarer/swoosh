@@ -53,7 +53,7 @@ On launch, the shell shows:
 | /permissions | System | Show permission profile |
 | /firewall | System | Show firewall rules |
 | /local | Development | Local model/MLX status |
-| /db | Development | SwooshDB/SpacetimeDB status |
+| /db | Development | ActantDB ledger status (event count, last event id) |
 
 ### Aliases
 

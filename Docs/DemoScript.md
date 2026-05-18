@@ -101,7 +101,7 @@ Shows every scan and approval event.
 /permissions     → permission profile
 /why             → context transparency (pending 0.3A)
 /repeat          → workflow generator (pending 0.5A)
-/db              → SwooshDB status
+/db              → ActantDB ledger status
 ```
 
 ### 10. Run diagnostics
@@ -116,7 +116,7 @@ swoosh doctor
 - Scout scan with real hardware detection
 - Memory candidate → approval → vault lifecycle
 - SQLite persistence with audit trail
-- SwooshDB SpacetimeDB spike (local Rust module)
+- ActantDB event ledger (sessions + audit) wired via SwooshActantBackend
 - `swoosh ask` one-shot with memory context detection
 
 ## What's next (0.3A)

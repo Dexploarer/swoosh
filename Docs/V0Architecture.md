@@ -5,27 +5,39 @@
 ```
 Swoosh.app ──┐
 swoosh CLI ──┤── SQLite (state.db) ──── Keychain (secrets)
-swooshd ─────┘
+swooshd ─────┤
+             └── actantdb serve (subprocess) ── event ledger / replay / approvals
 ```
 
-v0 uses **SQLite** as the single state store. All processes share `~/.swoosh/state.db`.
+v0 keeps **SQLite** at `~/.swoosh/state.db` for memories, setup reports, and
+permissions (no server-side query endpoint exists for these yet on ActantDB).
 
-SpacetimeDB is deferred to v0.2 as an optional live state plane.
+**Session messages, tool calls, and response-audit records** route through
+**ActantDB** — an event-sourced backend with hash-chained events, replay,
+and Studio. `swooshd` spawns `actantdb serve --db ~/.swoosh/actant.db --bind
+127.0.0.1:<port>` as a child process; `SwooshActantBackend` adapts the
+ledger to `SwooshCore`'s `SessionStoring` + `ResponseAuditing` protocols.
+
+The previous SpacetimeDB spike (`Backend/SwooshDB` + `SwooshDBClient/
+SpacetimeSupervisor.swift`) was retired. ActantDB ships the same
+"reducers + audit" properties without an extra runtime dependency
+on the spacetime CLI.
 
 ## Module map (v0 only)
 
 ```
-SwooshKit        SDK entry point, re-exports
-SwooshCore       AgentKernel actor, agent loop
-SwooshConfig     Setup graph, credentials, hardware, permissions, doctor
-SwooshScout      Scout sources, redactor, candidate generator
-SwooshStorage    SQLite state store (sessions, records, memories, audit)
-SwooshVault      Memory review + approved memory API
-SwooshFirewall   Permission model, approval engine, audit log
-SwooshTools      Tool protocol, registry, types
-SwooshFoundation Apple Foundation Models adapter
-SwooshCLI        ArgumentParser commands
-SwooshDaemon     swooshd entry point
+SwooshKit          SDK entry point, re-exports
+SwooshCore         AgentKernel actor, agent loop
+SwooshConfig       Setup graph, credentials, hardware, permissions, doctor
+SwooshScout        Scout sources, redactor, candidate generator
+SwooshStorage      SQLite store for memories / setup reports / permissions
+SwooshVault        Memory review + approved memory API
+SwooshFirewall     Permission model, approval engine, audit log
+SwooshTools        Tool protocol, registry, types
+SwooshFoundation   Apple Foundation Models adapter
+SwooshActantBackend ActantDB adapters (SessionStoring + ResponseAuditing)
+SwooshCLI          ArgumentParser commands
+SwooshDaemon       swooshd entry point (also supervises actantdb subprocess)
 ```
 
 ## Storage layout
