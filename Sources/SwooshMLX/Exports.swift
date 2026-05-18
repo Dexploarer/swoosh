@@ -1,1 +1,1 @@
-// \(basename Sources/SwooshMLX) — placeholder
+// SwooshExports: @_exported imports for SwooshMLX

@@ -1,1 +1,1 @@
-// \(basename Sources/SwooshSkills) — placeholder
+// SwooshExports: @_exported imports for SwooshSkills

@@ -5,7 +5,7 @@ import Testing
 
 @Test func testHelpListsCoreCommands() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     let helpText = await registry.helpText()
     #expect(helpText.contains("/help"))
@@ -24,7 +24,7 @@ import Testing
 
 @Test func testUnknownSlashCommandReturnsCleanError() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     let result = await registry.execute("nonexistent", context: SlashCommandContext())
     guard case .error(let msg) = result else {
@@ -37,7 +37,7 @@ import Testing
 
 @Test func testAliasResolution() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     // /h should resolve to /help
     let helpCmd = await registry.lookup("h")
@@ -67,7 +67,7 @@ import Testing
 
 @Test func testExitCommandReturnsExit() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     let result = await registry.execute("exit", context: SlashCommandContext())
     guard case .exit = result else {
@@ -78,7 +78,7 @@ import Testing
 
 @Test func testParseSlashCommand() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     // Slash command should parse
     let result = await registry.parse(line: "/help")
@@ -95,7 +95,7 @@ import Testing
 
 @Test func testCommandCategories() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     let sorted = await registry.sortedCommands()
     let categories = Set(sorted.map { $0.category })
@@ -109,7 +109,7 @@ import Testing
 
 @Test func testVaultSubcommands() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     let pendingResult = await registry.parse(line: "/vault pending")
     guard case .success(let msg) = pendingResult else {
@@ -128,14 +128,14 @@ import Testing
 
 @Test func testAllCommandsRegistered() async throws {
     let registry = SlashCommandRegistry()
-    await registerDefaultCommands(on: registry)
+    await registry.registerAll(makeDefaultCommandDefinitions())
 
     let expectedCommands = [
         "help", "exit", "clear", "status",
         "model", "tools", "sessions", "why", "repeat",
         "scout", "vault",
-        "permissions", "firewall",
-        "local", "db"
+        "doctor", "permissions", "firewall", "budget",
+        "local", "skills", "db"
     ]
 
     for name in expectedCommands {

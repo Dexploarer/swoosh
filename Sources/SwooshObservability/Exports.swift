@@ -1,1 +1,1 @@
-// \(basename Sources/SwooshObservability) — placeholder
+// SwooshExports: @_exported imports for SwooshObservability

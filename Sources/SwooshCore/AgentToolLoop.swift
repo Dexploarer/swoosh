@@ -198,7 +198,6 @@ public actor AgentToolLoop {
                     transcript: &transcript
                 )
             }
-
             // Call model
             let completionRequest = ModelCompletionRequest(messages: transcript)
             let completion = try await modelProvider.complete(completionRequest)

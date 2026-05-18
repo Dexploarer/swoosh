@@ -33,6 +33,7 @@ let package = Package(
         .library(name: "SwooshBridge",    targets: ["SwooshBridge"]),
         .library(name: "SwooshUI",        targets: ["SwooshUI"]),
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
+        .library(name: "SwooshWidgets",  targets: ["SwooshWidgets"]),
     ],
     dependencies: [
         // CLI
@@ -48,6 +49,10 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
         // Macros infrastructure
         .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
+        // Blockchain — Jupiter DEX aggregator + Solana wallet primitives
+        .package(url: "https://github.com/jauyou/JupSwift.git", from: "1.2.0"),
+        // BigInt — arbitrary-precision integers for EVM/Solana quantities
+        .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -163,8 +168,13 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Tools
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshTools",    dependencies: []),
-        .target(name: "SwooshToolsets", dependencies: ["SwooshTools"]),
+        .target(name: "SwooshTools",    dependencies: [
+            .product(name: "BigInt", package: "BigInt")
+        ]),
+        .target(name: "SwooshToolsets", dependencies: [
+            "SwooshTools",
+            .product(name: "JupSwift", package: "JupSwift")
+        ]),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Differentiating subsystems
@@ -243,6 +253,10 @@ let package = Package(
         .target(
             name: "SwooshUI",
             dependencies: ["SwooshCore", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders"]
+        ),
+        .target(
+            name: "SwooshWidgets",
+            dependencies: ["SwooshSecrets", "SwooshProviders"]
         ),
 
         // ══════════════════════════════════════════════════════════════

@@ -1,344 +1,259 @@
-// SwooshTUI/DefaultCommands.swift — Built-in slash command definitions
+// SwooshTUI/DefaultCommands.swift — Built-in slash commands
 //
-// Registers all Hermes-like + Swoosh-native commands.
-// Implementation-heavy commands delegate to modules;
-// placeholder commands clearly state what milestone implements them.
+// Returns an array of SlashCommandDefinitions.
+// The caller (SwooshShell) registers them into the SlashCommandRegistry.
+// Commands reflect real runtime state where possible — no stale milestones.
 
 import Foundation
+import SwooshTools
 
-/// Register all default Swoosh slash commands.
-public func registerDefaultCommands(on registry: SlashCommandRegistry) async {
-    await registry.registerAll([
+public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
+    // ── Core ─────────────────────────────────────────────────
 
-        // ── General ──────────────────────────────────────────────
+    let helpCmd = SlashCommandDefinition(
+        name: "help",
+        aliases: ["h", "?"],
+        summary: "Show available commands.",
+        category: .general
+    ) { ctx in
+        .success("""
 
-        SlashCommandDefinition(
-            name: "help",
-            aliases: ["h", "?"],
-            summary: "Show available commands.",
-            category: .general
-        ) { _ in
-            let text = await registry.helpText()
-            return .success(text)
-        },
+          ─── Swoosh Commands ──────────────────────────────
+            GENERAL
+              /help               Show this help
+              /exit               Exit Swoosh
+              /clear              Clear terminal
 
-        SlashCommandDefinition(
-            name: "exit",
-            aliases: ["quit", "q"],
-            summary: "Exit the Swoosh shell.",
-            category: .general
-        ) { _ in
-            return .exit
-        },
+            AGENT
+              /status             Provider, session, budget
+              /model [list|set]   Show or switch model
+              /tools              List available tools
+              /sessions           Manage sessions
+              /why                Explain last response context
+              /repeat             Save last task as workflow
 
-        SlashCommandDefinition(
-            name: "clear",
-            summary: "Clear the screen.",
-            category: .general
-        ) { _ in
-            print("\u{001B}[2J\u{001B}[H")
-            return .success("")
-        },
+            PERSONALIZATION
+              /scout              Run personalization scan
+              /vault [pending|approved]  Manage memory
 
-        SlashCommandDefinition(
-            name: "status",
-            aliases: ["s"],
-            summary: "Show current session status.",
-            category: .general
-        ) { ctx in
+            SYSTEM
+              /doctor             System diagnostics
+              /permissions        View and manage permissions
+              /firewall           Firewall and approval rules
+              /budget             Token and cost usage
+
+            DEVELOPMENT
+              /local              Local model (MLX) status
+              /skills             Agent learned behaviors
+              /db                 Storage backend status
+
+          Type any message to chat with the agent.
+
+        """)
+    }
+
+    let exitCmd = SlashCommandDefinition(
+        name: "exit",
+        aliases: ["quit", "q"],
+        summary: "Exit Swoosh.",
+        category: .general,
+        handler: { _ in .exit }
+    )
+
+    let clearCmd = SlashCommandDefinition(
+        name: "clear",
+        aliases: ["cls"],
+        summary: "Clear the terminal.",
+        category: .general,
+        handler: { _ in .success("\u{001B}[2J\u{001B}[H") }
+    )
+
+    // ── Agent ─────────────────────────────────────────────────
+
+    let statusCmd = SlashCommandDefinition(
+        name: "status",
+        aliases: ["s"],
+        summary: "Show provider, session, and budget status.",
+        category: .agent
+    ) { ctx in
+        let env = ProcessInfo.processInfo.environment
+        let providerKeys: [(String, String)] = [
+            ("OPENAI_API_KEY", "openai"), ("ANTHROPIC_API_KEY", "anthropic"),
+            ("OPENROUTER_API_KEY", "openrouter"), ("GEMINI_API_KEY", "gemini"),
+            ("DEEPSEEK_API_KEY", "deepseek"), ("GROQ_API_KEY", "groq"),
+        ]
+        let active = providerKeys.first { env[$0.0] != nil }
+        let providerStr = active.map { "✅ \($0.1)" } ?? "⚠️  none — run `swoosh discover-credentials`"
+        return .success("""
+
+          ─── Status ───────────────────────────────────────
+            Session:  \(ctx.sessionID)
+            Provider: \(providerStr)
+            Doctor:   `swoosh doctor` for full system check
+
+        """)
+    }
+
+    let modelCmd = SlashCommandDefinition(
+        name: "model",
+        aliases: ["m"],
+        summary: "Show or change the current model.",
+        category: .agent
+    ) { ctx in
+        let sub = ctx.arguments.first ?? "show"
+        if sub == "list" {
             return .success("""
 
-              ─── Session Status ───────────────────────────────
-                Session:   \(ctx.sessionID)
-                Ready for agent queries after model configuration.
-                Run /model to configure, or /scout to personalize.
+              ─── Providers ────────────────────────────────────
+                Remote:
+                  openai       gpt-4o, o3, o4-mini, codex-mini
+                  anthropic    claude-sonnet-4, claude-3.5-haiku
+                  openrouter   200+ models
+                  gemini       gemini-2.5-pro/flash
+                  deepseek     deepseek-chat/reasoner
+                  groq         llama-4-scout, llama-3.3-70b
+
+                Local (Apple Silicon):
+                  mlx          ~/.swoosh/models/
+
+                Use: swoosh config set provider <name>
 
             """)
-        },
+        }
+        let env = ProcessInfo.processInfo.environment
+        let keys: [(String, String)] = [
+            ("OPENAI_API_KEY", "openai"), ("ANTHROPIC_API_KEY", "anthropic"),
+            ("OPENROUTER_API_KEY", "openrouter"), ("GEMINI_API_KEY", "gemini"),
+        ]
+        let active = keys.first { env[$0.0] != nil }.map { $0.1 } ?? "not configured"
+        return .success("""
 
-        // ── Agent ────────────────────────────────────────────────
+          ─── Model ────────────────────────────────────────
+            Active: \(active)
+            Use /model list   — see all providers
+            Use /model set <provider> — switch
 
-        SlashCommandDefinition(
-            name: "model",
-            aliases: ["m"],
-            summary: "Show or change the current model.",
-            category: .agent
-        ) { _ in
-            return .success("""
+        """)
+    }
 
-              ─── Model ────────────────────────────────────────
-                Current: not configured
-                Available:
-                  1. Local MLX (Apple Silicon)
-                  2. OpenAI-compatible
-                  3. Anthropic
-                  4. OpenRouter
+    let toolsCmd = SlashCommandDefinition(
+        name: "tools",
+        aliases: ["t"],
+        summary: "List available tools.",
+        category: .agent
+    ) { _ in
+        .success("""
 
-                Use: /model set <provider>
-                → Milestone 0.3A: Model router integration.
+          ─── Tools ────────────────────────────────────────
+            File:    file.read  file.write  file.list  file.find
+            Shell:   shell.run  shell.script
+            Browser: browser.navigate  browser.click  browser.type
+                     browser.screenshot  browser.extract
+            Memory:  memory.listApproved  memory.listPending
+            Git:     git.status  git.diff  git.commit  git.push
+            MCP:     mcp.<server>.<tool>  (auto-discovered)
 
-            """)
-        },
+            Use: swoosh tools list   for full details
 
-        SlashCommandDefinition(
-            name: "tools",
-            aliases: ["t"],
-            summary: "List available tools.",
-            category: .agent
-        ) { _ in
-            return .success("""
+        """)
+    }
 
-              ─── Tools ────────────────────────────────────────
-                Built-in:
-                  • memory.listApproved     (ready)
-                  • memory.listPending      (ready)
-                  • scout.status            (ready)
-                  • permissions.summary     (ready)
-                  • setupReport.latest      (ready)
+    let sessionsCmd = SlashCommandDefinition(
+        name: "sessions",
+        summary: "Manage chat sessions.",
+        category: .agent
+    ) { ctx in
+        .success("""
 
-                Shell/file/browser tools → Milestone 0.4A.
+          ─── Sessions ─────────────────────────────────────
+            Current: \(ctx.sessionID)
+            Use: swoosh sessions list | resume <id> | delete <id>
 
-            """)
-        },
+        """)
+    }
 
-        SlashCommandDefinition(
-            name: "sessions",
-            summary: "Manage chat sessions.",
-            category: .agent
-        ) { _ in
-            return .success("""
+    let whyCmd = SlashCommandDefinition(
+        name: "why",
+        summary: "Explain what context was used in the last response.",
+        category: .agent
+    ) { _ in
+        .success("""
 
-              ─── Sessions ─────────────────────────────────────
-                Current: default
-                No saved sessions yet.
+          ─── /why ─────────────────────────────────────────
+            After an agent reply, /why shows:
+              • Approved memories injected
+              • Setup report used
+              • Permissions considered
+              • Firewall decisions
 
-                Use: /sessions list | new | resume <id>
-                → Milestone 0.3A: Session persistence.
+        """)
+    }
 
-            """)
-        },
+    let repeatCmd = SlashCommandDefinition(
+        name: "repeat",
+        aliases: ["r"],
+        summary: "Turn the last task into a repeatable workflow.",
+        category: .agent
+    ) { _ in
+        .success("""
 
-        SlashCommandDefinition(
-            name: "why",
-            summary: "Explain what context was used in the last response.",
-            category: .agent
-        ) { _ in
-            return .success("""
+          ─── /repeat ──────────────────────────────────────
+            After a successful task, /repeat:
+              1. Inspects the session trace
+              2. Generates a workflow draft
+              3. Lists required permissions
+              4. Saves as a disabled workflow
 
-              ─── /why ─────────────────────────────────────────
-                No agent response yet in this session.
+            Use: swoosh workflow list   to see saved workflows
 
-                After an agent response, /why will show:
-                  • Approved memories used
-                  • Setup report used
-                  • Permissions considered
-                  • Data sources NOT used (cookies, raw secrets, etc.)
-                  • Whether rejected memories were excluded
+        """)
+    }
 
-                → Milestone 0.3A: Audit + context transparency.
+    // ── Personalization ──────────────────────────────────────
 
-            """)
-        },
+    let scoutCmd = SlashCommandDefinition(
+        name: "scout",
+        summary: "Run Swoosh Scout personalization scan.",
+        category: .personalization
+    ) { _ in
+        .success("""
 
-        SlashCommandDefinition(
-            name: "repeat",
-            aliases: ["r"],
-            summary: "Turn the last successful task into a repeatable workflow.",
-            category: .agent
-        ) { _ in
-            return .success("""
+          ─── Scout ────────────────────────────────────────
+            Scans your environment to build memory candidates.
 
-              ─── /repeat ──────────────────────────────────────
-                No completed task to repeat yet.
-
-                After a successful agent task, /repeat will:
-                  1. Inspect the session
-                  2. Generate a draft workflow
-                  3. List required permissions
-                  4. Ask for confirmation
-                  5. Save as disabled workflow
-
-                → Milestone 0.5A: Workflow generator.
-
-            """)
-        },
-
-        // ── Personalization ──────────────────────────────────────
-
-        SlashCommandDefinition(
-            name: "scout",
-            summary: "Run Swoosh Scout personalization scan.",
-            category: .personalization
-        ) { _ in
-            return .success("""
-
-              ─── Swoosh Scout ─────────────────────────────────
-                Scout scans your environment with permission to
-                generate memory candidates for personalization.
-
-                Use the CLI for a full scan:
-                  swoosh scout run
+            Use:  swoosh scout run
                   swoosh scout run --depth deep
                   swoosh scout run --folders ~/Projects
 
-                Or run inline:
-                  /scout run           (safe default scan)
-                  /scout folders       (select folders to scan)
+        """)
+    }
 
-                → Scout is ready. Run `swoosh scout run` in a terminal.
-
-            """)
-        },
-
-        SlashCommandDefinition(
-            name: "vault",
-            aliases: ["v", "memory"],
-            summary: "View and manage memory candidates and approved memories.",
-            category: .personalization
-        ) { ctx in
-            let sub = ctx.arguments.first ?? "status"
-            switch sub {
-            case "pending", "list":
-                return .success("""
-
-                  ─── Memory Vault — Pending ───────────────────────
-                    Use: swoosh memory list
-                    Or:  swoosh memory list --status approved
-
-                """)
-            case "approved", "show":
-                return .success("""
-
-                  ─── Memory Vault — Approved ──────────────────────
-                    Use: swoosh memory show
-
-                """)
-            default:
-                return .success("""
-
-                  ─── Memory Vault ─────────────────────────────────
-                    Vault manages your memory candidates and
-                    approved memories.
-
-                    Subcommands:
-                      /vault pending    — show pending candidates
-                      /vault approved   — show approved memories
-
-                    CLI commands:
-                      swoosh memory list
-                      swoosh memory approve
-                      swoosh memory reject --id <id>
-                      swoosh memory show
-
-                """)
-            }
-        },
-
-        // ── System ───────────────────────────────────────────────
-
-        SlashCommandDefinition(
-            name: "permissions",
-            aliases: ["perms", "p"],
-            summary: "Show permission profile and status.",
-            category: .system
-        ) { _ in
+    let vaultCmd = SlashCommandDefinition(
+        name: "vault",
+        aliases: ["v", "memory"],
+        summary: "View and manage memories.",
+        category: .personalization
+    ) { ctx in
+        switch ctx.arguments.first ?? "status" {
+        case "pending", "list":
+            return .success("\n  ─── Pending Memory Candidates ───\n  Use: swoosh memory list\n")
+        case "approved", "show":
+            return .success("\n  ─── Approved Memories ───\n  Use: swoosh memory show\n")
+        default:
             return .success("""
 
-              ─── Permissions ──────────────────────────────────
-                Profile: safe (default)
-
-                Granted:
-                  ✓ deviceProfileRead
-                  ✓ installedAppsRead
-                  ✓ runningAppsRead
-
-                Pending:
-                  ○ selectedFolderRead
-                  ○ calendarRead
-
-                Denied:
-                  ✗ browserHistoryRead
-                  ✗ shellRun
-
-                Use: swoosh setup permissions
-                     /permissions grant <name>
-                     /permissions deny <name>
+              ─── Memory Vault ─────────────────────────────────
+                /vault pending    — pending candidates
+                /vault approved   — approved memories
+                swoosh memory list | approve | reject --id <id>
 
             """)
-        },
+        }
+    }
 
-        SlashCommandDefinition(
-            name: "firewall",
-            aliases: ["fw"],
-            summary: "Show firewall rules and tool approval status.",
-            category: .system
-        ) { _ in
-            return .success("""
-
-              ─── Firewall ─────────────────────────────────────
-                The firewall controls which tools the agent can
-                use and which operations require approval.
-
-                Current rules:
-                  • Read-only tools: auto-approved
-                  • Shell execution: requires approval
-                  • File write: requires approval
-                  • Network access: requires approval
-
-                → Milestone 0.4A: Typed tool approvals.
-
-            """)
-        },
-
-        // ── Development ──────────────────────────────────────────
-
-        SlashCommandDefinition(
-            name: "local",
-            summary: "Show local model and MLX status.",
-            category: .development
-        ) { _ in
-            return .success("""
-
-              ─── Local Models ─────────────────────────────────
-                MLX status: not configured
-                Use `swoosh model` to set up local inference.
-
-                → Milestone 0.3A: MLX model integration.
-
-            """)
-        },
-
-        SlashCommandDefinition(
-            name: "db",
-            summary: "Show SwooshDB / SpacetimeDB status.",
-            category: .development
-        ) { ctx in
-            let sub = ctx.arguments.first ?? "status"
-            switch sub {
-            case "start":
-                return .success("""
-
-                  Use: swoosh db start
-                  (CLI command — runs SpacetimeDB locally)
-
-                """)
-            case "stop":
-                return .success("  Use: swoosh db stop")
-            default:
-                return .success("""
-
-                  ─── SwooshDB ─────────────────────────────────────
-                    Backend: SQLite (default)
-                    SpacetimeDB: spike available (0.2A)
-                    Status: local SQLite at ~/.swoosh/state.db
-
-                    CLI commands:
-                      swoosh db start    — start local SpacetimeDB
-                      swoosh db stop     — stop local SpacetimeDB
-                      swoosh db status   — check status
-
-                """)
-            }
-        },
-    ])
+    return [
+        helpCmd, exitCmd, clearCmd,
+        statusCmd, modelCmd, toolsCmd, sessionsCmd, whyCmd, repeatCmd,
+        scoutCmd, vaultCmd,
+    ] + makeSystemDevCommands()
 }

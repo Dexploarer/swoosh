@@ -276,7 +276,7 @@ struct BlockchainSafetyTests {
         let approvals = MockApprovals(autoApprove: true)
         let deps = makeTestDeps(firewall: fw, audit: audit, approvals: approvals)
         let tool = SolanaRequestAirdropTool(dependencies: deps)
-        let input = SolanaRequestAirdropInput(clusterID: "mainnet-beta", pubkey: SolanaPubkey("xxx"), lamports: Lamports(1_000_000_000))
+        let input = SolanaRequestAirdropInput(pubkey: SolanaPubkey("xxx"), lamports: Lamports(1_000_000_000), clusterID: "mainnet-beta")
         do {
             _ = try await tool.call(input, context: ToolContext(sessionID: "test"))
             Issue.record("Should have denied mainnet airdrop")

@@ -220,7 +220,7 @@ public struct SolanaTxRequestSignatureTool: SwooshTool {
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         guard let bridge = dependencies.walletBridge else { throw ToolError.executionFailed("No wallet bridge") }
-        let signed = try await bridge.requestSolanaSignature(transaction: input.unsignedTransaction, sessionID: input.walletSessionID, confirmationText: input.userConfirmationText)
+        let signed = try await bridge.requestSolanaSignature(transaction: input.unsignedTransaction, sessionID: input.walletSessionID, confirmationText: input.userConfirmationText ?? "")
         return SolanaTxRequestSignatureOutput(signedTransactionBase64: signed, signer: input.unsignedTransaction.feePayer)
     }
 }

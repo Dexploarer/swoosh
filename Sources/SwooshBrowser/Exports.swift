@@ -1,1 +1,1 @@
-// \(basename Sources/SwooshBrowser) — placeholder
+// SwooshExports: @_exported imports for SwooshBrowser

@@ -1,6 +1,15 @@
 {
-  "originHash" : "fe9cca54454f82d50f3be7af95a1ff46e590ce2ff99784b90ad26f79d6b5d816",
+  "originHash" : "f5bcb9e3aa9e372e10c194e2bfbc3df4e9ead62ac68e9ea40543053034fce79a",
   "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire.git",
+      "state" : {
+        "revision" : "7595cbcf59809f9977c5f6378500de2ad73b7ddb",
+        "version" : "5.12.0"
+      }
+    },
     {
       "identity" : "async-http-client",
       "kind" : "remoteSourceControl",
@@ -11,12 +20,39 @@
       }
     },
     {
+      "identity" : "bigint",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/attaswift/BigInt.git",
+      "state" : {
+        "revision" : "e07e00fa1fd435143a2dcf8b7eec9a7710b2fdfe",
+        "version" : "5.7.0"
+      }
+    },
+    {
+      "identity" : "clibsodium",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jauyou/Clibsodium.git",
+      "state" : {
+        "revision" : "1f40d6616cb8040f2fe9f613d57f1674d92bfe2c",
+        "version" : "1.0.0"
+      }
+    },
+    {
       "identity" : "hummingbird",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/hummingbird-project/hummingbird",
       "state" : {
         "revision" : "277e5db5b6d348270088e6ee8e8fa2539bae603d",
         "version" : "2.23.0"
+      }
+    },
+    {
+      "identity" : "jupswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jauyou/JupSwift.git",
+      "state" : {
+        "revision" : "018253012bcb1ba2ab7c67d8e66f66a8f4668de7",
+        "version" : "1.2.0"
       }
     },
     {

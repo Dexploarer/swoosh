@@ -213,6 +213,7 @@ public protocol ModelProvider: Sendable {
     func complete(_ request: ModelCompletionRequest) async throws -> ModelCompletionResponse
 }
 
+
 // MARK: - Prompt builder
 
 /// Builds the system prompt from approved-only context.
