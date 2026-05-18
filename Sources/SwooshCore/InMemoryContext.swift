@@ -1,65 +1,16 @@
-// SwooshCore/StorageBackedContext.swift — Concrete protocol implementations
+// SwooshCore/InMemoryContext.swift — In-memory protocol implementations (0.4A)
 //
-// Bridges SwooshStorage (SQLite) to the AgentKernel protocols.
-// These load ONLY approved memories, never rejected candidates or raw records.
+// Default implementations used when the agent runs without a persistent
+// backend (unit tests, REPL exploration, the in-process Swoosh.configure
+// path when ACTANT_BASE_URL is unset). Production wires through
+// SwooshActantBackend's conformance extensions over ActantAgent instead.
 
 import Foundation
-import SwooshStorage
 
-// MARK: - Memory context loader (approved only)
+// MARK: - Session store (in-memory)
 
-/// Loads approved memories from SwooshStateStore.
-/// Rejected candidates and raw Scout records are NEVER returned.
-public final class StorageMemoryLoader: MemoryContextLoading, @unchecked Sendable {
-    private let store: SwooshStateStore
-
-    public init(store: SwooshStateStore) {
-        self.store = store
-    }
-
-    public func loadApprovedMemories() async throws -> [(id: String, text: String, category: String)] {
-        let memories = try await store.listApprovedMemories()
-        return memories.map { (id: $0.id, text: $0.text, category: $0.category) }
-    }
-}
-
-// MARK: - Setup report loader
-
-public final class StorageReportLoader: SetupReportLoading, @unchecked Sendable {
-    private let store: SwooshStateStore
-
-    public init(store: SwooshStateStore) {
-        self.store = store
-    }
-
-    public func loadLatestSetupReport() async throws -> String? {
-        try await store.latestSetupReport()?.content
-    }
-}
-
-// MARK: - Permission summarizer
-
-public final class StoragePermissionSummarizer: PermissionSummarizing, @unchecked Sendable {
-    private let store: SwooshStateStore
-
-    public init(store: SwooshStateStore) {
-        self.store = store
-    }
-
-    public func permissionSummary() async throws -> String {
-        // Generate from actual permission state
-        // For now, return safe defaults
-        """
-        Granted: deviceProfileRead, installedAppsRead, runningAppsRead
-        Pending: selectedFolderRead, calendarRead
-        Denied: browserHistoryRead, shellRun, contactsRead
-        """
-    }
-}
-
-// MARK: - Session store (in-memory for now)
-
-/// Simple in-memory session store. Persistent storage is a follow-up.
+/// Simple in-memory session store. Persistent storage is provided by
+/// `SwooshActantBackend.SwooshSessionStore` when ActantDB is configured.
 public actor InMemorySessionStore: SessionStoring {
     private var sessions: [String: [ChatMessage]] = [:]
 
@@ -76,9 +27,9 @@ public actor InMemorySessionStore: SessionStoring {
     }
 }
 
-// MARK: - Response audit logger (in-memory for now)
+// MARK: - Response audit logger (in-memory)
 
-/// Stores response audit records for /why.
+/// Stores response audit records for `/why`.
 public actor InMemoryResponseAuditor: ResponseAuditing {
     private var records: [String: [ResponseAuditRecord]] = [:]
 
@@ -97,7 +48,6 @@ public actor InMemoryResponseAuditor: ResponseAuditing {
 
 // MARK: - In-memory test implementations
 
-/// In-memory memory loader for tests.
 public final class InMemoryMemoryLoader: MemoryContextLoading, @unchecked Sendable {
     private var memories: [(id: String, text: String, category: String)]
 
@@ -114,7 +64,6 @@ public final class InMemoryMemoryLoader: MemoryContextLoading, @unchecked Sendab
     }
 }
 
-/// In-memory report loader for tests.
 public final class InMemoryReportLoader: SetupReportLoading, @unchecked Sendable {
     public var report: String?
 
@@ -127,7 +76,6 @@ public final class InMemoryReportLoader: SetupReportLoading, @unchecked Sendable
     }
 }
 
-/// In-memory permission summarizer for tests.
 public final class InMemoryPermSummarizer: PermissionSummarizing, @unchecked Sendable {
     public var summary: String
 

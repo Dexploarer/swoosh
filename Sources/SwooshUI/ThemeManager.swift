@@ -56,6 +56,23 @@ public struct SwooshThemeConfig: Codable, Sendable, Equatable {
         public var springBounce: Double
     }
 
+    /// Window/dashboard background style. Either a flat fill, a `MeshGradient`
+    /// (macOS 15+/iOS 18+), or an animated mesh whose control points drift
+    /// over time. Hex strings keep the config JSON-friendly.
+    public struct Background: Codable, Sendable, Equatable {
+        /// "solid", "mesh", "meshAnimated"
+        public var kind: String
+        /// 3×3 control-point grid (row-major, 9 entries) used for mesh modes.
+        /// Each entry is "x,y" with both values in [0, 1].
+        public var meshPoints: [String]
+        /// 9 hex colors, one per control point.
+        public var meshColors: [String]
+        /// Animation period in seconds (only used by `meshAnimated`).
+        public var animationDuration: Double
+        /// Falls back to this color when `kind == "solid"` or mesh is unavailable.
+        public var fallbackColor: String
+    }
+
     public var name: String
     public var colorScheme: String  // "system", "light", "dark"
     public var colors: Colors
@@ -63,6 +80,7 @@ public struct SwooshThemeConfig: Codable, Sendable, Equatable {
     public var layout: Layout
     public var typography: Typography
     public var animations: Animations
+    public var background: Background
 
     /// Default "Liquid Glass" configuration
     public static let liquidGlassDefault = SwooshThemeConfig(
@@ -104,8 +122,26 @@ public struct SwooshThemeConfig: Codable, Sendable, Equatable {
             enableHoverEffects: true,
             springDuration: 0.5,
             springBounce: 0.3
+        ),
+        background: Background(
+            kind: "mesh",
+            meshPoints: SwooshThemeConfig.uniformMeshPoints,
+            meshColors: [
+                "#0A0E27", "#1A1F3A", "#0A0E27",
+                "#1A0E2E", "#2A1F4E", "#1A0E2E",
+                "#0A0E27", "#1A1F3A", "#0A0E27",
+            ],
+            animationDuration: 18,
+            fallbackColor: "#000000"
         )
     )
+
+    /// A uniform 3×3 grid in normalized space — the natural starting layout for `MeshGradient`.
+    public static let uniformMeshPoints: [String] = [
+        "0.0,0.0", "0.5,0.0", "1.0,0.0",
+        "0.0,0.5", "0.5,0.5", "1.0,0.5",
+        "0.0,1.0", "0.5,1.0", "1.0,1.0",
+    ]
 }
 
 // MARK: - Hex color extension
@@ -189,6 +225,23 @@ public struct SwooshTheme: Sendable {
         .spring(duration: config.animations.springDuration, bounce: config.animations.springBounce)
     }
 
+    // Background
+    public var backgroundFallback: Color { Color(hex: config.background.fallbackColor) }
+    public var backgroundMeshColors: [Color] { config.background.meshColors.map { Color(hex: $0) } }
+    public var backgroundMeshPoints: [SIMD2<Float>] {
+        config.background.meshPoints.map { token in
+            let parts = token.split(separator: ",").map { Float($0.trimmingCharacters(in: .whitespaces)) ?? 0 }
+            return SIMD2<Float>(parts.first ?? 0, parts.count > 1 ? parts[1] : 0)
+        }
+    }
+    public var backgroundKind: SwooshBackgroundKind {
+        switch config.background.kind {
+        case "mesh":         return .mesh
+        case "meshAnimated": return .meshAnimated
+        default:             return .solid
+        }
+    }
+
     public init(from config: SwooshThemeConfig) {
         self.config = config
     }
@@ -196,22 +249,42 @@ public struct SwooshTheme: Sendable {
     public static let `default` = SwooshTheme(from: .liquidGlassDefault)
 }
 
+/// Resolved background variant for `SwooshTheme`.
+public enum SwooshBackgroundKind: String, Sendable, CaseIterable {
+    case solid
+    case mesh
+    case meshAnimated
+}
+
 // MARK: - Theme manager
 
 @Observable
 public final class ThemeManager {
-    public var currentTheme: SwooshTheme
+    /// The mutable config — every editor control binds through `$manager.config`.
+    public var config: SwooshThemeConfig
+
+    /// Resolved theme. Recomputed whenever `config` changes.
+    public var currentTheme: SwooshTheme { SwooshTheme(from: config) }
+
+    /// Generation counter — bumps on every external load/reset/preset apply so
+    /// downstream `.onChange` observers can react without diffing the whole struct.
+    public private(set) var revision: Int = 0
 
     public init(theme: SwooshTheme = .default) {
-        self.currentTheme = theme
+        self.config = theme.config
+    }
+
+    public init(config: SwooshThemeConfig) {
+        self.config = config
     }
 
     /// Load theme from user's JSON file (e.g. ~/.swoosh/theme.json)
     public func load(from url: URL) {
         do {
             let data = try Data(contentsOf: url)
-            let config = try JSONDecoder().decode(SwooshThemeConfig.self, from: data)
-            self.currentTheme = SwooshTheme(from: config)
+            let loaded = try JSONDecoder().decode(SwooshThemeConfig.self, from: data)
+            self.config = loaded
+            self.revision &+= 1
         } catch {
             // Gracefully remain on current theme
             print("[SwooshUI] Failed to load theme: \(error)")
@@ -221,22 +294,41 @@ public final class ThemeManager {
     /// Update from a raw JSON string (for live preview / in-app editor)
     public func update(fromJSON json: String) {
         guard let data = json.data(using: .utf8),
-              let config = try? JSONDecoder().decode(SwooshThemeConfig.self, from: data)
+              let parsed = try? JSONDecoder().decode(SwooshThemeConfig.self, from: data)
         else { return }
-        self.currentTheme = SwooshTheme(from: config)
+        self.config = parsed
+        self.revision &+= 1
     }
 
     /// Update from a config struct
-    public func update(with config: SwooshThemeConfig) {
-        self.currentTheme = SwooshTheme(from: config)
+    public func update(with newConfig: SwooshThemeConfig) {
+        self.config = newConfig
+        self.revision &+= 1
+    }
+
+    /// Apply a built-in preset by id. No-op if id is unknown.
+    public func applyPreset(id: String) {
+        guard let preset = SwooshThemeConfig.builtInPresets.first(where: { $0.id == id })
+        else { return }
+        self.config = preset.config
+        self.revision &+= 1
     }
 
     /// Save current theme to disk
     public func save(to url: URL) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(currentTheme.config)
-        try data.write(to: url)
+        let data = try encoder.encode(config)
+        let dir = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try data.write(to: url, options: .atomic)
+    }
+
+    /// Default theme.json location (`~/.swoosh/theme.json`).
+    public static var defaultURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh", isDirectory: true)
+            .appendingPathComponent("theme.json")
     }
 }
 

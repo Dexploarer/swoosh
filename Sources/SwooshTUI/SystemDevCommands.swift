@@ -145,17 +145,17 @@ func makeSystemDevCommands() -> [SlashCommandDefinition] {
         case "stop":  return .success("  Use: swoosh db stop")
         default:
             let dbPath = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".swoosh/state.db").path
+                .appendingPathComponent(".swoosh/actant.db").path
             let exists = FileManager.default.fileExists(atPath: dbPath)
+            let baseURL = ProcessInfo.processInfo.environment["ACTANT_BASE_URL"] ?? "(unset — start swooshd)"
             return .success("""
 
               ─── Storage ──────────────────────────────────────
-                Backend: SQLite  ·  \(exists ? "✅ state.db exists" : "⚠️ state.db not yet created")
-                Paths:   ~/.swoosh/state.db
+                Backend: ActantDB  ·  \(exists ? "✅ actant.db exists" : "⚠️ actant.db not yet created")
+                Server:  \(baseURL)
+                Paths:   ~/.swoosh/actant.db
                          ~/.swoosh/checkpoints/
                          ~/.swoosh/skills/
-
-                Use: swoosh storage prune --older-than 30d
 
             """)
         }

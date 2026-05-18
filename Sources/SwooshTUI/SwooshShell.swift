@@ -25,7 +25,7 @@ public struct ShellStatus: Sendable {
         approvedMemoryCount: Int = 0,
         pendingCandidateCount: Int = 0,
         permissionProfile: String = "safe",
-        statePlane: String = "SQLite",
+        statePlane: String = "ActantDB",
         sessionID: String = "default",
         providerStatus: String = "none"
     ) {

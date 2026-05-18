@@ -5,7 +5,6 @@
 import ArgumentParser
 import SwooshConfig
 import SwooshScout
-import SwooshStorage
 import SwooshTools
 import Foundation
 

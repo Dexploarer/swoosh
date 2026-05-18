@@ -14,6 +14,10 @@ struct SwooshApp: App {
     @State private var menuBarManager = MenuBarManager(preset: .swoosh)
     @State private var themeManager = ThemeManager()
 
+    init() {
+        SwooshTipsConfigurator.configure()
+    }
+
     var body: some Scene {
         // ── Menu bar icon + popover ──
         MenuBarExtra {
@@ -32,6 +36,9 @@ struct SwooshApp: App {
             DashboardView()
         }
         .defaultSize(width: 1200, height: 800)
+        .commands {
+            SwooshEditCommands()
+        }
 
         // ── Settings window ──
         Settings {

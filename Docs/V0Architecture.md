@@ -4,51 +4,58 @@
 
 ```
 Swoosh.app ──┐
-swoosh CLI ──┤── SQLite (state.db) ──── Keychain (secrets)
-swooshd ─────┤
-             └── actantdb serve (subprocess) ── event ledger / replay / approvals
+swoosh CLI ──┤── Keychain (secrets)
+swooshd ─────┴── actantdb serve (subprocess)
+                 └─ event ledger / replay / approvals / memories / setup reports
+                    at ~/.swoosh/actant.db
 ```
 
-v0 keeps **SQLite** at `~/.swoosh/state.db` for memories, setup reports, and
-permissions (no server-side query endpoint exists for these yet on ActantDB).
+**All durable state** — sessions, tool calls, response-audit records, memory
+candidates, approved memories, setup reports, scout records, permissions —
+routes through **ActantDB**, the event-sourced backend with hash-chained
+events, replay, and Studio. `swooshd` spawns `actantdb serve --db
+~/.swoosh/actant.db --bind 127.0.0.1:<port>` as a child process via
+`ActantAgent.ActantDBSupervisor` and exports the listening URL as
+`ACTANT_BASE_URL`. `SwooshKit.configure` picks up that env var to build
+default loaders/stores/auditors through `SwooshActantBackend`'s conformance
+extensions over `ActantAgent.MemoryStore` / `ApprovalCenter` /
+`Session<ChatMessage>` / `Auditor<ResponseAuditRecord>`.
 
-**Session messages, tool calls, and response-audit records** route through
-**ActantDB** — an event-sourced backend with hash-chained events, replay,
-and Studio. `swooshd` spawns `actantdb serve --db ~/.swoosh/actant.db --bind
-127.0.0.1:<port>` as a child process; `SwooshActantBackend` adapts the
-ledger to `SwooshCore`'s `SessionStoring` + `ResponseAuditing` protocols.
-
-The previous SpacetimeDB spike (`Backend/SwooshDB` + `SwooshDBClient/
-SpacetimeSupervisor.swift`) was retired. ActantDB ships the same
-"reducers + audit" properties without an extra runtime dependency
-on the spacetime CLI.
+The SQLite `SwooshStorage` target and the SpacetimeDB spike were both
+retired in favor of this stack.
 
 ## Module map (v0 only)
 
 ```
-SwooshKit          SDK entry point, re-exports
-SwooshCore         AgentKernel actor, agent loop
-SwooshConfig       Setup graph, credentials, hardware, permissions, doctor
-SwooshScout        Scout sources, redactor, candidate generator
-SwooshStorage      SQLite store for memories / setup reports / permissions
-SwooshVault        Memory review + approved memory API
-SwooshFirewall     Permission model, approval engine, audit log
-SwooshTools        Tool protocol, registry, types
-SwooshFoundation   Apple Foundation Models adapter
-SwooshActantBackend ActantDB adapters (SessionStoring + ResponseAuditing)
-SwooshCLI          ArgumentParser commands
-SwooshDaemon       swooshd entry point (also supervises actantdb subprocess)
+SwooshKit             SDK entry point, re-exports
+SwooshCore            AgentKernel actor, agent loop
+SwooshConfig          Setup graph, credentials, hardware, permissions, doctor
+SwooshScout           Scout sources, redactor, candidate generator
+SwooshVault           Memory review + approved memory API
+SwooshFirewall        Permission model, approval engine, audit log
+SwooshTools           Tool protocol, registry, types
+SwooshFoundation      Apple Foundation Models adapter
+SwooshActantBackend   ActantAgent ↔ SwooshCore conformance shim (<100 LoC)
+SwooshGenerativeUI    Agent-emitted UI (A2UI-shaped: typed UIComponent enum,
+                      UISurfaceUpdate wire format, ComponentCatalog gate,
+                      UIRenderer SwiftUI walker, sentinel envelope for tools)
+SwooshUI              Dashboard, menu bar, toolbar, theme editor, drag-drop,
+                      Inspector, Tips, Spatial (RealityView orb / Model3D),
+                      Spotlight indexer, FocusFilter, Live Activities,
+                      WritingTools + Image Playground hooks, generative
+                      surface host
+SwooshCLI             ArgumentParser commands
+SwooshDaemon          swooshd entry point (also supervises actantdb subprocess)
 ```
 
 ## Storage layout
 
 ```
 ~/.swoosh/
-├── state.db              SQLite: everything
+├── actant.db             ActantDB ledger (event-sourced)
 ├── config.json           non-secret config
 ├── theme.json            UI theme
-├── setup-reports/        generated reports
-├── logs/                 daemon/agent logs
+├── logs/                 daemon/agent logs (incl. actantdb.log)
 ├── artifacts/            generated files
 └── models/               downloaded MLX models
 ```
@@ -61,12 +68,12 @@ Keychain service: `ai.swoosh.agent`
 Permission gate
   → ScoutSource.scan()
   → SecretRedactor.redact()
-  → SwooshStorage.insertScoutRecords()
+  → ActantClient.saveScoutRecord() (per record)
   → CandidateGenerator.generate()
-  → SwooshStorage.insertMemoryCandidates()
+  → ActantAgent.MemoryStore.propose() (per candidate)
+  → ActantClient.saveSetupReport()
   → User review (CLI or app)
-  → SwooshStorage.approveMemory() / rejectMemory()
-  → AuditLog.append()
+  → ActantAgent.MemoryStore.approve() / reject()
 ```
 
 ## Model path (v0)
@@ -89,13 +96,22 @@ swoosh memory show       show approved memories
 swoosh daemon status     check daemon
 ```
 
-## Database schema (v0)
+## Backend schema
 
-```sql
-scout_records       (id, source_id, kind, sensitivity, content, metadata, created_at)
-memory_candidates   (id, text, category, confidence, sensitivity, status, evidence, created_at)
-approved_memories   (id, text, category, sensitivity, source_candidate_id, approved_at)
-audit_events        (id, event_type, actor, target, details, created_at)
-permissions         (id, permission, level, scope, updated_at)
-setup_reports       (id, content, created_at)
+The canonical schema lives in ActantDB (`actantDB/migrations/0001_initial.sql`,
+~80 tables). Swoosh consumes the following slice via the `ActantDB` and
+`ActantAgent` Swift SDKs:
+
 ```
+memory               approved memories
+memory_candidate     pending/rejected proposals
+memory_conflict      detected conflicts
+authority_scope      granted permissions
+artifact             setup_report rows (kind="setup_report")
+context_item         scout_records (source_type="scout")
+agent_event          session messages + audit sentinels
+tool_call            tool dispatch + approval requests
+```
+
+Swoosh never speaks SQL directly; all access goes through `ActantClient` /
+`ActantAgent` over HTTP.

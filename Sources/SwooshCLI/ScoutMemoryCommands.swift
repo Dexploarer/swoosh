@@ -1,9 +1,10 @@
 // SwooshCLI/ScoutMemoryCommands.swift — Scout, Memory, Permissions commands + Helpers
 
 import ArgumentParser
+import ActantDB
+import ActantAgent
 import SwooshConfig
 import SwooshScout
-import SwooshStorage
 import SwooshSecrets
 import SwooshTools
 import Foundation
@@ -65,37 +66,45 @@ struct ScoutRunCommand: AsyncParsableCommand {
         let pipeline = ScoutPipeline(sources: sources)
         let result = try await pipeline.run(depth: parsedDepth) { msg in print(msg) }
 
-        let config = SwooshConfigStore()
-        try config.ensureDirectories()
-        let store = try SwooshStateStore()
+        guard let backend = loadCLIBackend() else {
+            print("  ⚠ \(cliBackendUnsetMessage)")
+            print("  Pipeline ran but results were not persisted.")
+            return
+        }
+        let client      = await backend.client
+        let workspaceID = await backend.workspaceID
+        let actorID     = await backend.actorID
+        let memory      = MemoryStore(backend: backend)
 
-        let storedRecords = result.records.map { r in
-            StoredScoutRecord(
-                id: UUID().uuidString, sourceID: r.sourceID,
-                kind: r.kind.rawValue, sensitivity: r.sensitivity.rawValue,
-                content: r.content,
-                metadata: (try? JSONEncoder().encode(r.metadata).base64EncodedString()) ?? "{}",
-                createdAt: ISO8601DateFormatter().string(from: Date())
+        // Save scout records via the low-level client (no facade method yet).
+        for r in result.records {
+            let metadataJSON = (try? JSONSerialization.data(withJSONObject: r.metadata))
+                .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+            let metadata: ActantDB.JSONValue =
+                (try? JSONDecoder().decode(ActantDB.JSONValue.self, from: Data(metadataJSON.utf8))) ?? .object([:])
+            _ = try await client.saveScoutRecord(
+                workspaceID: workspaceID, actorID: actorID,
+                sourceID: r.sourceID, kind: r.kind.rawValue,
+                sensitivity: toActantSensitivity(r.sensitivity.rawValue),
+                content: r.content, metadata: metadata
             )
         }
-        try await store.insertScoutRecords(storedRecords)
 
-        let storedCandidates = result.candidates.map { c in
-            StoredMemoryCandidate(
-                id: c.id.uuidString, text: c.text,
-                category: c.category, confidence: c.confidence,
-                sensitivity: c.sensitivity.rawValue, status: "pending",
-                evidence: (try? String(data: JSONEncoder().encode(c.evidence), encoding: .utf8)) ?? "[]",
-                createdAt: ISO8601DateFormatter().string(from: Date())
+        for c in result.candidates {
+            let evidenceData = (try? JSONEncoder().encode(c.evidence)) ?? Data()
+            let evidence: ActantDB.JSONValue =
+                (try? JSONDecoder().decode(ActantDB.JSONValue.self, from: evidenceData)) ?? .array([])
+            _ = try await memory.propose(
+                text: c.text, category: c.category,
+                sensitivity: toActantSensitivity(c.sensitivity.rawValue),
+                confidence: c.confidence, evidence: evidence
             )
         }
-        try await store.insertMemoryCandidates(storedCandidates)
 
-        try await store.appendAuditEvent(
-            eventType: "scout.scan_complete", actor: "cli", target: "scout",
-            details: "Scanned \(result.sourcesScanned) sources, \(result.recordsCollected) records, \(result.candidatesGenerated) candidates"
+        _ = try await client.saveSetupReport(
+            workspaceID: workspaceID, actorID: actorID,
+            content: result.setupReport
         )
-        _ = try await store.saveSetupReport(content: result.setupReport)
 
         print("\n\(result.setupReport)")
         print("  Records stored: \(result.recordsCollected)")
@@ -108,8 +117,10 @@ struct ScoutRunCommand: AsyncParsableCommand {
 struct ScoutReportCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "report", abstract: "Show the latest Scout report.")
     func run() async throws {
-        let store = try SwooshStateStore()
-        guard let report = try await store.latestSetupReport() else {
+        guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
+        let client      = await backend.client
+        let workspaceID = await backend.workspaceID
+        guard let report = try await client.latestSetupReport(workspaceID: workspaceID) else {
             print("No setup report found. Run `swoosh scout run` first."); return
         }
         print(report.content)
@@ -133,8 +144,29 @@ struct MemoryListCommand: AsyncParsableCommand {
     var status: String = "pending"
 
     func run() async throws {
-        let store = try SwooshStateStore()
-        let candidates = try await store.listMemoryCandidates(status: status)
+        guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
+        let memory = MemoryStore(backend: backend)
+        let candidates: [ActantDB.MemoryCandidate]
+        switch status {
+        case "approved":
+            // Show approved memories via the MemoryShowCommand path.
+            let approved = try await memory.listApproved()
+            if approved.isEmpty { print("No approved memories."); return }
+            print("─── Approved Memories (\(approved.count)) ───\n")
+            for (i, m) in approved.enumerated() {
+                print("  \(i + 1). [\(m.category)] \(m.text)")
+                print("     id: \(m.id.prefix(8))…\n")
+            }
+            return
+        case "rejected":
+            // The facade exposes pending only; pull all and filter by status.
+            let rows = try await backend.client.memories(workspaceID: await backend.workspaceID, status: "rejected")
+            candidates = rows.compactMap {
+                if case let .pending(c) = $0 { return c } else { return nil }
+            }
+        default:
+            candidates = try await memory.listPending()
+        }
 
         if candidates.isEmpty {
             print("No \(status) memory candidates.")
@@ -145,7 +177,7 @@ struct MemoryListCommand: AsyncParsableCommand {
         print("─── \(status.capitalized) Memory Candidates (\(candidates.count)) ───\n")
         for (i, c) in candidates.enumerated() {
             print("  \(i + 1). [\(c.category)] \(c.text)")
-            print("     confidence: \(String(format: "%.0f%%", c.confidence * 100)) | sensitivity: \(c.sensitivity) | id: \(c.id.prefix(8))…\n")
+            print("     confidence: \(String(format: "%.0f%%", c.confidence * 100)) | sensitivity: \(c.sensitivity.rawValue) | id: \(c.id.prefix(8))…\n")
         }
         if status == "pending" {
             print("  Run `swoosh memory approve` to approve all.")
@@ -157,13 +189,14 @@ struct MemoryListCommand: AsyncParsableCommand {
 struct MemoryShowCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "show", abstract: "Show approved memories.")
     func run() async throws {
-        let store = try SwooshStateStore()
-        let memories = try await store.listApprovedMemories()
+        guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
+        let memory = MemoryStore(backend: backend)
+        let memories = try await memory.listApproved()
         guard !memories.isEmpty else { print("No approved memories yet."); return }
         print("─── Approved Memories (\(memories.count)) ───\n")
         for (i, m) in memories.enumerated() {
             print("  \(i + 1). [\(m.category)] \(m.text)")
-            print("     approved: \(m.approvedAt)\n")
+            print("     id: \(m.id.prefix(8))…\n")
         }
     }
 }
@@ -176,16 +209,20 @@ struct MemoryApproveCommand: AsyncParsableCommand {
     var all = false
 
     func run() async throws {
-        let store = try SwooshStateStore()
+        guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
+        let memory = MemoryStore(backend: backend)
+        let pending = try await memory.listPending()
+
         if all || id == nil {
-            let count = try await store.approveAllPending()
-            print("✓ Approved \(count) memory candidate(s).")
+            for c in pending {
+                try await memory.approve(candidateID: c.id)
+            }
+            print("✓ Approved \(pending.count) memory candidate(s).")
         } else if let prefix = id {
-            let candidates = try await store.listMemoryCandidates(status: "pending")
-            guard let match = candidates.first(where: { $0.id.hasPrefix(prefix) }) else {
+            guard let match = pending.first(where: { $0.id.hasPrefix(prefix) }) else {
                 print("No pending candidate matching '\(prefix)'"); return
             }
-            try await store.approveMemoryCandidate(id: match.id)
+            try await memory.approve(candidateID: match.id)
             print("✓ Approved: \(match.text)")
         }
     }
@@ -195,13 +232,16 @@ struct MemoryRejectCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "reject", abstract: "Reject a memory candidate.")
     @Option(name: .long, help: "Reject by ID prefix.")
     var id: String
+    @Option(name: .long, help: "Optional reason.")
+    var reason: String?
     func run() async throws {
-        let store = try SwooshStateStore()
-        let candidates = try await store.listMemoryCandidates(status: "pending")
-        guard let match = candidates.first(where: { $0.id.hasPrefix(id) }) else {
+        guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
+        let memory = MemoryStore(backend: backend)
+        let pending = try await memory.listPending()
+        guard let match = pending.first(where: { $0.id.hasPrefix(id) }) else {
             print("No pending candidate matching '\(id)'"); return
         }
-        try await store.rejectMemoryCandidate(id: match.id)
+        try await memory.reject(candidateID: match.id, reason: reason)
         print("✗ Rejected: \(match.text)")
     }
 }
@@ -213,8 +253,31 @@ struct PermissionsCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Show current permission status.")
     var status = false
     func run() async throws {
-        print("Permission profile management — not yet implemented.")
-        print("Use `swoosh setup permissions` to configure.")
+        guard status else {
+            print("Permission profile management — not yet implemented.")
+            print("Use `swoosh setup permissions` to configure or `swoosh permissions --status` to view.")
+            return
+        }
+        guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
+        let center = ApprovalCenter(backend: backend)
+        let summary = try await center.permissionSummary()
+        print("─── Permissions ──────────────────────────────")
+        print(summary)
+    }
+}
+
+// MARK: - Sensitivity bridge
+// `Sensitivity` is ambiguous (ActantAgent re-exports its own, SwooshScout has
+// one too) and `SwooshScout.Sensitivity` is shadowed by the SwooshScout actor.
+// Bridge through the raw string instead — both enums are String-backed.
+
+private func toActantSensitivity(_ raw: String) -> ActantDB.Sensitivity {
+    switch raw {
+    case "low":      return .low
+    case "medium":   return .medium
+    case "high":     return .high
+    case "critical": return .high   // ActantDB caps at .high
+    default:         return .low
     }
 }
 

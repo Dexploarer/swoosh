@@ -6,6 +6,9 @@
 @_exported import SwooshCore
 
 import Foundation
+import ActantDB
+import ActantAgent
+import SwooshActantBackend
 
 // MARK: - SwooshKit entry point
 
@@ -15,10 +18,14 @@ import Foundation
 /// ```swift
 /// let swoosh = try await Swoosh.configure {
 ///     $0.modelProvider = LocalStubProvider()
-///     $0.memoryLoader = InMemoryMemoryLoader()
 /// }
 /// let response = try await swoosh.ask("What should we build?")
 /// ```
+///
+/// When `ACTANT_BASE_URL` is set in the process environment, every default
+/// loader/store/auditor is wired through ActantDB via SwooshActantBackend's
+/// conformance extensions. Otherwise the `InMemory*` defaults are used so
+/// unit tests work without a server.
 public final class Swoosh: Sendable {
     public let kernel: AgentKernel
 
@@ -42,12 +49,28 @@ public final class Swoosh: Sendable {
     // MARK: - Builder
 
     private static func build(from config: SwooshConfiguration) async throws -> Swoosh {
+        let env = ProcessInfo.processInfo.environment
+        let actantBackend: AgentBackend? = {
+            guard let raw = env["ACTANT_BASE_URL"], let url = URL(string: raw) else { return nil }
+            return AgentBackend(
+                client: ActantClient(baseURL: url, token: env["ACTANT_TOKEN"]),
+                workspaceID: env["ACTANT_WORKSPACE_ID"] ?? "ws_swoosh",
+                actorID: env["ACTANT_ACTOR_ID"] ?? "act_swoosh"
+            )
+        }()
+
+        let memoryLoader   = config.memoryLoader   ?? actantBackend.map { MemoryStore(backend: $0) } ?? InMemoryMemoryLoader()
+        let reportLoader   = config.reportLoader   ?? actantBackend.map { MemoryStore(backend: $0) } ?? InMemoryReportLoader()
+        let permSummarizer = config.permSummarizer ?? actantBackend.map { ApprovalCenter(backend: $0) } ?? InMemoryPermSummarizer()
+        let sessionStore   = config.sessionStore   ?? actantBackend.map { SwooshSessionStore(backend: $0) } ?? InMemorySessionStore()
+        let auditLogger    = config.auditLogger    ?? actantBackend.map { SwooshResponseAuditor(backend: $0) } ?? InMemoryResponseAuditor()
+
         let kernel = AgentKernel(
-            memoryLoader: config.memoryLoader ?? InMemoryMemoryLoader(),
-            reportLoader: config.reportLoader ?? InMemoryReportLoader(),
-            permSummarizer: config.permSummarizer ?? InMemoryPermSummarizer(),
-            sessionStore: config.sessionStore ?? InMemorySessionStore(),
-            auditLogger: config.auditLogger ?? InMemoryResponseAuditor(),
+            memoryLoader: memoryLoader,
+            reportLoader: reportLoader,
+            permSummarizer: permSummarizer,
+            sessionStore: sessionStore,
+            auditLogger: auditLogger,
             modelProvider: config.modelProvider ?? LocalStubProvider()
         )
         return Swoosh(kernel: kernel)

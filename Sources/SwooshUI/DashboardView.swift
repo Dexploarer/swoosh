@@ -24,12 +24,10 @@ public struct DashboardView: View {
             detailView
         }
         .swooshGlassContainer()
+        .swooshThemedBackground()
         .swooshTheme(themeManager.currentTheme)
         .onAppear {
-            // Load user theme from ~/.swoosh/theme.json
-            let themeURL = FileManager.default.homeDirectoryForCurrentUser
-                .appending(path: ".swoosh/theme.json")
-            themeManager.load(from: themeURL)
+            themeManager.load(from: ThemeManager.defaultURL)
         }
     }
 
@@ -98,7 +96,7 @@ public struct DashboardView: View {
         case .approvals:   PlaceholderPane(title: "Approval Center", icon: "hand.raised")
         case .auditLog:    PlaceholderPane(title: "Audit Log", icon: "list.bullet.rectangle")
         case .benchmarks:  PlaceholderPane(title: "Benchmarks", icon: "chart.bar")
-        case .appearance:  AppearancePane(themeManager: themeManager)
+        case .appearance:  AppearanceEditorView(manager: themeManager)
         case .settings:    PlaceholderPane(title: "Settings", icon: "gear")
         }
     }
@@ -133,72 +131,6 @@ struct PlaceholderPane: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(title)
-    }
-}
-
-// MARK: - Appearance pane (full theme editor)
-
-struct AppearancePane: View {
-    @Bindable var themeManager: ThemeManager
-
-    @State private var rawJSON: String = ""
-    @State private var parseError: String? = nil
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                Text("Appearance")
-                    .font(.largeTitle.bold())
-
-                Text("Edit ~/.swoosh/theme.json or use the editor below. Changes apply in real time.")
-                    .foregroundStyle(.secondary)
-
-                // Live JSON editor
-                GroupBox("theme.json") {
-                    TextEditor(text: $rawJSON)
-                        .font(.system(size: 13, design: .monospaced))
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 350)
-                        .onChange(of: rawJSON) { _, newValue in
-                            themeManager.update(fromJSON: newValue)
-                        }
-                }
-                .swooshGlass()
-
-                if let err = parseError {
-                    Text(err)
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                }
-
-                HStack {
-                    Button("Save to disk") {
-                        let url = FileManager.default.homeDirectoryForCurrentUser
-                            .appending(path: ".swoosh/theme.json")
-                        try? themeManager.save(to: url)
-                    }
-                    .buttonStyle(.glass)
-
-                    Button("Reset to defaults") {
-                        themeManager.update(with: .liquidGlassDefault)
-                        refreshJSON()
-                    }
-                    .buttonStyle(.glass)
-                }
-            }
-            .padding(32)
-        }
-        .navigationTitle("Appearance")
-        .onAppear { refreshJSON() }
-    }
-
-    private func refreshJSON() {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(themeManager.currentTheme.config),
-           let str = String(data: data, encoding: .utf8) {
-            rawJSON = str
-        }
     }
 }
 

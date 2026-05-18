@@ -47,6 +47,17 @@ SwooshBridge       →  Python/Node/MCP interop bridge
 | `SwooshMCP` | MCP client/server bridge |
 | `SwooshLSP` | sourcekit-lsp integration |
 | `SwooshAPI` | Hummingbird HTTP API server |
+| `SwooshActantBackend` | <100-LoC conformance shim that wires `ActantAgent` into `SwooshCore`'s five protocols |
+| `SwooshGenerativeUI` | Agent-emitted UI (A2UI-shaped: typed `UIComponent` enum + `UISurfaceUpdate` + `UIRenderer`) |
+
+**Backend.** All durable state — sessions, memories, audit, approvals, setup
+reports — lives in ActantDB, the event-sourced sibling repo at
+`/Users/home/actantDB/`. `swooshd` supervises an `actantdb serve` child
+process at startup via `ActantAgent.ActantDBSupervisor` and exposes its
+URL through `ACTANT_BASE_URL`. The Swift SDK has two layers: low-level
+`ActantDB` for raw endpoints, and the opinionated `ActantAgent` facade
+(`MemoryStore` / `Session<Message>` / `Auditor<Record>` / `ApprovalCenter` /
+`ReplayClient`).
 
 ## Quick start
 

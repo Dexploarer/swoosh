@@ -20,8 +20,6 @@ let package = Package(
         .library(name: "SwooshCore",      targets: ["SwooshCore"]),
         .library(name: "SwooshConfig",    targets: ["SwooshConfig"]),
         .library(name: "SwooshScout",     targets: ["SwooshScout"]),
-        .library(name: "SwooshStorage",   targets: ["SwooshStorage"]),
-        .library(name: "SwooshDBClient",  targets: ["SwooshDBClient"]),
         .library(name: "SwooshTUI",       targets: ["SwooshTUI"]),
         .library(name: "SwooshVault",     targets: ["SwooshVault"]),
         .library(name: "SwooshFirewall",  targets: ["SwooshFirewall"]),
@@ -35,6 +33,7 @@ let package = Package(
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
         .library(name: "SwooshWidgets",  targets: ["SwooshWidgets"]),
         .library(name: "SwooshActantBackend", targets: ["SwooshActantBackend"]),
+        .library(name: "SwooshGenerativeUI", targets: ["SwooshGenerativeUI"]),
     ],
     dependencies: [
         // CLI
@@ -69,11 +68,12 @@ let package = Package(
                 "SwooshKit",
                 "SwooshConfig",
                 "SwooshScout",
-                "SwooshStorage",
-                "SwooshDBClient",
                 "SwooshTUI",
                 "SwooshProviders",
                 "SwooshSecrets",
+                "SwooshActantBackend",
+                .product(name: "ActantAgent", package: "swift"),
+                .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
@@ -85,6 +85,7 @@ let package = Package(
                 "SwooshAPI",
                 "SwooshGateway",
                 "SwooshTriggers",
+                .product(name: "ActantAgent", package: "swift"),
             ]
         ),
 
@@ -95,6 +96,9 @@ let package = Package(
             name: "SwooshKit",
             dependencies: [
                 "SwooshCore",
+                "SwooshActantBackend",
+                .product(name: "ActantAgent", package: "swift"),
+                .product(name: "ActantDB",    package: "swift"),
             ]
         ),
 
@@ -120,7 +124,6 @@ let package = Package(
         .target(
             name: "SwooshCore",
             dependencies: [
-                "SwooshStorage",
                 "SwooshTools",
             ]
         ),
@@ -129,16 +132,6 @@ let package = Package(
         // MARK: - Config, credentials, setup, diagnostics
         // ══════════════════════════════════════════════════════════════
         .target(name: "SwooshConfig", dependencies: []),
-        .target(
-            name: "SwooshStorage",
-            dependencies: [
-                .product(name: "SQLite", package: "SQLite.swift"),
-            ]
-        ),
-        .target(
-            name: "SwooshDBClient",
-            dependencies: ["SwooshStorage"]
-        ),
         .target(name: "SwooshTUI", dependencies: []),
         .target(
             name: "SwooshObservability",
@@ -258,7 +251,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders"]
+            dependencies: ["SwooshCore", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI"]
         ),
         .target(
             name: "SwooshWidgets",
@@ -272,8 +265,17 @@ let package = Package(
             name: "SwooshActantBackend",
             dependencies: [
                 "SwooshCore",
-                .product(name: "ActantDB", package: "swift"),
+                .product(name: "ActantDB",    package: "swift"),
+                .product(name: "ActantAgent", package: "swift"),
             ]
+        ),
+
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - Generative UI (agent-emitted, native renderer)
+        // ══════════════════════════════════════════════════════════════
+        .target(
+            name: "SwooshGenerativeUI",
+            dependencies: []
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -370,6 +372,10 @@ let package = Package(
                 "SwooshCore",
                 .product(name: "ActantDB", package: "swift"),
             ]
+        ),
+        .testTarget(
+            name: "SwooshGenerativeUITests",
+            dependencies: ["SwooshGenerativeUI"]
         ),
     ]
 )
