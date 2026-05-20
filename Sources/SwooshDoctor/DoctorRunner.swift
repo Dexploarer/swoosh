@@ -51,6 +51,7 @@ public actor DoctorRunner {
 private func builtInChecks() -> [any DoctorCheck] {
     [
         SystemCheck(), DiskSpaceCheck(), SwooshDirCheck(),
+        RuntimeReadinessCheck(),
         ConfigFileCheck(), ModelConfigCheck(),
         KeychainAccessCheck(), ProviderKeyCheck(),
         ProviderReachabilityCheck(), LocalModelCheck(),

@@ -220,7 +220,7 @@ public struct TerminalRunTool: SwooshTool {
     public typealias Output = TerminalRunOutput
     public static let name: ToolName = "terminal.run"
     public static let displayName = "Run Terminal Command"
-    public static let description = "Execute a shell command through the configured terminal backend."
+    public static let description = "Execute a command through the configured terminal backend."
     public static let permission = SwooshPermission.shellRun
     public static let risk = ToolRisk.high
     public static let approval = ApprovalPolicy.askEveryTime
@@ -255,7 +255,13 @@ public struct TerminalRunTool: SwooshTool {
     }
 
     private func runLocal(_ command: String, cwd: URL, environment: [String: String]?) async throws -> ProcessResult {
-        try await dependencies.processRunner.run(executable: shellPath(), arguments: ["-lc", command], workingDirectory: cwd, environment: environment)
+        let parsed = try parseCommand(command)
+        return try await dependencies.processRunner.run(
+            executable: parsed.executable,
+            arguments: parsed.arguments,
+            workingDirectory: cwd,
+            environment: environment
+        )
     }
 
     private func runDocker(_ command: String, cwd: URL, config: TerminalConfig) async throws -> ProcessResult {
@@ -308,14 +314,64 @@ public struct TerminalRunTool: SwooshTool {
             environment: nil
         )
     }
+}
 
-    private func shellPath() -> String {
-        #if os(macOS)
-        return "/bin/zsh"
-        #else
-        return "/bin/sh"
-        #endif
+private struct ParsedCommand {
+    let executable: String
+    let arguments: [String]
+}
+
+private func parseCommand(_ raw: String) throws -> ParsedCommand {
+    var tokens: [String] = []
+    var current = ""
+    var quote: Character?
+    var escaping = false
+
+    for char in raw {
+        if escaping {
+            current.append(char)
+            escaping = false
+            continue
+        }
+        if char == "\\" {
+            escaping = true
+            continue
+        }
+        if let active = quote {
+            if char == active {
+                quote = nil
+            } else {
+                current.append(char)
+            }
+            continue
+        }
+        if char == "'" || char == "\"" {
+            quote = char
+            continue
+        }
+        if char.isWhitespace {
+            if !current.isEmpty {
+                tokens.append(current)
+                current = ""
+            }
+            continue
+        }
+        current.append(char)
     }
+
+    guard quote == nil else {
+        throw ToolError.invalidInput("unterminated quote in terminal command")
+    }
+    guard !escaping else {
+        throw ToolError.invalidInput("dangling escape in terminal command")
+    }
+    if !current.isEmpty {
+        tokens.append(current)
+    }
+    guard let executable = tokens.first else {
+        throw ToolError.invalidInput("terminal command is empty")
+    }
+    return ParsedCommand(executable: executable, arguments: Array(tokens.dropFirst()))
 }
 
 private extension TerminalBackend {
@@ -354,7 +410,7 @@ private extension TerminalConfig {
 public func terminalBackendStatus(for backend: TerminalBackend, config: TerminalConfig) -> TerminalBackendStatus {
     switch backend {
     case .local:
-        return TerminalBackendStatus(backend: backend, available: true, configured: true, detail: "host shell")
+        return TerminalBackendStatus(backend: backend, available: true, configured: true, detail: "host allowlist")
     case .docker:
         let bin = resolveExecutable(ProcessInfo.processInfo.environment["HERMES_DOCKER_BINARY"] ?? "docker") ?? resolveExecutable("podman")
         return TerminalBackendStatus(backend: backend, available: bin != nil, configured: !config.dockerImage.isEmpty, detail: bin ?? "docker/podman missing")

@@ -10,13 +10,17 @@ public struct ScoutListSourcesTool: SwooshTool {
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.scout
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        let sources = defaultScoutSources(folderURLs: [])
-        let infos = sources.map { source in
-            ScoutSourceInfo(
-                sourceID: source.id,
-                displayName: source.displayName,
-                kind: source.sensitivity.rawValue,
-                enabled: true
+        let sources = ScoutSourceCatalog.operationalLocalSources()
+        var infos: [ScoutSourceInfo] = []
+        for source in sources {
+            let status = (try? await source.checkPermission()) ?? .denied
+            infos.append(
+                ScoutSourceInfo(
+                    sourceID: source.id,
+                    displayName: source.displayName,
+                    kind: source.sensitivity.rawValue,
+                    enabled: status == .granted || status == .notDetermined
+                )
             )
         }
         try await dependencies.scoutStore.setSources(infos)
@@ -46,9 +50,9 @@ public struct ScoutRunTool: SwooshTool {
         for bookmarkID in input.selectedFolderBookmarks {
             folderURLs.append(try await dependencies.fileAccess.resolveBookmark(id: bookmarkID))
         }
-        let selectedSources = defaultScoutSources(folderURLs: folderURLs)
+        let selectedSources = ScoutSourceCatalog.operationalLocalSources(folderURLs: folderURLs)
             .filter { source in input.sourceIDs.isEmpty || input.sourceIDs.contains(source.id) }
-        let knownIDs = Set(defaultScoutSources(folderURLs: []).map(\.id))
+        let knownIDs = Set(ScoutSourceCatalog.operationalLocalSources(folderURLs: folderURLs).map(\.id))
         let skipped = input.sourceIDs
             .filter { !knownIDs.contains($0) }
             .map { SkippedScoutSource(sourceID: $0, reason: "unknown source") }
@@ -99,28 +103,6 @@ public struct ScoutGetReportTool: SwooshTool {
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         try await dependencies.scoutStore.report(scanID: input.scanID)
     }
-}
-
-private func defaultScoutSources(folderURLs: [URL]) -> [any ScoutSource] {
-    var sources: [any ScoutSource] = [
-        DeviceSource(),
-        InstalledAppsSource(),
-        RunningAppsSource(),
-        ShellEnvironmentSource(),
-        AppUsageSource(),
-        FocusModeSource(),
-        CalendarSource(),
-        RemindersSource(),
-        RecentDocumentsSource(),
-        HealthSleepSource(),
-        MusicHistorySource(),
-        ScreenTimeSource(),
-    ]
-    if !folderURLs.isEmpty {
-        sources.append(ProjectFoldersSource(paths: folderURLs))
-        sources.append(GitReposSource(paths: folderURLs))
-    }
-    return sources
 }
 
 private func toolSensitivity(fromScoutRawValue rawValue: String) -> SwooshTools.Sensitivity {

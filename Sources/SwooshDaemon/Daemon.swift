@@ -25,6 +25,7 @@ import ActantDB
 import ActantAgent
 import SwooshAPI
 import SwooshClient
+import SwooshConfig
 import SwooshKit
 import SwooshScout
 import SwooshSkills
@@ -54,8 +55,8 @@ struct SwooshDaemon {
         let host = env["SWOOSH_HOST"] ?? "127.0.0.1"
 
         // ── ~/.swoosh state directory ─────────────────────────────────
-        let swooshDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".swoosh", isDirectory: true)
+        let swooshDir = stateDirectory(env: env)
+        let configStore = SwooshConfigStore(configDirectory: swooshDir)
         try? FileManager.default.createDirectory(at: swooshDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(
             at: swooshDir.appendingPathComponent("logs", isDirectory: true),
@@ -154,9 +155,10 @@ struct SwooshDaemon {
         log("Agent kernel ready with tool loop")
 
         // ── Self-improvement pillars ────────────────────────────────
-        // Stores live entirely in process today. When the actantDB iOS
-        // SDK lands, the conformances wire through SwooshActantBackend
-        // and these become CloudKit-synced alongside memories.
+        // Local durable stores for non-cloud self-improvement state. ActantDB
+        // still owns sessions/memories/audit; these JSON stores keep goals
+        // and manifestation passes alive across daemon restarts without
+        // waiting on cloud sync.
         let skillStore = FileSkillStore(
             directory: swooshDir.appendingPathComponent("skills", isDirectory: true)
         )
@@ -168,8 +170,12 @@ struct SwooshDaemon {
         let loadedSkills = (try? await bundledLoader.loadAll()) ?? []
         log("Skills loaded: \(loadedSkills.count) bundled + any user-authored on disk")
 
-        let goalStore = InMemoryGoalStore()
-        let manifestStore = InMemoryManifestationStore()
+        let goalStore = FileGoalStore(
+            url: swooshDir.appendingPathComponent("goals/goals.json")
+        )
+        let manifestStore = FileManifestationStore(
+            url: swooshDir.appendingPathComponent("manifesting/manifestations.json")
+        )
 
         // Pattern miner: uses a model when configured, otherwise falls
         // back to deterministic audit-window observations.
@@ -290,15 +296,9 @@ struct SwooshDaemon {
             secrets: secrets,
             activeProvider: providerInfo
         )
-        let skillSummaries = loadedSkills.map {
-            SkillSummary(
-                id: $0.id,
-                title: $0.title,
-                description: $0.description,
-                category: $0.category.rawValue,
-                trust: $0.trust.rawValue
-            )
-        }
+        let skillSummaries = loadedSkills
+            .filter { SkillTrust.promptable.contains($0.trust) }
+            .map(SwooshDaemon.skillSummary)
         let server = SwooshAPIServer(
             port: port,
             hostname: host,
@@ -309,6 +309,33 @@ struct SwooshDaemon {
                 providers: providerSummaries.providers,
                 activeProviderID: providerSummaries.activeProviderID,
                 skills: skillSummaries
+            ),
+            runtimeSources: SwooshAPIRuntimeSources(
+                providers: {
+                    let active = await ProviderFactory.detectActiveProvider(secrets: secrets)
+                    let summary = await SwooshDaemon.makeProviderSummaries(secrets: secrets, activeProvider: active)
+                    return ProvidersResponse(providers: summary.providers, activeProviderID: summary.activeProviderID)
+                },
+                skills: {
+                    let skills = (try? await skillStore.listAll()) ?? []
+                    return SkillsResponse(skills: skills
+                        .filter { SkillTrust.promptable.contains($0.trust) }
+                        .map(SwooshDaemon.skillSummary))
+                },
+                readiness: {
+                    let active = await ProviderFactory.detectActiveProvider(secrets: secrets)
+                    let summary = await SwooshDaemon.makeProviderSummaries(secrets: secrets, activeProvider: active)
+                    let skills = (try? await skillStore.listAll()) ?? []
+                    let activeProvider = summary.providers.first { $0.id == summary.activeProviderID }
+                        ?? summary.providers.first(where: \.active)
+                    return SwooshReadinessDetector(config: configStore).report(inputs: SwooshReadinessInputs(
+                        daemonReachable: true,
+                        chatEnabled: true,
+                        activeProviderName: activeProvider?.name,
+                        activeModel: activeProvider?.model,
+                        promptableSkillCount: skills.filter { SkillTrust.promptable.contains($0.trust) }.count
+                    ))
+                }
             )
         )
         let app = server.build()
@@ -346,6 +373,15 @@ struct SwooshDaemon {
             home.appendingPathComponent("actantDB/target/debug", isDirectory: true),
             home.appendingPathComponent("actantDB/node_modules/.bin", isDirectory: true),
         ]
+    }
+
+    static func stateDirectory(env: [String: String]) -> URL {
+        if let configured = env["SWOOSH_CONFIG_DIR"] ?? env["SWOOSH_STATE_DIR"], !configured.isEmpty {
+            return URL(fileURLWithPath: NSString(string: configured).expandingTildeInPath, isDirectory: true)
+                .standardizedFileURL
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh", isDirectory: true)
     }
 
     static func makeProviderSummaries(
@@ -416,6 +452,16 @@ struct SwooshDaemon {
 
         return (providers, activeID)
     }
+
+    static func skillSummary(_ skill: SkillDocument) -> SkillSummary {
+        SkillSummary(
+            id: skill.id,
+            title: skill.title,
+            description: skill.description,
+            category: skill.category.rawValue,
+            trust: skill.trust.rawValue
+        )
+    }
 }
 
 // MARK: - Tool runtime
@@ -450,6 +496,7 @@ private func makeDaemonToolRuntime(
         allowedWrite: true
     ))
 
+    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
     let dependencies = ToolDependencies(
         firewall: firewall,
         audit: audit,
@@ -457,10 +504,10 @@ private func makeDaemonToolRuntime(
         fileAccess: SafeFileAccessor(rootStore: rootStore),
         processRunner: StreamingProcessRunner(approvedRoots: [cwd.path, swooshDir.path]),
         memoryStore: MemoryStore(backend: backend),
-        scoutStore: InMemoryScoutToolStore(),
-        workflowStore: InMemoryWorkflowToolStore()
+        scoutStore: FileScoutToolStore(url: swooshDir.appendingPathComponent("scout/tool-state.json")),
+        workflowStore: FileWorkflowToolStore(url: swooshDir.appendingPathComponent("workflows/tool-drafts.json")),
+        workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry)
     )
-    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
     await DefaultToolRegistrar.registerAll(into: registry, dependencies: dependencies)
     return DaemonToolRuntime(registry: registry, dependencies: dependencies)
 }
@@ -568,20 +615,7 @@ private func runPassiveScoutOnce(
 }
 
 private func makePassiveScoutSources(signalStore: PersonalizationSignalStore) -> [any ScoutSource] {
-    [
-        DeviceSource(),
-        InstalledAppsSource(),
-        RunningAppsSource(),
-        PersonalizationSignalSource(store: signalStore),
-        AppUsageSource(),
-        FocusModeSource(),
-        CalendarSource(),
-        RemindersSource(),
-        RecentDocumentsSource(),
-        HealthSleepSource(),
-        MusicHistorySource(),
-        ScreenTimeSource(),
-    ]
+    ScoutSourceCatalog.passiveLocalSources(signalStore: signalStore)
 }
 
 private func existingMemorySummaries(memory: MemoryStore) async throws -> [ExistingMemorySummary] {

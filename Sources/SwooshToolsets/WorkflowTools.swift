@@ -74,7 +74,16 @@ public struct WorkflowRunDryTool: SwooshTool {
         guard let draft = try await dependencies.workflowStore.getDraft(id: input.draftID) else {
             throw ToolError.notFound(input.draftID)
         }
-        let warnings = draft.steps.isEmpty ? ["workflow has no executable steps"] : []
+        var warnings: [String] = []
+        if draft.steps.isEmpty {
+            warnings.append("workflow has no executable steps")
+        }
+        if draft.steps.contains(where: { $0.toolName?.hasPrefix("workflow.") == true }) {
+            warnings.append("workflow tools cannot be nested inside workflow.run")
+        }
+        if dependencies.workflowStepExecutor == nil, !draft.steps.isEmpty {
+            warnings.append("workflow step executor is not configured in this runtime")
+        }
         return WorkflowRunDryOutput(
             draftID: input.draftID,
             stepsSimulated: draft.steps.count,
@@ -100,14 +109,38 @@ public struct WorkflowRunTool: SwooshTool {
         guard draft.enabled else {
             throw ToolError.disabled("workflow \(input.draftID) is saved but not enabled")
         }
-        guard draft.steps.isEmpty else {
-            throw ToolError.executionFailed("workflow.run only supports empty/manual review drafts until executable step dispatch is wired")
+        guard let executor = dependencies.workflowStepExecutor else {
+            throw ToolError.executionFailed("workflow step executor is not configured")
         }
+
+        var completed = 0
+        var errors: [String] = []
+        for step in draft.steps {
+            guard let toolName = step.toolName, !toolName.isEmpty else {
+                errors.append("\(step.label): missing toolName")
+                continue
+            }
+            guard !toolName.hasPrefix("workflow.") else {
+                errors.append("\(step.label): workflow tools cannot be nested")
+                continue
+            }
+            let result = try await executor.executeWorkflowStep(
+                toolName: toolName,
+                arguments: step.arguments ?? .object([:]),
+                context: ToolContext(sessionID: context.sessionID, isModelInvocation: false)
+            )
+            if result.status == .succeeded {
+                completed += 1
+            } else {
+                errors.append("\(step.label): \(result.errorMessage ?? result.status.rawValue)")
+            }
+        }
+        let status = errors.isEmpty ? "completed" : (completed == 0 ? "failed" : "completed_with_errors")
         return WorkflowRunOutput(
             runID: UUID().uuidString,
-            status: "completed",
-            stepsCompleted: 0,
-            errors: []
+            status: status,
+            stepsCompleted: completed,
+            errors: errors
         )
     }
 }

@@ -76,6 +76,7 @@ let package = Package(
             name: "SwooshCLI",
             dependencies: [
                 "SwooshKit",
+                "SwooshClient",
                 "SwooshConfig",
                 "SwooshScout",
                 "SwooshTUI",
@@ -86,6 +87,7 @@ let package = Package(
                 "SwooshToolsets",
                 "SwooshChatSDK",
                 "SwooshSecrets",
+                "SwooshDoctor",
                 "SwooshActantBackend",
                 "SwooshFirewall",
                 "SwooshApprovals",
@@ -171,7 +173,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Config, credentials, setup, diagnostics
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshConfig", dependencies: []),
+        .target(name: "SwooshConfig", dependencies: ["SwooshClient"]),
         .target(name: "SwooshTUI", dependencies: ["SwooshTools"]),
         .target(
             name: "SwooshObservability",
@@ -284,7 +286,7 @@ let package = Package(
         .target(name: "SwooshNetworkPolicy", dependencies: ["SwooshTools"]),
         .target(name: "SwooshIntegrations",  dependencies: ["SwooshTools"]),
         .target(name: "SwooshSetup",         dependencies: ["SwooshTools"]),
-        .target(name: "SwooshDoctor",        dependencies: ["SwooshTools"]),
+        .target(name: "SwooshDoctor",        dependencies: ["SwooshTools", "SwooshConfig", "SwooshClient"]),
         .target(name: "SwooshInstaller",     dependencies: ["SwooshTools"]),
         .target(name: "SwooshLSP",      dependencies: []),
         .target(name: "SwooshBridge",   dependencies: ["SwooshTools"]),
@@ -307,6 +309,7 @@ let package = Package(
             dependencies: [
                 "SwooshCore",
                 "SwooshClient",
+                "SwooshConfig",
                 "SwooshChatSDK",
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
@@ -317,7 +320,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI"]
+            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI"]
         ),
         .target(
             name: "SwooshWidgets",
@@ -453,6 +456,7 @@ let package = Package(
             dependencies: [
                 "SwooshAPI",
                 "SwooshCore",
+                "SwooshConfig",
                 "SwooshTools",
                 "SwooshFirewall",
                 "SwooshApprovals",

@@ -97,20 +97,72 @@ struct StubProcessRunner: ProcessRunning {
     }
 }
 
+actor RecordingProcessRunner: ProcessRunning {
+    struct Call: Sendable {
+        let executable: String
+        let arguments: [String]
+    }
+
+    private var calls: [Call] = []
+
+    func run(executable: String, arguments: [String], workingDirectory: URL?, environment: [String: String]?) async throws -> ProcessResult {
+        calls.append(Call(executable: executable, arguments: arguments))
+        return ProcessResult(exitCode: 0, stdout: "ok", stderr: "")
+    }
+
+    func recordedCalls() -> [Call] {
+        calls
+    }
+}
+
+actor RecordingWorkflowExecutor: WorkflowStepExecuting {
+    struct Call: Sendable {
+        let toolName: String
+        let arguments: JSONValue
+    }
+
+    private var calls: [Call] = []
+
+    func executeWorkflowStep(
+        toolName: String,
+        arguments: JSONValue,
+        context: ToolContext
+    ) async throws -> ToolExecutionResult {
+        calls.append(Call(toolName: toolName, arguments: arguments))
+        return ToolExecutionResult(
+            requestID: UUID().uuidString,
+            toolName: toolName,
+            status: .succeeded,
+            output: .object(["ok": .bool(true)])
+        )
+    }
+
+    func recordedCalls() -> [Call] {
+        calls
+    }
+}
+
 func makeTestDeps(
     firewall: any SwooshTools.Firewall,
     audit: any AuditLogging,
     approvals: any ApprovalRequesting,
     fileAccess: any FileAccessing = StubFileAccess(),
-    memoryStore: any MemoryToolStoring = InMemoryMemoryToolStore()
+    processRunner: any ProcessRunning = StubProcessRunner(),
+    memoryStore: any MemoryToolStoring = InMemoryMemoryToolStore(),
+    scoutStore: any ScoutToolStoring = InMemoryScoutToolStore(),
+    workflowStore: any WorkflowToolStoring = InMemoryWorkflowToolStore(),
+    workflowStepExecutor: (any WorkflowStepExecuting)? = nil
 ) -> ToolDependencies {
     ToolDependencies(
         firewall: firewall,
         audit: audit,
         approvals: approvals,
         fileAccess: fileAccess,
-        processRunner: StubProcessRunner(),
-        memoryStore: memoryStore
+        processRunner: processRunner,
+        memoryStore: memoryStore,
+        scoutStore: scoutStore,
+        workflowStore: workflowStore,
+        workflowStepExecutor: workflowStepExecutor
     )
 }
 
@@ -325,6 +377,141 @@ struct OperationalToolStoreTests {
         let content = await fileAccess.content(relativePath: "README.md")
         #expect(output.applied)
         #expect(content == "one\nTWO\nthree\n")
+    }
+
+    @Test("File-backed scout store persists source and run state")
+    func fileScoutStorePersistsState() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-scout-store-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let first = FileScoutToolStore(url: url)
+        try await first.setSources([
+            ScoutSourceInfo(sourceID: "device", displayName: "Device", kind: "low", enabled: true),
+        ])
+        try await first.saveRun(ScoutToolRunRecord(
+            id: "scan-1",
+            reportMarkdown: "# Scout",
+            recordsCreated: 3,
+            candidatesCreated: 1
+        ))
+
+        let second = FileScoutToolStore(url: url)
+        let sources = try await second.listSources()
+        let status = try await second.status()
+        let report = try await second.report(scanID: nil)
+
+        #expect(sources.map(\.sourceID) == ["device"])
+        #expect(status.recordCount == 3)
+        #expect(status.candidateCount == 1)
+        #expect(report.scanID == "scan-1")
+        #expect(report.reportMarkdown == "# Scout")
+    }
+
+    @Test("File-backed workflow store persists drafts and enablement")
+    func fileWorkflowStorePersistsDrafts() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-workflow-store-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let draft = WorkflowDraft(
+            id: "wf-1",
+            name: "One",
+            summary: "Runs one tool",
+            steps: [
+                WorkflowStepPreview(
+                    label: "status",
+                    toolName: "core.status",
+                    actionKind: "tool",
+                    arguments: .object([:])
+                ),
+            ],
+            requiredPermissions: [.toolRead],
+            enabled: false
+        )
+        let first = FileWorkflowToolStore(url: url)
+        try await first.saveDraft(draft)
+        _ = try await first.setEnabled(id: "wf-1", enabled: true)
+
+        let second = FileWorkflowToolStore(url: url)
+        let loaded = try await second.getDraft(id: "wf-1")
+
+        #expect(loaded?.enabled == true)
+        #expect(loaded?.steps.first?.toolName == "core.status")
+        #expect(try await second.listDrafts().count == 1)
+    }
+
+    @Test("Workflow run executes configured step executor")
+    func workflowRunExecutesConfiguredExecutor() async throws {
+        let fw = MockFirewall(granted: [.workflowRun])
+        let audit = MockAudit()
+        let approvals = MockApprovals()
+        let workflowStore = InMemoryWorkflowToolStore()
+        let executor = RecordingWorkflowExecutor()
+        let draft = WorkflowDraft(
+            id: "wf-run",
+            name: "Run",
+            summary: "Runs a status tool",
+            steps: [
+                WorkflowStepPreview(
+                    label: "status",
+                    toolName: "core.status",
+                    actionKind: "tool",
+                    arguments: .object(["verbose": .bool(true)])
+                ),
+            ],
+            requiredPermissions: [.toolRead],
+            enabled: true
+        )
+        await workflowStore.saveDraft(draft)
+        let deps = makeTestDeps(
+            firewall: fw,
+            audit: audit,
+            approvals: approvals,
+            workflowStore: workflowStore,
+            workflowStepExecutor: executor
+        )
+
+        let output = try await WorkflowRunTool(dependencies: deps).call(
+            WorkflowRunInput(draftID: "wf-run", confirmExecution: true),
+            context: ToolContext(sessionID: "test", isModelInvocation: false)
+        )
+        let calls = await executor.recordedCalls()
+
+        #expect(output.status == "completed")
+        #expect(output.stepsCompleted == 1)
+        #expect(calls.map(\.toolName) == ["core.status"])
+        #expect(calls.first?.arguments == .object(["verbose": .bool(true)]))
+    }
+
+    @Test("Terminal local backend does not invoke a shell")
+    func terminalLocalBackendRunsExecutableDirectly() async throws {
+        let fw = MockFirewall(granted: [.shellRun])
+        let audit = MockAudit()
+        let approvals = MockApprovals()
+        let runner = RecordingProcessRunner()
+        let deps = makeTestDeps(
+            firewall: fw,
+            audit: audit,
+            approvals: approvals,
+            processRunner: runner
+        )
+        let storeURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-terminal-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: storeURL) }
+
+        _ = try await TerminalRunTool(
+            dependencies: deps,
+            store: TerminalConfigStore(url: storeURL)
+        ).call(
+            TerminalRunInput(command: "swift test --filter SwooshScoutTests", backend: .local),
+            context: ToolContext(sessionID: "test", isModelInvocation: false)
+        )
+        let calls = await runner.recordedCalls()
+
+        #expect(calls.count == 1)
+        #expect(calls[0].executable == "swift")
+        #expect(calls[0].arguments == ["test", "--filter", "SwooshScoutTests"])
     }
 }
 

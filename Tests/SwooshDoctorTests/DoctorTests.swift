@@ -2,6 +2,7 @@
 
 import Testing
 import Foundation
+import SwooshConfig
 @testable import SwooshDoctor
 @testable import SwooshTools
 
@@ -55,6 +56,105 @@ struct DoctorReportTests {
     @Test("All categories available")
     func allCategories() {
         #expect(DoctorCategory.allCases.count == 13)
+    }
+
+    @Test("Swoosh directory check uses configured state path")
+    func swooshDirectoryCheckUsesContextPath() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-doctor-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let missing = try await SwooshDirCheck().run(context: DoctorContext(
+            configPath: root.appendingPathComponent("config.json").path,
+            statePath: root.path,
+            logPath: root.appendingPathComponent("logs").path
+        ))
+        #expect(missing.status == .fail)
+
+        for directory in [
+            "memories",
+            "skills",
+            "workflows",
+            "goals",
+            "manifesting",
+            "scout",
+            "cron",
+            "logs",
+            "artifacts",
+            "mcp",
+            "workers",
+            "setup-reports",
+            "models",
+            "checkpoints",
+        ] {
+            try FileManager.default.createDirectory(
+                at: root.appendingPathComponent(directory, isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+
+        let repaired = try await SwooshDirCheck().run(context: DoctorContext(
+            configPath: root.appendingPathComponent("config.json").path,
+            statePath: root.path,
+            logPath: root.appendingPathComponent("logs").path
+        ))
+        #expect(repaired.status == .pass)
+    }
+
+    @Test("Runtime readiness uses shared config state")
+    func runtimeReadinessUsesSharedConfigState() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-readiness-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let config = SwooshConfigStore(configDirectory: root)
+        let missing = SwooshReadinessDetector(config: config).report()
+        #expect(missing.state == .blocked)
+        #expect(missing.component(id: "config.file")?.status == .blocked)
+
+        try config.ensureDirectories()
+        try config.save(SwooshRuntimeConfig(
+            setupMode: "quick",
+            permissionProfile: "developer",
+            modelPath: "hybrid",
+            daemonPort: 1
+        ))
+        try "token".write(to: config.apiTokenFile, atomically: true, encoding: .utf8)
+
+        let readyLocal = SwooshReadinessDetector(config: config).report(inputs: SwooshReadinessInputs(
+            daemonReachable: true,
+            chatEnabled: true,
+            activeProviderName: "Local Diagnostic Provider",
+            activeModel: "swoosh-local-diagnostic-v1",
+            promptableSkillCount: 1
+        ))
+        #expect(readyLocal.state == .ready)
+        #expect(readyLocal.component(id: "model.provider")?.status == .ready)
+    }
+
+    @Test("Runtime readiness doctor check maps shared state")
+    func runtimeReadinessDoctorCheckMapsSharedState() async throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-readiness-check-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let config = SwooshConfigStore(configDirectory: root)
+        try config.ensureDirectories()
+        try config.save(SwooshRuntimeConfig(
+            setupMode: "quick",
+            permissionProfile: "developer",
+            modelPath: "hybrid",
+            daemonPort: 1
+        ))
+        try "token".write(to: config.apiTokenFile, atomically: true, encoding: .utf8)
+
+        let result = try await RuntimeReadinessCheck().run(context: DoctorContext(
+            configPath: config.configFile.path,
+            statePath: root.path,
+            logPath: config.logsDir.path
+        ))
+        #expect(result.status == .warning)
+        #expect(result.message?.contains("Degraded") == true)
     }
 }
 

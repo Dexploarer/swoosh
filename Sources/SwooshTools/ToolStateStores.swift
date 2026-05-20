@@ -210,6 +210,76 @@ public actor InMemoryScoutToolStore: ScoutToolStoring {
     }
 }
 
+public actor FileScoutToolStore: ScoutToolStoring {
+    private let url: URL
+    private var loaded = false
+    private var snapshot = ScoutToolStoreSnapshot()
+
+    public init(url: URL? = nil) {
+        self.url = url ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh/scout/tool-state.json")
+    }
+
+    public func listSources() throws -> [ScoutSourceInfo] {
+        try ensureLoaded()
+        return snapshot.sources
+    }
+
+    public func setSources(_ sources: [ScoutSourceInfo]) throws {
+        try ensureLoaded()
+        snapshot.sources = sources
+        try persist()
+    }
+
+    public func status() throws -> ScoutStatusOutput {
+        try ensureLoaded()
+        let latest = snapshot.latestRunID.flatMap { id in snapshot.runs.first { $0.id == id } }
+        return ScoutStatusOutput(
+            lastScanDate: latest?.scannedAt,
+            recordCount: latest?.recordsCreated ?? 0,
+            candidateCount: latest?.candidatesCreated ?? 0
+        )
+    }
+
+    public func saveRun(_ run: ScoutToolRunRecord) throws {
+        try ensureLoaded()
+        snapshot.runs.removeAll { $0.id == run.id }
+        snapshot.runs.append(run)
+        snapshot.latestRunID = run.id
+        try persist()
+    }
+
+    public func report(scanID: String?) throws -> ScoutGetReportOutput {
+        try ensureLoaded()
+        let id = scanID ?? snapshot.latestRunID
+        guard let id, let run = snapshot.runs.first(where: { $0.id == id }) else {
+            throw ToolError.notFound(scanID ?? "latest scout report")
+        }
+        return ScoutGetReportOutput(reportMarkdown: run.reportMarkdown, scanID: run.id)
+    }
+
+    private func ensureLoaded() throws {
+        guard !loaded else { return }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: url.path) {
+            let data = try Data(contentsOf: url)
+            snapshot = try JSONDecoder.swooshToolState.decode(ScoutToolStoreSnapshot.self, from: data)
+        }
+        loaded = true
+    }
+
+    private func persist() throws {
+        let data = try JSONEncoder.swooshToolState.encode(snapshot)
+        try data.write(to: url, options: .atomic)
+    }
+}
+
+private struct ScoutToolStoreSnapshot: Codable, Sendable {
+    var sources: [ScoutSourceInfo] = []
+    var runs: [ScoutToolRunRecord] = []
+    var latestRunID: String?
+}
+
 // MARK: - Workflow tools
 
 public protocol WorkflowToolStoring: Sendable {
@@ -256,6 +326,73 @@ public actor InMemoryWorkflowToolStore: WorkflowToolStoring {
     }
 }
 
+public actor FileWorkflowToolStore: WorkflowToolStoring {
+    private let url: URL
+    private var loaded = false
+    private var drafts: [String: WorkflowDraft] = [:]
+
+    public init(url: URL? = nil) {
+        self.url = url ?? FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh/workflows/tool-drafts.json")
+    }
+
+    public func saveDraft(_ draft: WorkflowDraft) throws {
+        try ensureLoaded()
+        drafts[draft.id] = draft
+        try persist()
+    }
+
+    public func listDrafts() throws -> [WorkflowDraft] {
+        try ensureLoaded()
+        return drafts.values.sorted { $0.name < $1.name }
+    }
+
+    public func getDraft(id: String) throws -> WorkflowDraft? {
+        try ensureLoaded()
+        return drafts[id]
+    }
+
+    public func setEnabled(id: String, enabled: Bool) throws -> WorkflowDraft {
+        try ensureLoaded()
+        guard let draft = drafts[id] else {
+            throw ToolError.notFound(id)
+        }
+        let updated = WorkflowDraft(
+            id: draft.id,
+            name: draft.name,
+            summary: draft.summary,
+            steps: draft.steps,
+            requiredPermissions: draft.requiredPermissions,
+            trigger: draft.trigger,
+            enabled: enabled
+        )
+        drafts[id] = updated
+        try persist()
+        return updated
+    }
+
+    private func ensureLoaded() throws {
+        guard !loaded else { return }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: url.path) {
+            let data = try Data(contentsOf: url)
+            let snapshot = try JSONDecoder.swooshToolState.decode(WorkflowToolStoreSnapshot.self, from: data)
+            drafts = Dictionary(uniqueKeysWithValues: snapshot.drafts.map { ($0.id, $0) })
+        }
+        loaded = true
+    }
+
+    private func persist() throws {
+        let snapshot = WorkflowToolStoreSnapshot(drafts: drafts.values.sorted { $0.name < $1.name })
+        let data = try JSONEncoder.swooshToolState.encode(snapshot)
+        try data.write(to: url, options: .atomic)
+    }
+}
+
+private struct WorkflowToolStoreSnapshot: Codable, Sendable {
+    let drafts: [WorkflowDraft]
+}
+
 private func limited<T>(_ values: [T], limit: Int?) -> [T] {
     guard let limit else { return values }
     return Array(values.prefix(max(0, limit)))
@@ -267,5 +404,22 @@ private extension String {
             .joined(separator: " ")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
+    }
+}
+
+extension JSONEncoder {
+    static var swooshToolState: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return encoder
+    }
+}
+
+extension JSONDecoder {
+    static var swooshToolState: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 }

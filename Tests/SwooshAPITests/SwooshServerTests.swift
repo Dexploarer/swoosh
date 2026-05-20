@@ -5,6 +5,7 @@ import Foundation
 import NIOCore
 @testable import SwooshAPI
 import SwooshClient
+import SwooshConfig
 import SwooshCore
 import SwooshTools
 import SwooshFirewall
@@ -23,8 +24,19 @@ struct APIPermissionSummarizer: PermissionSummarizing {
 }
 
 actor APISessionStore: SessionStoring {
-    func appendMessage(sessionID: String, message: SwooshCore.ChatMessage) async throws {}
-    func loadTranscript(sessionID: String) async throws -> [SwooshCore.ChatMessage] { [] }
+    private var messages: [String: [SwooshCore.ChatMessage]] = [:]
+
+    init(messages: [String: [SwooshCore.ChatMessage]] = [:]) {
+        self.messages = messages
+    }
+
+    func appendMessage(sessionID: String, message: SwooshCore.ChatMessage) async throws {
+        messages[sessionID, default: []].append(message)
+    }
+
+    func loadTranscript(sessionID: String) async throws -> [SwooshCore.ChatMessage] {
+        messages[sessionID] ?? []
+    }
 }
 
 actor APIResponseAuditor: ResponseAuditing {
@@ -146,12 +158,186 @@ struct SwooshServerTests {
         }
     }
 
+    @Test("Runtime sources override startup snapshot")
+    func runtimeSourcesOverrideSnapshot() async throws {
+        let snapshot = SwooshAPISnapshot(
+            providers: [
+                ProviderSummary(
+                    id: "stale",
+                    name: "Stale",
+                    model: nil,
+                    configured: false,
+                    active: false,
+                    status: "missing"
+                ),
+            ],
+            activeProviderID: "stale",
+            skills: []
+        )
+        let sources = SwooshAPIRuntimeSources(
+            providers: {
+                ProvidersResponse(
+                    providers: [
+                        ProviderSummary(
+                            id: "local-diagnostic",
+                            name: "Local Diagnostic Provider",
+                            model: "swoosh-local-diagnostic-v1",
+                            configured: true,
+                            active: true,
+                            status: "active"
+                        ),
+                    ],
+                    activeProviderID: "local-diagnostic"
+                )
+            },
+            skills: {
+                SkillsResponse(skills: [
+                    SkillSummary(
+                        id: "bundled.local",
+                        title: "Local Skill",
+                        description: "Runs locally.",
+                        category: "coding",
+                        trust: "reviewed"
+                    ),
+                ])
+            }
+        )
+        let app = SwooshAPIServer(token: "secret", snapshot: snapshot, runtimeSources: sources).build()
+
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/metrics",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                guard let data = response.body.getData(
+                    at: response.body.readerIndex,
+                    length: response.body.readableBytes
+                ) else {
+                    Issue.record("Missing metrics response body")
+                    return
+                }
+                let decoded = try JSONDecoder.swooshDefault.decode(MetricsResponse.self, from: data)
+                #expect(decoded.counters.first { $0.id == "providers" }?.value == 1)
+                #expect(decoded.counters.first { $0.id == "skills" }?.value == 1)
+            }
+            try await client.execute(
+                uri: "/api/providers",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                guard let data = response.body.getData(
+                    at: response.body.readerIndex,
+                    length: response.body.readableBytes
+                ) else {
+                    Issue.record("Missing providers response body")
+                    return
+                }
+                let decoded = try JSONDecoder.swooshDefault.decode(ProvidersResponse.self, from: data)
+                #expect(decoded.activeProviderID == "local-diagnostic")
+                #expect(decoded.providers.first?.id == "local-diagnostic")
+            }
+        }
+    }
+
+    @Test("Runtime readiness route uses shared source")
+    func runtimeReadinessRouteUsesSharedSource() async throws {
+        let report = SwooshReadinessReport(
+            state: .ready,
+            summary: "Ready from source",
+            components: [
+                SwooshReadinessComponent(
+                    id: "daemon.chat",
+                    title: "Daemon chat",
+                    status: .ready,
+                    detail: "chat enabled"
+                ),
+            ],
+            generatedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let app = SwooshAPIServer(
+            token: "secret",
+            runtimeSources: SwooshAPIRuntimeSources(readiness: { report })
+        ).build()
+
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/runtime/readiness",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                guard let data = response.body.getData(
+                    at: response.body.readerIndex,
+                    length: response.body.readableBytes
+                ) else {
+                    Issue.record("Missing readiness response body")
+                    return
+                }
+                let decoded = try JSONDecoder.swooshDefault.decode(SwooshReadinessReport.self, from: data)
+                #expect(decoded.state == .ready)
+                #expect(decoded.summary == "Ready from source")
+            }
+        }
+    }
+
     @Test("Auth-gated chat rejects missing bearer token")
     func chatRejectsMissingBearer() async throws {
         let app = SwooshAPIServer(token: "secret").build()
         try await app.test(.router) { client in
             try await client.execute(uri: "/api/agent/chat", method: .post) { response in
                 #expect(response.status == .unauthorized)
+            }
+        }
+    }
+
+    @Test("Transcript route returns persisted session messages")
+    func transcriptRouteReturnsPersistedSessionMessages() async throws {
+        let store = APISessionStore(messages: [
+            "ios-default": [
+                SwooshCore.ChatMessage(
+                    id: "m1",
+                    role: .user,
+                    content: "hello",
+                    createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+                ),
+                SwooshCore.ChatMessage(
+                    id: "m2",
+                    role: .assistant,
+                    content: "hi from the Mac",
+                    createdAt: Date(timeIntervalSince1970: 1_800_000_001)
+                ),
+            ],
+        ])
+        let kernel = AgentKernel(
+            memoryLoader: APIMemoryLoader(),
+            reportLoader: APIReportLoader(),
+            permSummarizer: APIPermissionSummarizer(),
+            sessionStore: store,
+            auditLogger: APIResponseAuditor(),
+            modelProvider: LocalDiagnosticProvider()
+        )
+        let app = SwooshAPIServer(token: "secret", kernel: kernel).build()
+
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/agent/transcript/ios-default",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                guard let data = response.body.getData(
+                    at: response.body.readerIndex,
+                    length: response.body.readableBytes
+                ) else {
+                    Issue.record("Missing transcript response body")
+                    return
+                }
+                let decoded = try JSONDecoder.swooshDefault.decode(TranscriptResponse.self, from: data)
+                #expect(decoded.sessionID == "ios-default")
+                #expect(decoded.messages.map(\.id) == ["m1", "m2"])
+                #expect(decoded.messages.map(\.role) == [.user, .assistant])
             }
         }
     }

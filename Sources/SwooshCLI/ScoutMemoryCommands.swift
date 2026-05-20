@@ -41,12 +41,6 @@ struct ScoutRunCommand: AsyncParsableCommand {
         }
         print("  Depth: \(parsedDepth.rawValue)\n")
 
-        var sources: [any ScoutSource] = [
-            DeviceSource(), InstalledAppsSource(),
-            RunningAppsSource(), PersonalizationSignalSource(),
-            ShellEnvironmentSource(),
-        ]
-
         let folderPaths: [URL]
         if folders.isEmpty {
             let home = FileManager.default.homeDirectoryForCurrentUser
@@ -58,10 +52,8 @@ struct ScoutRunCommand: AsyncParsableCommand {
             }
         }
 
-        if !folderPaths.isEmpty {
-            sources.append(ProjectFoldersSource(paths: folderPaths))
-            sources.append(GitReposSource(paths: folderPaths))
-        }
+        var sources = ScoutSourceCatalog.operationalLocalSources(folderURLs: folderPaths)
+        sources.append(PersonalizationSignalSource())
         sources.append(HermesImportSource())
 
         let backend = loadCLIBackend()
@@ -273,8 +265,7 @@ struct PermissionsCommand: AsyncParsableCommand {
 }
 
 // MARK: - Sensitivity bridge
-// `Sensitivity` is ambiguous (ActantAgent re-exports its own, SwooshScout has
-// one too) and `SwooshScout.Sensitivity` is shadowed by the SwooshScout actor.
+// `Sensitivity` is ambiguous because ActantAgent re-exports its own enum.
 // Bridge through the raw string instead — both enums are String-backed.
 
 private func toActantSensitivity(_ raw: String) -> ActantDB.Sensitivity {

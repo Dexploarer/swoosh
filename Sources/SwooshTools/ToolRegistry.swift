@@ -286,6 +286,30 @@ public actor ToolRegistry {
     }
 }
 
+public struct RegistryWorkflowStepExecutor: WorkflowStepExecuting {
+    private let registry: ToolRegistry
+
+    public init(registry: ToolRegistry) {
+        self.registry = registry
+    }
+
+    public func executeWorkflowStep(
+        toolName: String,
+        arguments: JSONValue,
+        context: ToolContext
+    ) async throws -> ToolExecutionResult {
+        await registry.execute(
+            request: ToolExecutionRequest(
+                toolName: toolName,
+                arguments: arguments,
+                origin: .workflow,
+                sessionID: context.sessionID
+            ),
+            context: context
+        )
+    }
+}
+
 public enum ToolError: Error, Sendable {
     case notFound(String)
     case denied(String, String)

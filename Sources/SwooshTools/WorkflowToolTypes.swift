@@ -40,11 +40,13 @@ public struct WorkflowStepPreview: Codable, Sendable {
     public let label: String
     public let toolName: String?
     public let actionKind: String
+    public let arguments: JSONValue?
 
-    public init(label: String, toolName: String? = nil, actionKind: String) {
+    public init(label: String, toolName: String? = nil, actionKind: String, arguments: JSONValue? = nil) {
         self.label = label
         self.toolName = toolName
         self.actionKind = actionKind
+        self.arguments = arguments
     }
 }
 

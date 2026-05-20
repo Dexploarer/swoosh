@@ -8,8 +8,8 @@ import SwooshSkills
 
 struct DaemonRuntime: Sendable {
     let skillStore: FileSkillStore
-    let goalStore: InMemoryGoalStore
-    let manifestStore: InMemoryManifestationStore
+    let goalStore: FileGoalStore
+    let manifestStore: FileManifestationStore
     let manifester: Manifester
     let goalRunner: GoalRunner
     let appUsageRecorder: AppUsageRecorder

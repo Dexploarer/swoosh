@@ -363,6 +363,10 @@ public actor AgentKernel {
         self.promptBuilder = promptBuilder
     }
 
+    public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
+        try await sessionStore.loadTranscript(sessionID: sessionID)
+    }
+
     /// Run an agent request and return a response with full audit metadata.
     public func run(_ request: AgentRequest) async throws -> AgentResponse {
         // 1. Load approved context ONLY

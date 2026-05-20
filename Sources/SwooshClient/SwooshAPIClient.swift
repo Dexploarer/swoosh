@@ -52,6 +52,17 @@ public actor SwooshAPIClient {
         return try await execute(request, as: AgentStatusResponse.self)
     }
 
+    public func transcript(sessionID: String) async throws -> TranscriptResponse {
+        let encodedSessionID = try pathComponent(sessionID)
+        let request = try makeRequest(method: "GET", path: "api/agent/transcript/\(encodedSessionID)", body: nil)
+        return try await execute(request, as: TranscriptResponse.self)
+    }
+
+    public func readiness() async throws -> SwooshReadinessReport {
+        let request = try makeRequest(method: "GET", path: "api/runtime/readiness", body: nil)
+        return try await execute(request, as: SwooshReadinessReport.self)
+    }
+
     public func providers() async throws -> ProvidersResponse {
         let request = try makeRequest(method: "GET", path: "api/providers", body: nil)
         return try await execute(request, as: ProvidersResponse.self)
@@ -123,6 +134,15 @@ public actor SwooshAPIClient {
             request.httpBody = body
         }
         return request
+    }
+
+    private func pathComponent(_ value: String) throws -> String {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove(charactersIn: "/")
+        guard let encoded = value.addingPercentEncoding(withAllowedCharacters: allowed) else {
+            throw SwooshClientError.transport("invalid path component: \(value)")
+        }
+        return encoded
     }
 
     private func execute<T: Decodable>(_ request: URLRequest, as type: T.Type) async throws -> T {

@@ -147,6 +147,10 @@ public actor AgentToolLoop {
         self.policy = policy
     }
 
+    public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
+        try await sessionStore.loadTranscript(sessionID: sessionID)
+    }
+
     // MARK: - Main entry point
 
     public func run(_ request: AgentRequest) async throws -> AgentToolResponse {

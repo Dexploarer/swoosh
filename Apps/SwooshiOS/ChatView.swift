@@ -12,8 +12,10 @@ struct ChatView: View {
     @Environment(ClientSession.self) private var session
     @State private var draft: String = ""
     @State private var messages: [Message] = []
+    @State private var isLoadingTranscript: Bool = false
     @State private var isSending: Bool = false
     @State private var errorText: String?
+    @State private var loadedTranscriptKey: String?
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -24,6 +26,9 @@ struct ChatView: View {
                 unpaired
             }
         }
+        .task(id: transcriptKey) {
+            await loadTranscript()
+        }
     }
 
     // MARK: - Paired conversation
@@ -33,6 +38,13 @@ struct ChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
+                        if isLoadingTranscript && messages.isEmpty {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Loading conversation…").foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal)
+                        }
                         ForEach(messages) { message in
                             MessageBubble(message: message)
                                 .id(message.id)
@@ -73,7 +85,7 @@ struct ChatView: View {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title)
                 }
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending)
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending || isLoadingTranscript)
             }
             .padding()
             .background(.ultraThinMaterial)
@@ -88,11 +100,38 @@ struct ChatView: View {
         }
     }
 
+    // MARK: - Transcript
+
+    private var transcriptKey: String? {
+        session.host.map { "\($0.absoluteString)#\(session.sessionID)" }
+    }
+
+    private func loadTranscript() async {
+        guard session.isPaired, let client = session.client(), let transcriptKey else {
+            messages = []
+            loadedTranscriptKey = nil
+            return
+        }
+        guard loadedTranscriptKey != transcriptKey else { return }
+
+        isLoadingTranscript = true
+        errorText = nil
+        defer { isLoadingTranscript = false }
+
+        do {
+            let transcript = try await client.transcript(sessionID: session.sessionID)
+            messages = transcript.messages.compactMap(Message.init)
+            loadedTranscriptKey = transcriptKey
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
     // MARK: - Sending
 
     private func send() {
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isSending else { return }
+        guard !trimmed.isEmpty, !isSending, !isLoadingTranscript else { return }
         guard let executor = session.executor() else {
             errorText = "Not paired with a daemon."
             return
@@ -107,7 +146,7 @@ struct ChatView: View {
             defer { isSending = false }
             do {
                 let response = try await executor.run(
-                    ChatRequest(sessionID: "ios-default", input: trimmed)
+                    ChatRequest(sessionID: session.sessionID, input: trimmed)
                 )
                 messages.append(Message(role: .agent, text: response.message))
             } catch {
@@ -121,9 +160,26 @@ struct ChatView: View {
 
 struct Message: Identifiable, Equatable, Sendable {
     enum Role: Sendable { case user, agent }
-    let id: UUID = UUID()
+    let id: String
     let role: Role
     let text: String
+
+    init(id: String = UUID().uuidString, role: Role, text: String) {
+        self.id = id
+        self.role = role
+        self.text = text
+    }
+
+    init?(_ message: TranscriptMessage) {
+        switch message.role {
+        case .user:
+            self.init(id: message.id, role: .user, text: message.content)
+        case .assistant:
+            self.init(id: message.id, role: .agent, text: message.content)
+        case .system, .tool:
+            return nil
+        }
+    }
 }
 
 private struct MessageBubble: View {

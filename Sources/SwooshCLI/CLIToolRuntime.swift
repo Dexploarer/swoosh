@@ -33,6 +33,9 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
         memoryStore = InMemoryMemoryToolStore()
     }
 
+    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
+    let stateRoot = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".swoosh", isDirectory: true)
     let deps = ToolDependencies(
         firewall: firewall,
         audit: audit,
@@ -40,8 +43,9 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
         fileAccess: SafeFileAccessor(rootStore: rootStore),
         processRunner: StreamingProcessRunner(approvedRoots: [cwd.path]),
         memoryStore: memoryStore,
-        scoutStore: InMemoryScoutToolStore(),
-        workflowStore: InMemoryWorkflowToolStore()
+        scoutStore: FileScoutToolStore(url: stateRoot.appendingPathComponent("scout/tool-state.json")),
+        workflowStore: FileWorkflowToolStore(url: stateRoot.appendingPathComponent("workflows/tool-drafts.json")),
+        workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry)
     )
 
     let skillStore = FileSkillStore()
@@ -50,7 +54,6 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
         directory: BundledSkillLoader.defaultDirectory()
     ).loadAll()
     let cronStore = FileCronJobStore()
-    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
     await DefaultToolRegistrar.registerAll(
         into: registry,
         dependencies: deps,

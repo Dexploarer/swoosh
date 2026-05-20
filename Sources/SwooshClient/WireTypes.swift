@@ -42,6 +42,98 @@ public struct ChatResponse: Codable, Sendable {
     }
 }
 
+public enum TranscriptRole: String, Codable, Sendable {
+    case system
+    case user
+    case assistant
+    case tool
+}
+
+public struct TranscriptMessage: Codable, Sendable, Identifiable, Equatable {
+    public let id: String
+    public let role: TranscriptRole
+    public let content: String
+    public let createdAt: Date
+
+    public init(id: String, role: TranscriptRole, content: String, createdAt: Date) {
+        self.id = id
+        self.role = role
+        self.content = content
+        self.createdAt = createdAt
+    }
+}
+
+public struct TranscriptResponse: Codable, Sendable, Equatable {
+    public let sessionID: String
+    public let messages: [TranscriptMessage]
+
+    public init(sessionID: String, messages: [TranscriptMessage]) {
+        self.sessionID = sessionID
+        self.messages = messages
+    }
+}
+
+public enum SwooshReadinessState: String, Codable, Sendable {
+    case ready
+    case degraded
+    case blocked
+}
+
+public enum SwooshReadinessStatus: String, Codable, Sendable {
+    case ready
+    case warning
+    case blocked
+}
+
+public struct SwooshReadinessComponent: Codable, Sendable, Identifiable, Equatable {
+    public let id: String
+    public let title: String
+    public let status: SwooshReadinessStatus
+    public let detail: String
+    public let fixCommand: String?
+
+    public init(
+        id: String,
+        title: String,
+        status: SwooshReadinessStatus,
+        detail: String,
+        fixCommand: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.status = status
+        self.detail = detail
+        self.fixCommand = fixCommand
+    }
+}
+
+public struct SwooshReadinessReport: Codable, Sendable, Equatable {
+    public let state: SwooshReadinessState
+    public let summary: String
+    public let components: [SwooshReadinessComponent]
+    public let generatedAt: Date
+
+    public init(
+        state: SwooshReadinessState,
+        summary: String,
+        components: [SwooshReadinessComponent],
+        generatedAt: Date = Date()
+    ) {
+        self.state = state
+        self.summary = summary
+        self.components = components
+        self.generatedAt = generatedAt
+    }
+
+    public var isReady: Bool {
+        state == .ready
+    }
+
+    public func component(id: String) -> SwooshReadinessComponent? {
+        components.first { $0.id == id }
+    }
+}
+
 /// Generic error envelope returned by the server for non-2xx responses.
 public struct APIErrorBody: Codable, Sendable {
     public let error: String
