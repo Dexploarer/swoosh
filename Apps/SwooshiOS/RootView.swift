@@ -30,8 +30,8 @@ struct RootView: View {
             .navigationDestination(for: DrawerDestination.self) { destination in
                 switch destination {
                 case .wallet:      WalletScreen().environment(wallet)
-                case .connections: ControlCenterView().navigationTitle("Connections")
-                case .settings:    SettingsView().navigationTitle("Settings")
+                case .connections: ConnectionsScreen()
+                case .settings:    SettingsScreen()
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
