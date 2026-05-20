@@ -16,8 +16,8 @@ struct WorkflowEnablementTests {
     func enableManual() async throws {
         let store = InMemoryEnablementStore()
         let e = WorkflowEnablement(workflowID: "w1", state: .enabledManualOnly)
-        try await store.save(e)
-        let got = try await store.get(workflowID: "w1")
+        await store.save(e)
+        let got = await store.get(workflowID: "w1")
         #expect(got?.state == .enabledManualOnly)
     }
 
@@ -25,18 +25,18 @@ struct WorkflowEnablementTests {
     func disable() async throws {
         let store = InMemoryEnablementStore()
         var e = WorkflowEnablement(workflowID: "w1", state: .enabledManualOnly)
-        try await store.save(e)
+        await store.save(e)
         e.state = .disabled; e.updatedAt = Date()
         try await store.update(e)
-        #expect(try await store.get(workflowID: "w1")?.state == .disabled)
+        #expect(await store.get(workflowID: "w1")?.state == .disabled)
     }
 
     @Test("List enabled workflows")
     func listEnabled() async throws {
         let store = InMemoryEnablementStore()
-        try await store.save(WorkflowEnablement(workflowID: "w1", state: .enabledManualOnly))
-        try await store.save(WorkflowEnablement(workflowID: "w2", state: .disabled))
-        let enabled = try await store.listEnabled()
+        await store.save(WorkflowEnablement(workflowID: "w1", state: .enabledManualOnly))
+        await store.save(WorkflowEnablement(workflowID: "w2", state: .disabled))
+        let enabled = await store.listEnabled()
         #expect(enabled.count == 1)
         #expect(enabled[0].workflowID == "w1")
     }
@@ -61,17 +61,17 @@ struct TriggerStoreTests {
     func saveAndGet() async throws {
         let store = InMemoryTriggerStore()
         let t = WorkflowTrigger(workflowID: "w1", name: "Manual", kind: .manual, configuration: .manual(ManualTriggerConfig()))
-        try await store.save(t)
-        let got = try await store.get(id: t.id)
+        await store.save(t)
+        let got = await store.get(id: t.id)
         #expect(got?.name == "Manual")
     }
 
     @Test("List triggers for workflow")
     func listForWorkflow() async throws {
         let store = InMemoryTriggerStore()
-        try await store.save(WorkflowTrigger(workflowID: "w1", name: "A", kind: .manual, configuration: .manual(ManualTriggerConfig())))
-        try await store.save(WorkflowTrigger(workflowID: "w2", name: "B", kind: .manual, configuration: .manual(ManualTriggerConfig())))
-        let w1 = try await store.list(workflowID: "w1")
+        await store.save(WorkflowTrigger(workflowID: "w1", name: "A", kind: .manual, configuration: .manual(ManualTriggerConfig())))
+        await store.save(WorkflowTrigger(workflowID: "w2", name: "B", kind: .manual, configuration: .manual(ManualTriggerConfig())))
+        let w1 = await store.list(workflowID: "w1")
         #expect(w1.count == 1)
     }
 
@@ -79,19 +79,19 @@ struct TriggerStoreTests {
     func deleteTrigger() async throws {
         let store = InMemoryTriggerStore()
         let t = WorkflowTrigger(workflowID: "w1", name: "A", kind: .manual, configuration: .manual(ManualTriggerConfig()))
-        try await store.save(t)
+        await store.save(t)
         try await store.delete(id: t.id)
-        #expect(try await store.get(id: t.id) == nil)
+        #expect(await store.get(id: t.id) == nil)
     }
 
     @Test("Update trigger")
     func updateTrigger() async throws {
         let store = InMemoryTriggerStore()
         var t = WorkflowTrigger(workflowID: "w1", name: "A", kind: .manual, configuration: .manual(ManualTriggerConfig()))
-        try await store.save(t)
+        await store.save(t)
         t.name = "Updated"
         try await store.update(t)
-        #expect(try await store.get(id: t.id)?.name == "Updated")
+        #expect(await store.get(id: t.id)?.name == "Updated")
     }
 }
 

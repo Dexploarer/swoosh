@@ -37,16 +37,16 @@ struct BoardStoreTests {
     func createAndGet() async throws {
         let store = InMemoryBoardStore()
         let board = makeTestBoard()
-        try await store.saveBoard(board)
-        let got = try await store.getBoard(id: testBoardID)
+        await store.saveBoard(board)
+        let got = await store.getBoard(id: testBoardID)
         #expect(got?.name == "Test Board")
     }
 
     @Test("List boards")
     func listBoards() async throws {
         let store = InMemoryBoardStore()
-        try await store.saveBoard(makeTestBoard())
-        let boards = try await store.listBoards()
+        await store.saveBoard(makeTestBoard())
+        let boards = await store.listBoards()
         #expect(boards.count == 1)
     }
 
@@ -54,8 +54,8 @@ struct BoardStoreTests {
     func createAndGetCard() async throws {
         let store = InMemoryBoardStore()
         let card = makeTestCard(id: "c1")
-        try await store.saveCard(card)
-        let got = try await store.getCard(id: "c1")
+        await store.saveCard(card)
+        let got = await store.getCard(id: "c1")
         #expect(got?.title == "Test Card")
     }
 
@@ -63,29 +63,29 @@ struct BoardStoreTests {
     func updateCard() async throws {
         let store = InMemoryBoardStore()
         var card = makeTestCard(id: "c1")
-        try await store.saveCard(card)
+        await store.saveCard(card)
         card.status = .done
-        try await store.updateCard(card)
-        #expect(try await store.getCard(id: "c1")?.status == .done)
+        await store.updateCard(card)
+        #expect(await store.getCard(id: "c1")?.status == .done)
     }
 
     @Test("Move card changes status only")
     func moveCard() async throws {
         let store = InMemoryBoardStore()
         var card = makeTestCard(id: "c1", status: .inbox)
-        try await store.saveCard(card)
+        await store.saveCard(card)
         card.status = .ready; card.updatedAt = Date()
-        try await store.updateCard(card)
-        let got = try await store.getCard(id: "c1")
+        await store.updateCard(card)
+        let got = await store.getCard(id: "c1")
         #expect(got?.status == .ready)
     }
 
     @Test("Filter cards by status")
     func filterByStatus() async throws {
         let store = InMemoryBoardStore()
-        try await store.saveCard(makeTestCard(id: "c1", status: .inbox))
-        try await store.saveCard(makeTestCard(id: "c2", status: .done))
-        let inbox = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(status: .inbox))
+        await store.saveCard(makeTestCard(id: "c1", status: .inbox))
+        await store.saveCard(makeTestCard(id: "c2", status: .done))
+        let inbox = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(status: .inbox))
         #expect(inbox.count == 1)
         #expect(inbox[0].id == "c1")
     }
@@ -93,17 +93,17 @@ struct BoardStoreTests {
     @Test("Filter cards by kind")
     func filterByKind() async throws {
         let store = InMemoryBoardStore()
-        try await store.saveCard(makeTestCard(id: "c1", kind: .approval))
-        try await store.saveCard(makeTestCard(id: "c2", kind: .manualTask))
-        let approvals = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
+        await store.saveCard(makeTestCard(id: "c1", kind: .approval))
+        await store.saveCard(makeTestCard(id: "c2", kind: .manualTask))
+        let approvals = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
         #expect(approvals.count == 1)
     }
 
     @Test("Search cards")
     func searchCards() async throws {
         let store = InMemoryBoardStore()
-        try await store.saveCard(makeTestCard(id: "c1"))
-        let results = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(search: "Test"))
+        await store.saveCard(makeTestCard(id: "c1"))
+        let results = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(search: "Test"))
         #expect(!results.isEmpty)
     }
 
@@ -111,8 +111,8 @@ struct BoardStoreTests {
     func comments() async throws {
         let store = InMemoryBoardStore()
         let c = BoardComment(cardID: "c1", author: testActor, body: "Great work")
-        try await store.saveComment(c)
-        let comments = try await store.listComments(cardID: "c1")
+        await store.saveComment(c)
+        let comments = await store.listComments(cardID: "c1")
         #expect(comments.count == 1)
     }
 
@@ -120,8 +120,8 @@ struct BoardStoreTests {
     func artifacts() async throws {
         let store = InMemoryBoardStore()
         let a = BoardArtifact(cardID: "c1", kind: .diff, title: "Patch", uri: "/tmp/patch.diff")
-        try await store.saveArtifact(a)
-        let arts = try await store.listArtifacts(cardID: "c1")
+        await store.saveArtifact(a)
+        let arts = await store.listArtifacts(cardID: "c1")
         #expect(arts.count == 1)
     }
 
@@ -129,10 +129,10 @@ struct BoardStoreTests {
     func blockers() async throws {
         let store = InMemoryBoardStore()
         var b = BoardBlocker(cardID: "c1", reason: .awaitingApproval, message: "Waiting")
-        try await store.saveBlocker(b)
+        await store.saveBlocker(b)
         b.resolvedAt = Date()
-        try await store.updateBlocker(b)
-        let blockers = try await store.listBlockers(cardID: "c1")
+        await store.updateBlocker(b)
+        let blockers = await store.listBlockers(cardID: "c1")
         #expect(blockers[0].resolvedAt != nil)
     }
 
@@ -140,17 +140,17 @@ struct BoardStoreTests {
     func events() async throws {
         let store = InMemoryBoardStore()
         let e = BoardEvent(cardID: "c1", boardID: testBoardID, type: .cardCreated, actor: systemActor, message: "Created")
-        try await store.saveEvent(e)
-        let events = try await store.listEvents(cardID: "c1", boardID: nil, limit: nil)
+        await store.saveEvent(e)
+        let events = await store.listEvents(cardID: "c1", boardID: nil, limit: nil)
         #expect(events.count == 1)
     }
 
     @Test("Delete card")
     func deleteCard() async throws {
         let store = InMemoryBoardStore()
-        try await store.saveCard(makeTestCard(id: "c1"))
-        try await store.deleteCard(id: "c1")
-        #expect(try await store.getCard(id: "c1") == nil)
+        await store.saveCard(makeTestCard(id: "c1"))
+        await store.deleteCard(id: "c1")
+        #expect(await store.getCard(id: "c1") == nil)
     }
 }
 
@@ -189,7 +189,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectWorkflowRun(runID: "r1", workflowID: "w1", workflowName: "Health Check", status: .running)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .workflowRun))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .workflowRun))
         #expect(cards.count == 1)
         #expect(cards[0].status == .running)
     }
@@ -200,7 +200,7 @@ struct BoardProjectionTests {
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectWorkflowRun(runID: "r1", workflowID: "w1", workflowName: "HC", status: .running)
         try await proj.projectWorkflowRun(runID: "r1", workflowID: "w1", workflowName: "HC", status: .completed)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .workflowRun))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .workflowRun))
         #expect(cards[0].status == .done)
     }
 
@@ -209,7 +209,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectWorkflowRun(runID: "r1", workflowID: "w1", workflowName: "HC", status: .failed)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .workflowRun))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .workflowRun))
         #expect(cards[0].status == .blocked)
     }
 
@@ -218,7 +218,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectApproval(approvalID: "a1", title: "Approve test", summary: "swift.test", risk: .medium, status: .pending)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
         #expect(cards.count == 1)
         #expect(cards[0].status == .needsApproval)
     }
@@ -229,7 +229,7 @@ struct BoardProjectionTests {
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectApproval(approvalID: "a1", title: "T", summary: "S", risk: .medium, status: .pending)
         try await proj.projectApproval(approvalID: "a1", title: "T", summary: "S", risk: .medium, status: .approved)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
         #expect(cards[0].status == .done)
     }
 
@@ -238,7 +238,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectApproval(approvalID: "a1", title: "T", summary: "S", risk: .high, status: .denied)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .approval))
         #expect(cards[0].status == .blocked)
     }
 
@@ -247,7 +247,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectTriggerEvent(triggerEventID: "te1", triggerID: "t1", workflowName: "HC", triggerKind: "schedule", status: .detected)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .triggerEvent))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .triggerEvent))
         #expect(cards.count == 1)
     }
 
@@ -256,7 +256,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectMemoryCandidate(candidateID: "m1", redactedSummary: "User preference", status: .pending)
-        let cards = try await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .memoryReview))
+        let cards = await store.listCards(boardID: testBoardID, filter: BoardCardFilter(kind: .memoryReview))
         #expect(cards.count == 1)
         #expect(cards[0].status == .review)
     }
@@ -266,7 +266,7 @@ struct BoardProjectionTests {
         let store = InMemoryBoardStore()
         let proj = BoardProjection(store: store, boardID: testBoardID)
         try await proj.projectSessionTask(title: "Fix test", summary: "Flaky test", priority: .high, kind: .agentTask, sessionID: "s1")
-        let cards = try await store.listCards(boardID: testBoardID, filter: nil)
+        let cards = await store.listCards(boardID: testBoardID, filter: nil)
         #expect(cards.count == 1)
         #expect(cards[0].status == .inbox)
     }
@@ -284,12 +284,12 @@ struct BoardSafetyTests {
         let store = InMemoryBoardStore()
         var card = makeTestCard(id: "c1", status: .needsApproval, kind: .approval,
             source: BoardCardSource(kind: .approval, approvalID: "appr_123"))
-        try await store.saveCard(card)
+        await store.saveCard(card)
         // Move card to done — this is just a board status change
         card.status = .done; card.updatedAt = Date()
-        try await store.updateCard(card)
+        await store.updateCard(card)
         // The card is now "done" on the board
-        let got = try await store.getCard(id: "c1")
+        let got = await store.getCard(id: "c1")
         #expect(got?.status == .done)
         // But this test proves we only changed board status.
         // No ApprovalInbox.resolve was called. The approval is still pending.
@@ -301,11 +301,11 @@ struct BoardSafetyTests {
         let store = InMemoryBoardStore()
         var card = makeTestCard(id: "c1", kind: .workflowStep,
             source: BoardCardSource(kind: .workflowStep, toolCallID: "tc_1"))
-        try await store.saveCard(card)
+        await store.saveCard(card)
         card.status = .done
-        try await store.updateCard(card)
+        await store.updateCard(card)
         // Board store has no tool execution. Only status changed.
-        #expect(try await store.getCard(id: "c1")?.status == .done)
+        #expect(await store.getCard(id: "c1")?.status == .done)
     }
 
     @Test("Archiving workflow card does not cancel workflow")
@@ -313,22 +313,22 @@ struct BoardSafetyTests {
         let store = InMemoryBoardStore()
         var card = makeTestCard(id: "c1", kind: .workflowRun,
             source: BoardCardSource(kind: .workflowRun, runID: "run_1"))
-        try await store.saveCard(card)
+        await store.saveCard(card)
         card.status = .archived
-        try await store.updateCard(card)
+        await store.updateCard(card)
         // Board store has no workflow cancellation logic.
-        #expect(try await store.getCard(id: "c1")?.status == .archived)
+        #expect(await store.getCard(id: "c1")?.status == .archived)
     }
 
     @Test("Deleting card does not delete audit history")
     func deleteDoesNotAffectAudit() async throws {
         let store = InMemoryBoardStore()
         let event = BoardEvent(cardID: "c1", boardID: testBoardID, type: .cardCreated, actor: systemActor, message: "Created")
-        try await store.saveEvent(event)
-        try await store.saveCard(makeTestCard(id: "c1"))
-        try await store.deleteCard(id: "c1")
+        await store.saveEvent(event)
+        await store.saveCard(makeTestCard(id: "c1"))
+        await store.deleteCard(id: "c1")
         // Events remain even after card deletion
-        let events = try await store.listEvents(cardID: "c1", boardID: nil, limit: nil)
+        let events = await store.listEvents(cardID: "c1", boardID: nil, limit: nil)
         #expect(events.count == 1)
     }
 
@@ -417,7 +417,7 @@ struct BoardPrivacyTests {
             summary: "Contains -----BEGIN PRIVATE KEY data",
             risk: .medium, status: .pending
         )
-        let cards = try await store.listCards(boardID: testBoardID, filter: nil)
+        let cards = await store.listCards(boardID: testBoardID, filter: nil)
         #expect(!cards[0].summary!.contains("-----BEGIN"))
     }
 }

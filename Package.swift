@@ -413,7 +413,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshProvidersTests",
-            dependencies: ["SwooshProviders", "SwooshSecrets", "SwooshTools"]
+            dependencies: ["SwooshProviders", "SwooshSecrets", "SwooshTools", "SwooshCore"]
         ),
         .testTarget(
             name: "SwooshUITests",

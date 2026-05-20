@@ -403,8 +403,8 @@ struct UnifiedApprovalStoreTests {
     func saveAndGet() async throws {
         let store = InMemoryUnifiedApprovalStore()
         let a = makePendingApproval(id: "a1")
-        try await store.save(a)
-        let got = try await store.get(id: "a1")
+        await store.save(a)
+        let got = await store.get(id: "a1")
         #expect(got?.id == "a1")
     }
 
@@ -412,10 +412,10 @@ struct UnifiedApprovalStoreTests {
     func pendingExcludesResolved() async throws {
         let store = InMemoryUnifiedApprovalStore()
         var a = makePendingApproval(id: "a1")
-        try await store.save(a)
+        await store.save(a)
         a = a.resolved(status: .approved, resolvedAt: Date())
-        try await store.update(a)
-        let pending = try await store.listPending()
+        await store.update(a)
+        let pending = await store.listPending()
         #expect(pending.isEmpty)
     }
 
@@ -423,8 +423,8 @@ struct UnifiedApprovalStoreTests {
     func pendingExcludesExpired() async throws {
         let store = InMemoryUnifiedApprovalStore()
         let a = makePendingApproval(id: "a1", expiresAt: Date().addingTimeInterval(-100))
-        try await store.save(a)
-        let pending = try await store.listPending()
+        await store.save(a)
+        let pending = await store.listPending()
         #expect(pending.isEmpty)
     }
 }

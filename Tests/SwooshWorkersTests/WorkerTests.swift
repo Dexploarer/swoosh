@@ -12,8 +12,8 @@ import Foundation
 func makeStore() -> InMemoryWorkerStore { InMemoryWorkerStore() }
 func makeScheduler(_ store: InMemoryWorkerStore) -> WorkerScheduler { WorkerScheduler(store: store) }
 
-func seedLane(_ store: InMemoryWorkerStore, lane: WorkerLane = WorkerLaneDefaults.devInspector) async throws {
-    try await store.saveLane(lane)
+func seedLane(_ store: InMemoryWorkerStore, lane: WorkerLane = WorkerLaneDefaults.devInspector) async {
+    await store.saveLane(lane)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -161,8 +161,8 @@ struct WorkerStoreTests {
     @Test("Save and list lanes")
     func saveAndListLanes() async throws {
         let store = makeStore()
-        try await store.saveLane(WorkerLaneDefaults.devInspector)
-        let lanes = try await store.listLanes()
+        await store.saveLane(WorkerLaneDefaults.devInspector)
+        let lanes = await store.listLanes()
         #expect(lanes.count == 1)
     }
 
@@ -170,8 +170,8 @@ struct WorkerStoreTests {
     func saveAndGetAssignment() async throws {
         let store = makeStore()
         let a = WorkerAssignment(cardID: "c1", laneID: "swoosh.dev-inspector")
-        try await store.saveAssignment(a)
-        let got = try await store.getAssignment(id: a.id)
+        await store.saveAssignment(a)
+        let got = await store.getAssignment(id: a.id)
         #expect(got?.cardID == "c1")
     }
 
@@ -179,34 +179,34 @@ struct WorkerStoreTests {
     func saveAndGetRun() async throws {
         let store = makeStore()
         let run = WorkerRun(assignmentID: "a1", cardID: "c1", laneID: "l1", sessionID: "s1")
-        try await store.saveRun(run)
-        #expect(try await store.getRun(id: run.id) != nil)
+        await store.saveRun(run)
+        #expect(await store.getRun(id: run.id) != nil)
     }
 
     @Test("Save heartbeats and logs")
     func heartbeatsAndLogs() async throws {
         let store = makeStore()
-        try await store.saveHeartbeat(WorkerHeartbeat(runID: "r1", cardID: "c1", status: .running))
-        try await store.saveLog(WorkerLog(runID: "r1", level: .info, message: "Started"))
-        #expect(try await store.listHeartbeats(runID: "r1").count == 1)
-        #expect(try await store.listLogs(runID: "r1").count == 1)
+        await store.saveHeartbeat(WorkerHeartbeat(runID: "r1", cardID: "c1", status: .running))
+        await store.saveLog(WorkerLog(runID: "r1", level: .info, message: "Started"))
+        #expect(await store.listHeartbeats(runID: "r1").count == 1)
+        #expect(await store.listLogs(runID: "r1").count == 1)
     }
 
     @Test("Save artifact and result")
     func artifactAndResult() async throws {
         let store = makeStore()
-        try await store.saveArtifact(WorkerArtifact(runID: "r1", cardID: "c1", kind: .report, title: "Report", uri: "/tmp/r"))
+        await store.saveArtifact(WorkerArtifact(runID: "r1", cardID: "c1", kind: .report, title: "Report", uri: "/tmp/r"))
         let result = WorkerResult(runID: "r1", cardID: "c1", status: .completed, summary: "Done")
-        try await store.saveResult(result)
-        #expect(try await store.listArtifacts(runID: "r1").count == 1)
-        #expect(try await store.getResult(id: result.id) != nil)
+        await store.saveResult(result)
+        #expect(await store.listArtifacts(runID: "r1").count == 1)
+        #expect(await store.getResult(id: result.id) != nil)
     }
 
     @Test("Save escalation")
     func escalation() async throws {
         let store = makeStore()
-        try await store.saveEscalation(WorkerEscalation(runID: "r1", cardID: "c1", reason: .permissionDenied, message: "No access"))
-        #expect(try await store.listEscalations(runID: "r1").count == 1)
+        await store.saveEscalation(WorkerEscalation(runID: "r1", cardID: "c1", reason: .permissionDenied, message: "No access"))
+        #expect(await store.listEscalations(runID: "r1").count == 1)
     }
 }
 
@@ -220,7 +220,7 @@ struct WorkerSchedulerTests {
     @Test("Assign card to lane")
     func assignCard() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         #expect(a.status == .assigned)
@@ -231,7 +231,7 @@ struct WorkerSchedulerTests {
         let store = makeStore()
         var lane = WorkerLaneDefaults.devInspector
         lane.enabled = false
-        try await store.saveLane(lane)
+        await store.saveLane(lane)
         let sched = makeScheduler(store)
         do {
             _ = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
@@ -252,7 +252,7 @@ struct WorkerSchedulerTests {
     @Test("Start run creates worker run")
     func startRun() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -265,13 +265,13 @@ struct WorkerSchedulerTests {
         let store = makeStore()
         var lane = WorkerLaneDefaults.devInspector
         lane.maxConcurrentRuns = 1
-        try await store.saveLane(lane)
+        await store.saveLane(lane)
         let sched = makeScheduler(store)
         let a1 = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         var run = try await sched.startRun(assignmentID: a1.id)
         // Manually set to running
         run.status = .running
-        try await store.updateRun(run)
+        await store.updateRun(run)
         let a2 = try await sched.assign(cardID: "c2", laneID: "swoosh.dev-inspector")
         do {
             _ = try await sched.startRun(assignmentID: a2.id)
@@ -282,7 +282,7 @@ struct WorkerSchedulerTests {
     @Test("Record heartbeat")
     func recordHeartbeat() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -294,7 +294,7 @@ struct WorkerSchedulerTests {
     @Test("Record log")
     func recordLog() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -306,7 +306,7 @@ struct WorkerSchedulerTests {
     @Test("Complete run")
     func completeRun() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -319,7 +319,7 @@ struct WorkerSchedulerTests {
     @Test("Escalate run")
     func escalateRun() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -332,7 +332,7 @@ struct WorkerSchedulerTests {
     @Test("Cancel run")
     func cancelRun() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -344,7 +344,7 @@ struct WorkerSchedulerTests {
     @Test("/why explains worker run")
     func whyExplains() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -385,7 +385,7 @@ struct WorkerBudgetTests {
     @Test("Tool call tracking increments budget")
     func toolCallTracking() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -467,7 +467,7 @@ struct WorkerRedactionTests {
     @Test("Log messages are redacted by scheduler")
     func logRedactedByScheduler() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -479,7 +479,7 @@ struct WorkerRedactionTests {
     @Test("Heartbeat messages are redacted")
     func heartbeatRedacted() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -491,7 +491,7 @@ struct WorkerRedactionTests {
     @Test("Result summary is redacted")
     func resultRedacted() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)
@@ -516,7 +516,7 @@ struct WorkerEscalationTests {
     @Test("Escalation message redacted")
     func escalationRedacted() async throws {
         let store = makeStore()
-        try await seedLane(store)
+        await seedLane(store)
         let sched = makeScheduler(store)
         let a = try await sched.assign(cardID: "c1", laneID: "swoosh.dev-inspector")
         let run = try await sched.startRun(assignmentID: a.id)

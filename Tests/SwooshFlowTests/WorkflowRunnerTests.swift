@@ -11,7 +11,7 @@ import Foundation
 
 func makeRunnerEngine() async -> (WorkflowRunner, WorkflowRunQueue, MockToolExecutor) {
     let draft = makeDraftForExec()
-    let ds = InMemoryWorkflowDraftStore(); try! await ds.saveDraft(draft)
+    let ds = InMemoryWorkflowDraftStore(); await ds.saveDraft(draft)
     let rs = InMemoryWorkflowRunStore(); let gs = InMemoryGateStore()
     let exec = MockToolExecutor()
     let engine = WorkflowExecutionEngine(draftStore: ds, runStore: rs, gateStore: gs, toolExecutor: exec)
@@ -155,10 +155,10 @@ struct RunAdmissionTests {
     @Test("Enabled workflow admitted")
     func enabledAdmitted() async throws {
         let es = InMemoryEnablementStore()
-        try await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledWithTriggers, activationPolicy: .triggeredReadOnly))
+        await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledWithTriggers, activationPolicy: .triggeredReadOnly))
         let ts = InMemoryTriggerStore()
         var t = WorkflowTrigger(id: "t1", workflowID: "w1", name: "S", kind: .schedule, configuration: .schedule(ScheduleTriggerConfig(schedule: .daily(DailySchedule(hour: 8, minute: 0)))))
-        t.state = .armed; try await ts.save(t)
+        t.state = .armed; await ts.save(t)
         let a = WorkflowRunAdmission(enablementStore: es, triggerStore: ts)
         let ev = TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()))
         let d = try await a.evaluate(ev)
@@ -168,7 +168,7 @@ struct RunAdmissionTests {
     @Test("Disabled workflow rejected")
     func disabledRejected() async throws {
         let es = InMemoryEnablementStore()
-        try await es.save(WorkflowEnablement(workflowID: "w1", state: .disabled))
+        await es.save(WorkflowEnablement(workflowID: "w1", state: .disabled))
         let ts = InMemoryTriggerStore()
         let a = WorkflowRunAdmission(enablementStore: es, triggerStore: ts)
         let ev = TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()))
@@ -179,7 +179,7 @@ struct RunAdmissionTests {
     @Test("Triggered run blocked when policy disallows")
     func triggeredBlockedByPolicy() async throws {
         let es = InMemoryEnablementStore()
-        try await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledManualOnly, activationPolicy: .manualOnly))
+        await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledManualOnly, activationPolicy: .manualOnly))
         let ts = InMemoryTriggerStore()
         let a = WorkflowRunAdmission(enablementStore: es, triggerStore: ts)
         let ev = TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()))
@@ -197,9 +197,9 @@ struct TriggerDispatcherTests {
     @Test("Admitted event queues run")
     func admittedQueuesRun() async throws {
         let (dispatcher, _, q, es, ts) = await makeDispatcher()
-        try await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledWithTriggers, activationPolicy: .triggeredReadOnly))
+        await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledWithTriggers, activationPolicy: .triggeredReadOnly))
         var t = WorkflowTrigger(id: "t1", workflowID: "w1", name: "S", kind: .schedule, configuration: .schedule(ScheduleTriggerConfig(schedule: .daily(DailySchedule(hour: 8, minute: 0)))))
-        t.state = .armed; try await ts.save(t)
+        t.state = .armed; await ts.save(t)
         let ev = TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()))
         try await dispatcher.handle(ev)
         #expect(await q.count() == 1)
@@ -217,9 +217,9 @@ struct TriggerDispatcherTests {
     @Test("Debounced event not queued")
     func debouncedNotQueued() async throws {
         let (dispatcher, _, q, es, ts) = await makeDispatcher()
-        try await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledWithTriggers, activationPolicy: .triggeredReadOnly))
+        await es.save(WorkflowEnablement(workflowID: "w1", state: .enabledWithTriggers, activationPolicy: .triggeredReadOnly))
         var t = WorkflowTrigger(id: "t1", workflowID: "w1", name: "S", kind: .schedule, configuration: .schedule(ScheduleTriggerConfig(schedule: .daily(DailySchedule(hour: 8, minute: 0)))))
-        t.state = .armed; try await ts.save(t)
+        t.state = .armed; await ts.save(t)
         let now = Date()
         let ev1 = TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()), createdAt: now)
         let ev2 = TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()), createdAt: now.addingTimeInterval(1))
@@ -240,7 +240,7 @@ struct TriggerArmingTests {
         let store = InMemoryTriggerStore()
         let t = WorkflowTrigger(id: "t1", workflowID: "w", name: "S", kind: .schedule,
             configuration: .schedule(ScheduleTriggerConfig(schedule: .daily(DailySchedule(hour: 8, minute: 0)))))
-        try await store.save(t)
+        await store.save(t)
         let svc = TriggerArmingService(triggerStore: store)
         let armed = try await svc.arm(triggerID: "t1")
         #expect(armed.state == .armed)
@@ -251,7 +251,7 @@ struct TriggerArmingTests {
         let store = InMemoryTriggerStore()
         let t = WorkflowTrigger(id: "t1", workflowID: "w", name: "F", kind: .fileChanged,
             configuration: .fileChanged(FileChangedTriggerConfig(rootID: "/")))
-        try await store.save(t)
+        await store.save(t)
         let svc = TriggerArmingService(triggerStore: store)
         do { _ = try await svc.arm(triggerID: "t1"); Issue.record("Should throw") }
         catch is TriggerArmingError { } catch { Issue.record("Wrong error") }
@@ -262,7 +262,7 @@ struct TriggerArmingTests {
         let store = InMemoryTriggerStore()
         let t = WorkflowTrigger(id: "t1", workflowID: "w", name: "F", kind: .fileChanged,
             configuration: .fileChanged(FileChangedTriggerConfig(rootID: "root1", includeGlobs: [".ssh/keys"])))
-        try await store.save(t)
+        await store.save(t)
         let svc = TriggerArmingService(triggerStore: store)
         do { _ = try await svc.arm(triggerID: "t1"); Issue.record("Should throw") }
         catch is TriggerArmingError { } catch { Issue.record("Wrong error") }
@@ -273,7 +273,7 @@ struct TriggerArmingTests {
         let store = InMemoryTriggerStore()
         let t = WorkflowTrigger(id: "t1", workflowID: "w", name: "W", kind: .webhook,
             configuration: .webhook(WebhookTriggerConfig(localOnly: false)))
-        try await store.save(t)
+        await store.save(t)
         let svc = TriggerArmingService(triggerStore: store)
         do { _ = try await svc.arm(triggerID: "t1"); Issue.record("Should throw") }
         catch is TriggerArmingError { } catch { Issue.record("Wrong error") }
@@ -284,7 +284,7 @@ struct TriggerArmingTests {
         let store = InMemoryTriggerStore()
         var t = WorkflowTrigger(id: "t1", workflowID: "w", name: "S", kind: .schedule,
             configuration: .schedule(ScheduleTriggerConfig(schedule: .daily(DailySchedule(hour: 8, minute: 0)))))
-        t.state = .armed; try await store.save(t)
+        t.state = .armed; await store.save(t)
         let svc = TriggerArmingService(triggerStore: store)
         let disarmed = try await svc.disarm(triggerID: "t1")
         #expect(disarmed.state == .disabled)
@@ -413,17 +413,17 @@ struct TriggerEventStoreTests {
     func saveAndGet() async throws {
         let store = InMemoryTriggerEventStore()
         let e = TriggerEvent(id: "e1", triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload()))
-        try await store.save(e)
-        let got = try await store.get(id: "e1")
+        await store.save(e)
+        let got = await store.get(id: "e1")
         #expect(got?.triggerID == "t1")
     }
 
     @Test("List by trigger")
     func listByTrigger() async throws {
         let store = InMemoryTriggerEventStore()
-        try await store.save(TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload())))
-        try await store.save(TriggerEvent(triggerID: "t2", workflowID: "w1", kind: .manual, payload: .manual(ManualTriggerEventPayload())))
-        let r = try await store.list(triggerID: "t1", workflowID: nil, limit: nil)
+        await store.save(TriggerEvent(triggerID: "t1", workflowID: "w1", kind: .schedule, payload: .schedule(ScheduleTriggerEventPayload())))
+        await store.save(TriggerEvent(triggerID: "t2", workflowID: "w1", kind: .manual, payload: .manual(ManualTriggerEventPayload())))
+        let r = await store.list(triggerID: "t1", workflowID: nil, limit: nil)
         #expect(r.count == 1)
     }
 }

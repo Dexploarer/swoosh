@@ -38,13 +38,13 @@ public actor FileSkillStore: SkillStoring {
     }
 
     public func save(_ skill: SkillDocument) async throws {
-        try await ensureLoaded()
+        try ensureLoaded()
         index[skill.id] = skill
         try persist(skill)
     }
 
     public func update(_ skill: SkillDocument) async throws {
-        try await ensureLoaded()
+        try ensureLoaded()
         var updated = skill
         updated.updatedAt = Date()
         updated.version = skill.version + 1
@@ -53,24 +53,24 @@ public actor FileSkillStore: SkillStoring {
     }
 
     public func get(id: String) async throws -> SkillDocument? {
-        try await ensureLoaded()
+        try ensureLoaded()
         return index[id]
     }
 
     public func delete(id: String) async throws {
-        try await ensureLoaded()
+        try ensureLoaded()
         index.removeValue(forKey: id)
         let url = directory.appendingPathComponent("\(id).json")
         try? FileManager.default.removeItem(at: url)
     }
 
     public func listAll() async throws -> [SkillDocument] {
-        try await ensureLoaded()
+        try ensureLoaded()
         return Array(index.values).sorted { $0.updatedAt > $1.updatedAt }
     }
 
     public func search(query: String, limit: Int = 10) async throws -> [SkillDocument] {
-        try await ensureLoaded()
+        try ensureLoaded()
         let lowered = query.lowercased()
         let terms = lowered.split(separator: " ").map(String.init)
 
@@ -99,13 +99,13 @@ public actor FileSkillStore: SkillStoring {
     }
 
     public func findByCategory(_ category: SkillCategory) async throws -> [SkillDocument] {
-        try await ensureLoaded()
+        try ensureLoaded()
         return index.values.filter { $0.category == category }
             .sorted { $0.usageCount > $1.usageCount }
     }
 
     public func findByTags(_ tags: [String]) async throws -> [SkillDocument] {
-        try await ensureLoaded()
+        try ensureLoaded()
         let tagSet = Set(tags.map { $0.lowercased() })
         return index.values.filter { skill in
             !Set(skill.tags.map { $0.lowercased() }).isDisjoint(with: tagSet)

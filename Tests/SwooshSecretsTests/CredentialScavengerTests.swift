@@ -183,8 +183,7 @@ final class CredentialScavengerTests: XCTestCase {
         // doesn't crash and returns a consistent result.
         let store = InMemorySecretStore()
         let imported = try await CredentialScavenger.importAll(into: store)
-        // No assertion on count — depends on machine state
-        // But calling it twice with overwrite=false shouldn't re-import
+        XCTAssertEqual(Set(imported).count, imported.count)
         let importedAgain = try await CredentialScavenger.importAll(into: store)
         XCTAssertTrue(importedAgain.isEmpty, "Second import without overwrite should be empty")
     }
@@ -192,7 +191,7 @@ final class CredentialScavengerTests: XCTestCase {
     func testImportWithOverwrite() async throws {
         let store = InMemorySecretStore()
         // Pre-populate
-        try await store.set("old-value", ref: SecretRef("openai", "api_key"))
+        await store.set("old-value", ref: SecretRef("openai", "api_key"))
 
         // Discover with env
         let env = ["OPENAI_API_KEY": "new-value"]
@@ -200,7 +199,7 @@ final class CredentialScavengerTests: XCTestCase {
         guard let cred = discovered.first else { return }
 
         // Import with overwrite
-        try await store.set(cred.value, ref: cred.swooshRef)
+        await store.set(cred.value, ref: cred.swooshRef)
         let stored = try await store.get(SecretRef("openai", "api_key"))
         XCTAssertEqual(stored, "new-value")
     }

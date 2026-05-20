@@ -172,6 +172,8 @@ public struct MCPAuthSession: Codable, Sendable, Identifiable {
     public let state: String
     /// Keychain ref for PKCE verifier — never raw
     public let pkceVerifierSecretRef: String
+    public let pkceCodeChallenge: String
+    public let pkceMethod: String
     public let resourceIndicator: MCPResourceIndicator
     public let requestedScopes: [String]
     public let redirectURI: String
@@ -179,11 +181,13 @@ public struct MCPAuthSession: Codable, Sendable, Identifiable {
     public let expiresAt: Date
 
     public init(id: String = UUID().uuidString, serverID: String, state: String,
-                pkceVerifierSecretRef: String, resourceIndicator: MCPResourceIndicator,
+                pkceVerifierSecretRef: String, pkceCodeChallenge: String, pkceMethod: String = "S256",
+                resourceIndicator: MCPResourceIndicator,
                 requestedScopes: [String], redirectURI: String,
                 createdAt: Date = Date(), expiresAt: Date = Date().addingTimeInterval(600)) {
         self.id = id; self.serverID = serverID; self.state = state
         self.pkceVerifierSecretRef = pkceVerifierSecretRef
+        self.pkceCodeChallenge = pkceCodeChallenge; self.pkceMethod = pkceMethod
         self.resourceIndicator = resourceIndicator; self.requestedScopes = requestedScopes
         self.redirectURI = redirectURI; self.createdAt = createdAt; self.expiresAt = expiresAt
     }

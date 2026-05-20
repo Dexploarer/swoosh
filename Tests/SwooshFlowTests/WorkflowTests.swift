@@ -289,26 +289,26 @@ struct WorkflowDraftStoreTests {
             steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)],
             provenance: WorkflowProvenance(sourceSessionID: "s1")
         )
-        try await store.saveDraft(draft)
-        let retrieved = try await store.getDraft(id: "d1")
+        await store.saveDraft(draft)
+        let retrieved = await store.getDraft(id: "d1")
         #expect(retrieved?.name == "Test")
     }
 
     @Test("List drafts")
     func listDrafts() async throws {
         let store = InMemoryWorkflowDraftStore()
-        try await store.saveDraft(WorkflowDraft05A(id: "a", name: "A", summary: "a", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s")))
-        try await store.saveDraft(WorkflowDraft05A(id: "b", name: "B", summary: "b", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s")))
-        let all = try await store.listDrafts(status: nil)
+        await store.saveDraft(WorkflowDraft05A(id: "a", name: "A", summary: "a", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s")))
+        await store.saveDraft(WorkflowDraft05A(id: "b", name: "B", summary: "b", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s")))
+        let all = await store.listDrafts(status: nil)
         #expect(all.count == 2)
     }
 
     @Test("Delete draft")
     func deleteDraft() async throws {
         let store = InMemoryWorkflowDraftStore()
-        try await store.saveDraft(WorkflowDraft05A(id: "d1", name: "T", summary: "t", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s")))
+        await store.saveDraft(WorkflowDraft05A(id: "d1", name: "T", summary: "t", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s")))
         try await store.deleteDraft(id: "d1")
-        let result = try await store.getDraft(id: "d1")
+        let result = await store.getDraft(id: "d1")
         #expect(result == nil)
     }
 
@@ -316,10 +316,10 @@ struct WorkflowDraftStoreTests {
     func updateDraft() async throws {
         let store = InMemoryWorkflowDraftStore()
         var draft = WorkflowDraft05A(id: "d1", name: "Old", summary: "t", steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)], provenance: WorkflowProvenance(sourceSessionID: "s"))
-        try await store.saveDraft(draft)
+        await store.saveDraft(draft)
         draft.name = "New"
         try await store.updateDraft(draft)
-        let updated = try await store.getDraft(id: "d1")
+        let updated = await store.getDraft(id: "d1")
         #expect(updated?.name == "New")
     }
 }

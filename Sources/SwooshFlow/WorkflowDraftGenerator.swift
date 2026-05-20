@@ -75,7 +75,7 @@ public struct DefaultWorkflowDraftGenerator: WorkflowDraftGenerating, Sendable {
         var variables: [WorkflowVariable] = []
         var seenRootIDs: Set<String> = []
 
-        for (i, toolTrace) in trace.toolCalls.prefix(options.maxSteps).enumerated() {
+        for (_, toolTrace) in trace.toolCalls.prefix(options.maxSteps).enumerated() {
             let toolName = toolTrace.toolName
 
             // Skip never-executable tools entirely
@@ -226,7 +226,7 @@ public struct DefaultWorkflowDraftGenerator: WorkflowDraftGenerating, Sendable {
             for pattern in patterns {
                 if let regex = try? NSRegularExpression(pattern: pattern) {
                     let range = NSRange(templated.startIndex..., in: templated)
-                    if let match = regex.firstMatch(in: templated, range: range),
+                    if regex.firstMatch(in: templated, range: range) != nil,
                        let key = templated.range(of: "rootBookmarkID") ?? templated.range(of: "rootID") {
                         let keyName = String(templated[key])
                         templated = regex.stringByReplacingMatches(

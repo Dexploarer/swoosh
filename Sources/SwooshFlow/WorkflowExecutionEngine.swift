@@ -220,8 +220,6 @@ public struct WorkflowExecutionEngine: Sendable {
     }
 
     private func findLastApprovedGate(runID: String) async throws -> WorkflowExecutionGate? {
-        // Check all gates for this run, find latest approved
-        let pending = try await gateStore.listPendingGates(runID: nil)
         // We need all gates, not just pending; but our simple store only has pending filter.
         // For now, we rely on the gate store having all gates accessible.
         return nil // Resume will use startIndex from existing step runs

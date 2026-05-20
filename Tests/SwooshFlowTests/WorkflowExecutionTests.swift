@@ -22,7 +22,7 @@ func makeDraftForExec() -> WorkflowDraft05A {
 
 func setupExecEngine(draft: WorkflowDraft05A? = nil) async -> (WorkflowExecutionEngine, MockToolExecutor, InMemoryWorkflowRunStore, InMemoryGateStore) {
     let d = draft ?? makeDraftForExec()
-    let ds = InMemoryWorkflowDraftStore(); try! await ds.saveDraft(d)
+    let ds = InMemoryWorkflowDraftStore(); await ds.saveDraft(d)
     let rs = InMemoryWorkflowRunStore(); let gs = InMemoryGateStore()
     let exec = MockToolExecutor()
     let engine = WorkflowExecutionEngine(draftStore: ds, runStore: rs, gateStore: gs, toolExecutor: exec)
@@ -130,8 +130,8 @@ struct GateLifecycleTests {
         let gate = WorkflowExecutionGate(id: "g1", runID: "r", stepID: "s", stepIndex: 0,
             stepTitle: "Test", toolName: "swift.test", risk: .medium,
             preview: WorkflowStepApprovalPreview(toolName: "swift.test", humanSummary: "Run tests"))
-        try await store.saveGate(gate)
-        let got = try await store.getGate(id: "g1")
+        await store.saveGate(gate)
+        let got = await store.getGate(id: "g1")
         #expect(got?.status == .pending)
     }
 
@@ -141,9 +141,9 @@ struct GateLifecycleTests {
         let gate = WorkflowExecutionGate(id: "g1", runID: "r", stepID: "s", stepIndex: 0,
             stepTitle: "T", toolName: "t", risk: .medium,
             preview: WorkflowStepApprovalPreview(toolName: "t", humanSummary: ""))
-        try await store.saveGate(gate)
+        await store.saveGate(gate)
         try await store.resolveGate(id: "g1", status: .approved, by: .human, reason: nil)
-        let got = try await store.getGate(id: "g1")
+        let got = await store.getGate(id: "g1")
         #expect(got?.status == .approved)
         #expect(got?.resolvedBy == .human)
     }
@@ -154,9 +154,9 @@ struct GateLifecycleTests {
         let gate = WorkflowExecutionGate(id: "g1", runID: "r", stepID: "s", stepIndex: 0,
             stepTitle: "T", toolName: "t", risk: .medium,
             preview: WorkflowStepApprovalPreview(toolName: "t", humanSummary: ""))
-        try await store.saveGate(gate)
+        await store.saveGate(gate)
         try await store.resolveGate(id: "g1", status: .denied, by: .human, reason: "no")
-        let got = try await store.getGate(id: "g1")
+        let got = await store.getGate(id: "g1")
         #expect(got?.status == .denied)
         #expect(got?.denialReason == "no")
     }
@@ -177,7 +177,7 @@ struct GateLifecycleTests {
         let gate = WorkflowExecutionGate(id: "g1", runID: "r", stepID: "s", stepIndex: 0,
             stepTitle: "T", toolName: "file.patch", risk: .high,
             preview: WorkflowStepApprovalPreview(toolName: "file.patch", humanSummary: ""))
-        try await gs.saveGate(gate)
+        await gs.saveGate(gate)
         do {
             try await engine.approveGate(gateID: "g1", origin: .human, confirmation: nil)
             Issue.record("Should throw")
@@ -191,9 +191,9 @@ struct GateLifecycleTests {
         let gate = WorkflowExecutionGate(id: "g1", runID: "r", stepID: "s", stepIndex: 0,
             stepTitle: "T", toolName: "file.patch", risk: .high,
             preview: WorkflowStepApprovalPreview(toolName: "file.patch", humanSummary: ""))
-        try await gs.saveGate(gate)
+        await gs.saveGate(gate)
         try await engine.approveGate(gateID: "g1", origin: .human, confirmation: "Apply patch")
-        let got = try await gs.getGate(id: "g1")
+        let got = await gs.getGate(id: "g1")
         #expect(got?.status == .approved)
     }
 }
@@ -209,7 +209,7 @@ struct ExecutionEngineTests {
     func startCreatesRun() async throws {
         let (engine, _, rs, _) = await setupExecEngine()
         _ = try await engine.start(WorkflowExecutionRequest(draftID: "ed"))
-        let runs = try await rs.listRuns(draftID: "ed")
+        let runs = await rs.listRuns(draftID: "ed")
         #expect(!runs.isEmpty)
     }
 
@@ -223,7 +223,7 @@ struct ExecutionEngineTests {
 
     @Test("Pauses at first approval gate")
     func pausesAtGate() async throws {
-        let (engine, exec, _, gs) = await setupExecEngine()
+        let (engine, exec, _, _) = await setupExecEngine()
         let report = try await engine.start(WorkflowExecutionRequest(draftID: "ed"))
         #expect(report.status == .pausedForApproval)
         #expect(report.pendingGateID != nil)
@@ -245,7 +245,7 @@ struct ExecutionEngineTests {
 
     @Test("Cancel stops run")
     func cancelStops() async throws {
-        let (engine, _, rs, _) = await setupExecEngine()
+        let (engine, _, _, _) = await setupExecEngine()
         let report = try await engine.start(WorkflowExecutionRequest(draftID: "ed"))
         let cancelReport = try await engine.cancel(runID: report.runID)
         #expect(cancelReport.status == .cancelled)
