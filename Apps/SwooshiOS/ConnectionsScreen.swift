@@ -355,7 +355,7 @@ struct ProviderDetailScreen: View {
     }
 
     private var acceptsPhoneKey: Bool {
-        ["openai", "openrouter", "eliza-cloud", "anthropic", "google", "groq", "perplexity"].contains(provider.id)
+        ["openai", "openrouter", "eliza-cloud", "anthropic", "google"].contains(provider.id)
     }
 
     private var selectableFromPhone: Bool { provider.id != "local-diagnostic" }

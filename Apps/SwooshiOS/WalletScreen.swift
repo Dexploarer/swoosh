@@ -127,13 +127,13 @@ struct ChainBadge: View {
     var size: CGFloat = 36
 
     var body: some View {
-        ZStack {
-            Circle().fill(tint.opacity(0.18))
-            Text(symbol)
-                .font(.system(size: size * 0.4, weight: .bold))
-                .foregroundStyle(tint)
-        }
-        .frame(width: size, height: size)
+        ChainLogo(
+            chainRawValue: chain.rawValue,
+            symbol: symbol,
+            tintHex: chain.tintHex,
+            size: size,
+            cornerRadius: size * 0.28
+        )
     }
 
     private var symbol: String {
@@ -143,10 +143,6 @@ struct ChainBadge: View {
         case .base:     "BASE"
         case .bnb:      "BNB"
         }
-    }
-
-    private var tint: Color {
-        Color(hex: chain.tintHex) ?? .accentColor
     }
 }
 
