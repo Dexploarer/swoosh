@@ -178,7 +178,7 @@ struct AuthFlowTests {
         let token = try await svc.exchangeCode(sessionID: session.id, code: "test-code", returnedState: session.state)
         #expect(token.accessTokenSecretRef.hasPrefix("keychain://"))
         #expect(token.refreshTokenSecretRef?.hasPrefix("keychain://") ?? false)
-        let stored = try await store.loadToken(serverID: "linear")
+        let stored = await store.loadToken(serverID: "linear")
         #expect(stored != nil)
     }
 
@@ -232,8 +232,8 @@ struct TokenStoreTests {
                 serverID: "linear"
             )
         )
-        try await store.saveToken(token, for: "linear")
-        let loaded = try await store.loadToken(serverID: "linear")
+        await store.saveToken(token, for: "linear")
+        let loaded = await store.loadToken(serverID: "linear")
         #expect(loaded?.accessTokenSecretRef == "keychain://access_linear")
     }
 
@@ -248,8 +248,8 @@ struct TokenStoreTests {
                 serverID: "linear"
             )
         )
-        try await store.saveToken(token, for: "linear")
-        let loaded = try await store.loadToken(serverID: "linear")!
+        await store.saveToken(token, for: "linear")
+        let loaded = await store.loadToken(serverID: "linear")!
         #expect(loaded.accessTokenSecretRef.hasPrefix("keychain://"))
         #expect(loaded.refreshTokenSecretRef?.hasPrefix("keychain://") ?? false)
     }
@@ -264,9 +264,9 @@ struct TokenStoreTests {
                 serverID: "linear"
             )
         )
-        try await store.saveToken(token, for: "linear")
-        try await store.deleteToken(serverID: "linear")
-        let loaded = try await store.loadToken(serverID: "linear")
+        await store.saveToken(token, for: "linear")
+        await store.deleteToken(serverID: "linear")
+        let loaded = await store.loadToken(serverID: "linear")
         #expect(loaded == nil)
     }
 
@@ -313,7 +313,7 @@ struct TokenLifecycleTests {
         )
         _ = try await svc.exchangeCode(sessionID: session.id, code: "code", returnedState: session.state)
         try await svc.revokeToken(serverID: "linear")
-        let loaded = try await store.loadToken(serverID: "linear")
+        let loaded = await store.loadToken(serverID: "linear")
         #expect(loaded == nil)
     }
 

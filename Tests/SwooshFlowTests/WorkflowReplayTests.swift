@@ -41,7 +41,7 @@ func makeDraftForReplay(steps: [WorkflowStep05A]? = nil) -> WorkflowDraft05A {
 func setupReplayEngine(draft: WorkflowDraft05A? = nil, executor: MockToolExecutor? = nil) async -> (WorkflowReplayEngine, MockToolExecutor, InMemoryWorkflowRunStore) {
     let d = draft ?? makeDraftForReplay()
     let draftStore = InMemoryWorkflowDraftStore()
-    try! await draftStore.saveDraft(d)
+    await draftStore.saveDraft(d)
     let runStore = InMemoryWorkflowRunStore()
     let exec = executor ?? MockToolExecutor()
     let engine = WorkflowReplayEngine(draftStore: draftStore, runStore: runStore, toolExecutor: exec)
@@ -164,7 +164,7 @@ struct ReplayEngineTests {
     func createsRun() async throws {
         let (engine, _, runStore) = await setupReplayEngine()
         _ = try await engine.replay(WorkflowReplayRequest(draftID: "rd"))
-        let runs = try await runStore.listRuns(draftID: "rd")
+        let runs = await runStore.listRuns(draftID: "rd")
         #expect(runs.count == 1)
     }
 
@@ -188,7 +188,7 @@ struct ReplayEngineTests {
     func stepRunsPersisted() async throws {
         let (engine, _, runStore) = await setupReplayEngine()
         let report = try await engine.replay(WorkflowReplayRequest(draftID: "rd"))
-        let steps = try await runStore.getStepRuns(runID: report.runID)
+        let steps = await runStore.getStepRuns(runID: report.runID)
         #expect(steps.count == 3)
     }
 
@@ -253,26 +253,26 @@ struct RunStoreTests {
     func saveAndGet() async throws {
         let store = InMemoryWorkflowRunStore()
         let run = WorkflowRun05C(id: "r1", draftID: "d1", draftName: "T")
-        try await store.saveRun(run)
-        let got = try await store.getRun(id: "r1")
+        await store.saveRun(run)
+        let got = await store.getRun(id: "r1")
         #expect(got?.draftName == "T")
     }
 
     @Test("List runs by draft")
     func listByDraft() async throws {
         let store = InMemoryWorkflowRunStore()
-        try await store.saveRun(WorkflowRun05C(id: "r1", draftID: "d1", draftName: "A"))
-        try await store.saveRun(WorkflowRun05C(id: "r2", draftID: "d2", draftName: "B"))
-        let d1 = try await store.listRuns(draftID: "d1")
+        await store.saveRun(WorkflowRun05C(id: "r1", draftID: "d1", draftName: "A"))
+        await store.saveRun(WorkflowRun05C(id: "r2", draftID: "d2", draftName: "B"))
+        let d1 = await store.listRuns(draftID: "d1")
         #expect(d1.count == 1)
     }
 
     @Test("Save and get step runs")
     func stepRuns() async throws {
         let store = InMemoryWorkflowRunStore()
-        try await store.saveStepRun(WorkflowStepRun(runID: "r1", sourceStepID: "s1", index: 1, title: "A"))
-        try await store.saveStepRun(WorkflowStepRun(runID: "r1", sourceStepID: "s2", index: 2, title: "B"))
-        let steps = try await store.getStepRuns(runID: "r1")
+        await store.saveStepRun(WorkflowStepRun(runID: "r1", sourceStepID: "s1", index: 1, title: "A"))
+        await store.saveStepRun(WorkflowStepRun(runID: "r1", sourceStepID: "s2", index: 2, title: "B"))
+        let steps = await store.getStepRuns(runID: "r1")
         #expect(steps.count == 2)
         #expect(steps[0].index < steps[1].index)
     }

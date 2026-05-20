@@ -74,7 +74,7 @@ public struct DefaultWorkflowTraceExtractor: WorkflowTraceExtracting, Sendable {
                 sessionID: sessionID,
                 userMessages: raw.userMessages.suffix(1).map { $0 },
                 assistantMessages: raw.assistantMessages.suffix(1).map { $0 },
-                toolCalls: raw.toolCalls,  // Include all tool calls from latest turn
+                toolCalls: lastToolCalls,
                 approvalIDs: raw.approvalIDs,
                 memoryIDsUsed: raw.memoryIDsUsed,
                 createdAt: raw.createdAt

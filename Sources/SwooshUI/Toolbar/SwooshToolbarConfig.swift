@@ -235,7 +235,7 @@ public struct ToolbarPreset: Identifiable, Sendable {
     public let icon: String
     public let config: SwooshToolbarConfig
 
-    nonisolated(unsafe) public static let all: [ToolbarPreset] = [
+    public static let all: [ToolbarPreset] = [
         .init(id: "default",   name: "Default",   description: "Balanced layout for everyday use",
               icon: "square.grid.2x2", config: .default),
         .init(id: "developer", name: "Developer", description: "Tool log, agents, and model selector front-and-centre",

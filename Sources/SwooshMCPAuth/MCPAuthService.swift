@@ -88,6 +88,8 @@ public actor MCPAuthService {
         let session = MCPAuthSession(
             serverID: serverID, state: state,
             pkceVerifierSecretRef: "keychain://pkce_\(serverID)_\(state)",
+            pkceCodeChallenge: pkce.codeChallenge,
+            pkceMethod: pkce.method,
             resourceIndicator: resource, requestedScopes: scopes,
             redirectURI: redirectURI
         )

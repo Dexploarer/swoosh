@@ -49,7 +49,7 @@ struct InMemorySecretStoreTests {
     @Test("Set and get secret")
     func setAndGet() async throws {
         let store = InMemorySecretStore()
-        try await store.set("sk-test-123", ref: SecretRef("openai", "api_key"))
+        await store.set("sk-test-123", ref: SecretRef("openai", "api_key"))
         let value = try await store.get(SecretRef("openai", "api_key"))
         #expect(value == "sk-test-123")
     }
@@ -70,7 +70,7 @@ struct InMemorySecretStoreTests {
     @Test("Delete secret")
     func deleteSecret() async throws {
         let store = InMemorySecretStore()
-        try await store.set("val", ref: SecretRef("a", "b"))
+        await store.set("val", ref: SecretRef("a", "b"))
         await store.delete(SecretRef("a", "b"))
         do {
             _ = try await store.get(SecretRef("a", "b"))
@@ -88,7 +88,7 @@ struct InMemorySecretStoreTests {
         let ref = SecretRef("openai", "api_key")
         let before = await store.exists(ref)
         #expect(!before)
-        try await store.set("sk-123", ref: ref)
+        await store.set("sk-123", ref: ref)
         let after = await store.exists(ref)
         #expect(after)
     }
@@ -96,9 +96,9 @@ struct InMemorySecretStoreTests {
     @Test("List refs by namespace")
     func listByNamespace() async throws {
         let store = InMemorySecretStore()
-        try await store.set("a", ref: SecretRef("openai", "api_key"))
-        try await store.set("b", ref: SecretRef("openai", "org_id"))
-        try await store.set("c", ref: SecretRef("openrouter", "api_key"))
+        await store.set("a", ref: SecretRef("openai", "api_key"))
+        await store.set("b", ref: SecretRef("openai", "org_id"))
+        await store.set("c", ref: SecretRef("openrouter", "api_key"))
 
         let openaiRefs = await store.listRefs(namespace: "openai")
         #expect(openaiRefs.count == 2)
@@ -110,7 +110,7 @@ struct InMemorySecretStoreTests {
     @Test("List refs never returns values")
     func listRefsNoValues() async throws {
         let store = InMemorySecretStore()
-        try await store.set("sk-super-secret-key", ref: SecretRef("openai", "api_key"))
+        await store.set("sk-super-secret-key", ref: SecretRef("openai", "api_key"))
         let refs = await store.listRefs(namespace: nil)
         for ref in refs {
             #expect(!ref.description.contains("sk-super-secret-key"))
@@ -122,8 +122,8 @@ struct InMemorySecretStoreTests {
     func overwrite() async throws {
         let store = InMemorySecretStore()
         let ref = SecretRef("openai", "api_key")
-        try await store.set("old-value", ref: ref)
-        try await store.set("new-value", ref: ref)
+        await store.set("old-value", ref: ref)
+        await store.set("new-value", ref: ref)
         let val = try await store.get(ref)
         #expect(val == "new-value")
     }

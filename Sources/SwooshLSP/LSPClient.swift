@@ -10,21 +10,21 @@ import Foundation
 // ═══════════════════════════════════════════════════════════════════
 
 public struct LSPRequest: Codable, Sendable {
-    public let jsonrpc: String = "2.0"
+    public let jsonrpc: String
     public let id: Int
     public let method: String
     public let params: [String: LSPValue]?
     public init(id: Int, method: String, params: [String: LSPValue]? = nil) {
-        self.id = id; self.method = method; self.params = params
+        self.jsonrpc = "2.0"; self.id = id; self.method = method; self.params = params
     }
 }
 
 public struct LSPNotification: Codable, Sendable {
-    public let jsonrpc: String = "2.0"
+    public let jsonrpc: String
     public let method: String
     public let params: [String: LSPValue]?
     public init(method: String, params: [String: LSPValue]? = nil) {
-        self.method = method; self.params = params
+        self.jsonrpc = "2.0"; self.method = method; self.params = params
     }
 }
 

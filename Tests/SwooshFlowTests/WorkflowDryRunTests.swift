@@ -31,7 +31,7 @@ func makeDraftWithVariables(
 func makeStoreWithDraft() async -> (InMemoryWorkflowDraftStore, WorkflowDraft05A) {
     let store = InMemoryWorkflowDraftStore()
     let draft = makeDraftWithVariables()
-    try! await store.saveDraft(draft)
+    await store.saveDraft(draft)
     return (store, draft)
 }
 

@@ -98,7 +98,7 @@ public extension View {
 
 // MARK: - Celebration keyframes
 
-public struct SwooshCelebrationTrack: Equatable {
+public struct SwooshCelebrationTrack: Equatable, Sendable {
     public var scale: CGFloat = 1
     public var rotation: Angle = .zero
     public var glow: Double = 0
@@ -110,7 +110,7 @@ public struct SwooshCelebrationTrack: Equatable {
     }
 }
 
-public struct SwooshCelebrateModifier<Trigger: Equatable>: ViewModifier {
+public struct SwooshCelebrateModifier<Trigger: Equatable & Sendable>: ViewModifier {
     let trigger: Trigger
 
     public func body(content: Content) -> some View {
@@ -143,7 +143,7 @@ public struct SwooshCelebrateModifier<Trigger: Equatable>: ViewModifier {
 public extension View {
     /// Play a celebratory keyframe routine when `trigger` changes — used on
     /// save/approve/pinned confirmations.
-    func swooshCelebrate<T: Equatable>(on trigger: T) -> some View {
+    func swooshCelebrate<T: Equatable & Sendable>(on trigger: T) -> some View {
         modifier(SwooshCelebrateModifier(trigger: trigger))
     }
 }

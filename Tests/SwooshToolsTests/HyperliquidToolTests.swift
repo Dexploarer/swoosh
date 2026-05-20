@@ -343,25 +343,26 @@ struct HLTradingToolInputTests {
 
 @Suite("Hyperliquid tool name uniqueness")
 struct HLToolNameTests {
+    private let names: [ToolName] = [
+        HLAllMidsTool.name,
+        HLL2BookTool.name,
+        HLUserStateTool.name,
+        HLOpenOrdersTool.name,
+        HLUserFillsTool.name,
+        HLLimitOrderTool.name,
+        HLMarketOrderTool.name,
+        HLCancelOrderTool.name,
+        HLCancelAllTool.name,
+        HLUpdateLeverageTool.name,
+    ]
+
     @Test("All Hyperliquid tool names are unique")
     func uniqueNames() {
-        let names: [ToolName] = [
-            HLAllMidsTool.name,
-            HLL2BookTool.name,
-            HLUserStateTool.name,
-            HLOpenOrdersTool.name,
-            HLUserFillsTool.name,
-            HLLimitOrderTool.name,
-            HLMarketOrderTool.name,
-            HLCancelOrderTool.name,
-            HLCancelAllTool.name,
-            HLUpdateLeverageTool.name,
-        ]
         #expect(Set(names).count == names.count, "Duplicate Hyperliquid tool name")
     }
 
     @Test("10 Hyperliquid tools registered")
     func toolCount() {
-        #expect(true) // validated by uniqueNames above
+        #expect(names.count == 10)
     }
 }

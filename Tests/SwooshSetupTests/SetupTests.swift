@@ -203,7 +203,7 @@ struct SecretStoreTests {
     func setAndGet() async throws {
         let store = InMemorySecretStore()
         let ref = SecretRef(namespace: "openai", key: "api_key")
-        try await store.setSecret("sk-test-123", ref: ref)
+        await store.setSecret("sk-test-123", ref: ref)
         let v = try await store.getSecret(ref: ref)
         #expect(v == "sk-test-123")
     }
@@ -212,8 +212,8 @@ struct SecretStoreTests {
     func deleteSecret() async throws {
         let store = InMemorySecretStore()
         let ref = SecretRef(namespace: "openai", key: "api_key")
-        try await store.setSecret("sk-test-123", ref: ref)
-        try await store.deleteSecret(ref: ref)
+        await store.setSecret("sk-test-123", ref: ref)
+        await store.deleteSecret(ref: ref)
         do {
             _ = try await store.getSecret(ref: ref)
             Issue.record("Should throw")
@@ -223,9 +223,9 @@ struct SecretStoreTests {
     @Test("List refs does not reveal values")
     func listRefsNoValues() async throws {
         let store = InMemorySecretStore()
-        try await store.setSecret("sk-test-123", ref: SecretRef(namespace: "openai", key: "api_key"))
-        try await store.setSecret("gh-token", ref: SecretRef(namespace: "github", key: "token"))
-        let refs = try await store.listSecretRefs(namespace: nil)
+        await store.setSecret("sk-test-123", ref: SecretRef(namespace: "openai", key: "api_key"))
+        await store.setSecret("gh-token", ref: SecretRef(namespace: "github", key: "token"))
+        let refs = await store.listSecretRefs(namespace: nil)
         #expect(refs.count == 2)
         // Refs expose displayKey, never the raw value
         for ref in refs {
@@ -237,9 +237,9 @@ struct SecretStoreTests {
     @Test("List refs by namespace")
     func listByNamespace() async throws {
         let store = InMemorySecretStore()
-        try await store.setSecret("a", ref: SecretRef(namespace: "openai", key: "k1"))
-        try await store.setSecret("b", ref: SecretRef(namespace: "github", key: "k2"))
-        let refs = try await store.listSecretRefs(namespace: "openai")
+        await store.setSecret("a", ref: SecretRef(namespace: "openai", key: "k1"))
+        await store.setSecret("b", ref: SecretRef(namespace: "github", key: "k2"))
+        let refs = await store.listSecretRefs(namespace: "openai")
         #expect(refs.count == 1)
     }
 

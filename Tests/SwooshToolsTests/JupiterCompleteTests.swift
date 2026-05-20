@@ -325,39 +325,39 @@ struct JupiterPriceToolTests {
 
 @Suite("Jupiter tool name uniqueness")
 struct JupiterToolNameTests {
+    private let names: [ToolName] = [
+        JupiterQuoteTool.name,
+        JupiterSwapTool.name,
+        JupiterBuildOrderTool.name,
+        JupiterExecuteTool.name,
+        JupiterBalancesTool.name,
+        JupiterShieldTool.name,
+        JupiterRoutersTool.name,
+        JupiterPriceTool.name,
+        JupiterTokenInfoTool.name,
+        JupiterTradableTokensTool.name,
+        JupiterTaggedTokensTool.name,
+        JupiterNewTokensTool.name,
+        JupiterMarketMintsTool.name,
+        JupiterAllTokensTool.name,
+        JupiterCreateLimitOrderTool.name,
+        JupiterGetLimitOrdersTool.name,
+        JupiterCancelLimitOrderTool.name,
+        JupiterCreateDCATool.name,
+        JupiterListDCATool.name,
+        JupiterCancelDCATool.name,
+        JupiterPriceDepositTool.name,
+        JupiterPriceWithdrawTool.name,
+    ]
+
     @Test("All Jupiter tool names are unique")
     func uniqueNames() {
-        let names: [ToolName] = [
-            JupiterQuoteTool.name,
-            JupiterSwapTool.name,
-            JupiterBuildOrderTool.name,
-            JupiterExecuteTool.name,
-            JupiterBalancesTool.name,
-            JupiterShieldTool.name,
-            JupiterRoutersTool.name,
-            JupiterPriceTool.name,
-            JupiterTokenInfoTool.name,
-            JupiterTradableTokensTool.name,
-            JupiterTaggedTokensTool.name,
-            JupiterNewTokensTool.name,
-            JupiterMarketMintsTool.name,
-            JupiterAllTokensTool.name,
-            JupiterCreateLimitOrderTool.name,
-            JupiterGetLimitOrdersTool.name,
-            JupiterCancelLimitOrderTool.name,
-            JupiterCreateDCATool.name,
-            JupiterListDCATool.name,
-            JupiterCancelDCATool.name,
-            JupiterPriceDepositTool.name,
-            JupiterPriceWithdrawTool.name,
-        ]
         let unique = Set(names)
         #expect(unique.count == names.count, "Duplicate tool name detected")
     }
 
     @Test("22 Jupiter tools registered")
     func toolCount() {
-        // 6 Ultra + 6 Token + 3 Trigger + 5 Recurring + 1 Price + 1 TokenInfo = 22
-        #expect(true) // validated by uniqueNames test above
+        #expect(names.count == 22)
     }
 }

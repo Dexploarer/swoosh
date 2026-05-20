@@ -166,7 +166,9 @@ public struct HardwareDetector {
         sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0)
         var buffer = [CChar](repeating: 0, count: size)
         sysctlbyname("machdep.cpu.brand_string", &buffer, &size, nil, 0)
-        return String(cString: buffer)
+        let length = buffer.firstIndex(of: 0) ?? buffer.count
+        let bytes = buffer.prefix(length).map { UInt8(bitPattern: $0) }
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     private func detectAvailableDisk() -> Double {
