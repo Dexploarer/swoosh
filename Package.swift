@@ -36,6 +36,7 @@ let package = Package(
         .library(name: "SwooshActantBackend", targets: ["SwooshActantBackend"]),
         .library(name: "SwooshGenerativeUI", targets: ["SwooshGenerativeUI"]),
         .library(name: "SwooshClient",       targets: ["SwooshClient"]),
+        .library(name: "SwooshWallet",       targets: ["SwooshWallet"]),
         .library(name: "SwooshDaemonSupport", targets: ["SwooshDaemonSupport"]),
         .library(name: "SwooshGoals",        targets: ["SwooshGoals"]),
         .library(name: "SwooshManifesting",  targets: ["SwooshManifesting"]),
@@ -63,6 +64,10 @@ let package = Package(
         .package(url: "https://github.com/jauyou/JupSwift.git", from: "1.2.0"),
         // BigInt — arbitrary-precision integers for EVM/Solana quantities
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
+        // secp256k1 — EVM key signing for the iOS in-app wallet
+        .package(url: "https://github.com/GigaBitcoin/secp256k1.swift", from: "0.16.0"),
+        // CryptoSwift — keccak256 for EVM address derivation in the iOS wallet
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.0"),
         // Hyperliquid — perp/spot DEX (macOS .v12+, secp256k1 + CryptoSwift)
         .package(path: "Vendor/hyperliquid-swift-sdk"),
         // ActantDB — event-sourced agent backend (sibling repo, local path)
@@ -305,6 +310,20 @@ let package = Package(
             name: "SwooshClient",
             dependencies: []
         ),
+        // SwooshWallet — iOS-safe in-app wallet primitives. Holds key
+        // generation (CryptoKit ed25519 for Solana, secp256k1 for EVM),
+        // Keychain-backed storage, base58 / hex / keccak helpers, and
+        // direct JSON-RPC clients for Solana mainnet + ETH + Base + BNB.
+        // Zero dependency on SwooshKit or any module that touches Process,
+        // so it's safe to import from both the iOS app and the daemon.
+        .target(
+            name: "SwooshWallet",
+            dependencies: [
+                .product(name: "secp256k1", package: "secp256k1.swift"),
+                .product(name: "CryptoSwift", package: "CryptoSwift"),
+                .product(name: "BigInt", package: "BigInt"),
+            ]
+        ),
         .target(
             name: "SwooshAPI",
             dependencies: [
@@ -470,6 +489,10 @@ let package = Package(
             dependencies: ["SwooshClient", "SwooshChatSDK"]
         ),
         .testTarget(
+            name: "SwooshWalletTests",
+            dependencies: ["SwooshWallet"]
+        ),
+        .testTarget(
             name: "SwooshCronTests",
             dependencies: ["SwooshCron", "SwooshTools"]
         ),
@@ -484,6 +507,88 @@ let package = Package(
         .testTarget(
             name: "SwooshDaemonTests",
             dependencies: ["SwooshDaemonSupport"]
+        ),
+        .testTarget(
+            name: "SwooshBrowserTests",
+            dependencies: ["SwooshBrowser"]
+        ),
+        .testTarget(
+            name: "SwooshMLXTests",
+            dependencies: ["SwooshMLX"]
+        ),
+        .testTarget(
+            name: "SwooshGoalsTests",
+            dependencies: ["SwooshGoals", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshManifestingTests",
+            dependencies: ["SwooshManifesting"]
+        ),
+        .testTarget(
+            name: "SwooshObservabilityTests",
+            dependencies: ["SwooshObservability"]
+        ),
+        .testTarget(
+            name: "SwooshConfigTests",
+            dependencies: ["SwooshConfig"]
+        ),
+        .testTarget(
+            name: "SwooshFirewallTests",
+            dependencies: ["SwooshFirewall", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshSandboxTests",
+            dependencies: ["SwooshSandbox"]
+        ),
+        .testTarget(
+            name: "SwooshVaultTests",
+            dependencies: ["SwooshVault", "SwooshFirewall", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshTriggersTests",
+            dependencies: ["SwooshTriggers"]
+        ),
+        .testTarget(
+            name: "SwooshBridgeTests",
+            dependencies: ["SwooshBridge", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshGatewayTests",
+            dependencies: ["SwooshGateway"]
+        ),
+        .testTarget(
+            name: "SwooshLSPTests",
+            dependencies: ["SwooshLSP"]
+        ),
+        .testTarget(
+            name: "SwooshMediaTests",
+            dependencies: ["SwooshMedia"]
+        ),
+        .testTarget(
+            name: "SwooshModelsTests",
+            dependencies: ["SwooshModels"]
+        ),
+        .testTarget(
+            name: "SwooshFoundationTests",
+            dependencies: ["SwooshFoundation"]
+        ),
+        .testTarget(
+            name: "SwooshKitTests",
+            dependencies: ["SwooshKit", "SwooshClient", "SwooshCore"]
+        ),
+        .testTarget(
+            name: "SwooshToolsetsTests",
+            dependencies: [
+                "SwooshToolsets",
+                "SwooshTools",
+                "SwooshFirewall",
+                "SwooshFiles",
+                "SwooshProcess",
+            ]
+        ),
+        .testTarget(
+            name: "SwooshBenchTests",
+            dependencies: ["SwooshBench", "SwooshTools"]
         ),
     ]
 )

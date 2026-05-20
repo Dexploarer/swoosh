@@ -29,6 +29,8 @@
 	<array>
 		<string>_swoosh._tcp</string>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Swoosh uses Face ID to unlock the wallet keys stored on this device. Your private keys never leave the iPhone.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Swoosh connects to the swooshd daemon running on your Mac so the same agent can answer from your phone.</string>
 	<key>UIApplicationSceneManifest</key>

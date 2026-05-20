@@ -107,6 +107,8 @@ targets:
     dependencies:
       - package: Swoosh
         product: SwooshClient
+      - package: Swoosh
+        product: SwooshWallet
     info:
       path: Apps/SwooshiOS/Info.plist
       properties:
@@ -135,6 +137,13 @@ targets:
         # for local-network destinations, not a global exception.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # Required by LocalAuthentication when we prompt for Face ID on
+        # wallet key load. Without this string iOS will hard-crash the app
+        # the first time SecAccessControlCreateWithFlags fires for a
+        # biometric-protected Keychain item.
+        NSFaceIDUsageDescription: >-
+          Swoosh uses Face ID to unlock the wallet keys stored on this
+          device. Your private keys never leave the iPhone.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.swoosh.app.ios
