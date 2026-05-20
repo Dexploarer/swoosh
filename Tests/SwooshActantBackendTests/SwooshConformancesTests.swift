@@ -11,9 +11,22 @@ import SwooshCore
 
 private func backend(session: URLSession) -> AgentBackend {
     AgentBackend(
-        client: ActantClient(baseURL: URL(string: "http://stub")!, urlSession: session),
+        client: ActantClient(baseURL: URL(string: "http://local-diagnostic")!, urlSession: session),
         workspaceID: "ws_test", actorID: "act_test"
     )
+}
+
+private final class CommandRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func observe(_ request: URLRequest) -> (index: Int, body: String) {
+        lock.withLock {
+            let index = count
+            count += 1
+            return (index, String(data: request.bodyData(), encoding: .utf8) ?? "")
+        }
+    }
 }
 
 /// Build a `/v1/events` response body with full AgentEvent fields. Each
@@ -47,9 +60,17 @@ struct SwooshSessionStoreTests {
     @Test(".user message dispatches append_user_message")
     func userAppendsViaCommand() async throws {
         let session = MockURLProtocol.makeSession()
+        let recorder = CommandRecorder()
         try await MockURLProtocol.with({ req in
             #expect(req.url?.path == "/v1/command")
-            let body = String(data: req.bodyData(), encoding: .utf8) ?? ""
+            let (index, body) = recorder.observe(req)
+            if index == 0 {
+                #expect(body.contains("\"command_type\":\"create_session\""))
+                #expect(body.contains("\"session_id\":\"s_1\""))
+                return (200, ["content-type": "application/json"],
+                    Data(#"{"command_id":"c_create","event_id":"e_create","result":{"session_id":"s_1"}}"#.utf8))
+            }
+            #expect(index == 1)
             #expect(body.contains("\"command_type\":\"append_user_message\""))
             #expect(body.contains("\"text\":\"hello\""))
             return (200, ["content-type": "application/json"],
@@ -66,8 +87,17 @@ struct SwooshSessionStoreTests {
     @Test(".assistant routes through append_agent_message")
     func assistantAppendsViaCommand() async throws {
         let session = MockURLProtocol.makeSession()
+        let recorder = CommandRecorder()
         try await MockURLProtocol.with({ req in
-            let body = String(data: req.bodyData(), encoding: .utf8) ?? ""
+            #expect(req.url?.path == "/v1/command")
+            let (index, body) = recorder.observe(req)
+            if index == 0 {
+                #expect(body.contains("\"command_type\":\"create_session\""))
+                #expect(body.contains("\"session_id\":\"s_1\""))
+                return (200, ["content-type": "application/json"],
+                    Data(#"{"command_id":"c_create","event_id":"e_create","result":{"session_id":"s_1"}}"#.utf8))
+            }
+            #expect(index == 1)
             #expect(body.contains("\"command_type\":\"append_agent_message\""))
             return (200, ["content-type": "application/json"],
                 Data(#"{"command_id":"c_2","result":{}}"#.utf8))
@@ -155,7 +185,7 @@ struct SwooshResponseAuditorTests {
              payload: ["message_id": "m1", "text": envelopeStr]),
         ])
 
-        try await MockURLProtocol.with({ req in
+        try await MockURLProtocol.with({ _ in
             return (200, ["content-type": "application/json"], body)
         }) {
             let auditor = SwooshResponseAuditor(backend: backend(session: session))

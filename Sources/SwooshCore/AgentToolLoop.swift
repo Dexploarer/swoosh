@@ -166,10 +166,12 @@ public actor AgentToolLoop {
         let systemPrompt = basePrompt + "\n\n" + toolInstructions
 
         // 5. Load or initialize transcript
-        var transcript = try await sessionStore.loadTranscript(sessionID: request.sessionID)
-        if transcript.isEmpty || transcript.first?.role != .system {
-            let systemMsg = ChatMessage(role: .system, content: systemPrompt)
-            transcript.insert(systemMsg, at: 0)
+        let storedTranscript = try await sessionStore.loadTranscript(sessionID: request.sessionID)
+        let priorSystemPrompt = storedTranscript.first(where: { $0.role == .system })?.content
+        var transcript = storedTranscript.filter { $0.role != .system }
+        let systemMsg = ChatMessage(role: .system, content: systemPrompt)
+        transcript.insert(systemMsg, at: 0)
+        if priorSystemPrompt != systemPrompt {
             try await sessionStore.appendMessage(sessionID: request.sessionID, message: systemMsg)
         }
 
@@ -234,16 +236,9 @@ public actor AgentToolLoop {
                 )
 
                 if result.status == .pendingApproval {
-                    let finalText = """
-                    I need your approval before continuing.
-
-                    Tool requested: \(toolRequest.toolName)
-                    Approval ID: \(result.approvalID ?? "unknown")
-
-                    Use `/approve \(result.approvalID ?? "<id>")` or `/deny \(result.approvalID ?? "<id>")`.
-                    """
-                    return try await finishResponse(
-                        text: finalText,
+                    return try await finishPendingApprovalResponse(
+                        toolRequest: toolRequest,
+                        result: result,
                         request: request,
                         memoryIDs: memoryIDs,
                         toolTraces: toolCallsUsed,
@@ -251,9 +246,7 @@ public actor AgentToolLoop {
                         permSummaryUsed: !permSummary.isEmpty,
                         model: lastModel,
                         toolCallCount: toolCallCount,
-                        transcript: &transcript,
-                        hasPendingApproval: true,
-                        pendingApprovalID: result.approvalID
+                        transcript: &transcript
                     )
                 }
 
@@ -270,16 +263,9 @@ public actor AgentToolLoop {
                     )
 
                     if result.status == .pendingApproval {
-                        let finalText = """
-                        I need your approval before continuing.
-
-                        Tool requested: \(toolRequest.toolName)
-                        Approval ID: \(result.approvalID ?? "unknown")
-
-                        Use `/approve \(result.approvalID ?? "<id>")` or `/deny \(result.approvalID ?? "<id>")`.
-                        """
-                        return try await finishResponse(
-                            text: finalText,
+                        return try await finishPendingApprovalResponse(
+                            toolRequest: toolRequest,
+                            result: result,
                             request: request,
                             memoryIDs: memoryIDs,
                             toolTraces: toolCallsUsed,
@@ -287,14 +273,47 @@ public actor AgentToolLoop {
                             permSummaryUsed: !permSummary.isEmpty,
                             model: lastModel,
                             toolCallCount: toolCallCount,
-                            transcript: &transcript,
-                            hasPendingApproval: true,
-                            pendingApprovalID: result.approvalID
+                            transcript: &transcript
                         )
                     }
                 }
             }
         }
+    }
+
+    private func finishPendingApprovalResponse(
+        toolRequest: ToolExecutionRequest,
+        result: ToolExecutionResult,
+        request: AgentRequest,
+        memoryIDs: [String],
+        toolTraces: [ToolCallTrace],
+        setupReportUsed: Bool,
+        permSummaryUsed: Bool,
+        model: String,
+        toolCallCount: Int,
+        transcript: inout [ChatMessage]
+    ) async throws -> AgentToolResponse {
+        let finalText = """
+        I need your approval before continuing.
+
+        Tool requested: \(toolRequest.toolName)
+        Approval ID: \(result.approvalID ?? "unknown")
+
+        Use `/approve \(result.approvalID ?? "<id>")` or `/deny \(result.approvalID ?? "<id>")`.
+        """
+        return try await finishResponse(
+            text: finalText,
+            request: request,
+            memoryIDs: memoryIDs,
+            toolTraces: toolTraces,
+            setupReportUsed: setupReportUsed,
+            permSummaryUsed: permSummaryUsed,
+            model: model,
+            toolCallCount: toolCallCount,
+            transcript: &transcript,
+            hasPendingApproval: true,
+            pendingApprovalID: result.approvalID
+        )
     }
 
     // MARK: - Execute and append

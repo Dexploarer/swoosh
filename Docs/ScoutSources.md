@@ -1,6 +1,6 @@
 # Swoosh Scout Sources
 
-## v0 sources (ship first)
+## Baseline Sources
 
 | Source | Permission | Collects | Never collects | Example memories |
 |--------|------------|----------|----------------|-----------------|
@@ -12,7 +12,7 @@
 | GitReposScanner | user-selected | remotes, branch names | credentials, diffs | "Uses GitHub, 12 active repos" |
 | ShellEnvironmentScanner | none | PATH tools, shell type | env var values | "Has git, swift, docker, brew" |
 
-## v0.2 sources (permissioned)
+## Permissioned Sources
 
 | Source | Permission | Collects | Never collects |
 |--------|------------|----------|----------------|
@@ -20,7 +20,7 @@
 | SafariTabsScanner | AppleScript/Automation | tab titles, URLs | cookies, form data |
 | BrowserBookmarksScanner | extension | bookmark titles, URLs | passwords |
 
-## v0.3+ sources
+## Additional Sources
 
 | Source | Permission | Collects | Never collects |
 |--------|------------|----------|----------------|

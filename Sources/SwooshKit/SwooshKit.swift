@@ -17,7 +17,7 @@ import SwooshActantBackend
 /// Usage:
 /// ```swift
 /// let swoosh = try await Swoosh.configure {
-///     $0.modelProvider = LocalStubProvider()
+///     $0.modelProvider = LocalDiagnosticProvider()
 /// }
 /// let response = try await swoosh.ask("What should we build?")
 /// ```
@@ -34,7 +34,9 @@ public final class Swoosh: Sendable {
     }
 
     /// Configure and build a Swoosh instance.
-    public static func configure(_ builder: (inout SwooshConfiguration) -> Void) async throws -> Swoosh {
+    public static func configure(
+        _ builder: @Sendable (inout SwooshConfiguration) -> Void
+    ) async throws -> Swoosh {
         var config = SwooshConfiguration()
         builder(&config)
         return try await build(from: config)
@@ -71,7 +73,7 @@ public final class Swoosh: Sendable {
             permSummarizer: permSummarizer,
             sessionStore: sessionStore,
             auditLogger: auditLogger,
-            modelProvider: config.modelProvider ?? LocalStubProvider()
+            modelProvider: config.modelProvider ?? LocalDiagnosticProvider()
         )
         return Swoosh(kernel: kernel)
     }
@@ -79,7 +81,7 @@ public final class Swoosh: Sendable {
 
 // MARK: - Configuration
 
-public struct SwooshConfiguration {
+public struct SwooshConfiguration: Sendable {
     public var modelProvider: (any ModelProvider)? = nil
     public var memoryLoader: (any MemoryContextLoading)? = nil
     public var reportLoader: (any SetupReportLoading)? = nil

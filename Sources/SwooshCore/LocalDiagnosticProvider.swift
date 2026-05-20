@@ -1,15 +1,15 @@
-// SwooshCore/LocalStubProvider.swift — Deterministic test provider
+// SwooshCore/LocalDiagnosticProvider.swift — Deterministic fallback provider
 //
-// Returns canned responses that use approved memories in the reply.
-// Used for testing that the prompt pipeline works correctly.
+// Returns deterministic responses that use approved memories in the reply.
+// Used when no model provider is configured and by prompt-pipeline tests.
 
 import Foundation
 
-/// A deterministic model provider for tests.
+/// A deterministic model provider for offline diagnostics.
 /// Returns a response that references the approved memories injected in the prompt.
-public struct LocalStubProvider: ModelProvider, Sendable {
-    public let providerID: String = "stub"
-    public let modelName: String = "swoosh-stub-v1"
+public struct LocalDiagnosticProvider: ModelProvider, Sendable {
+    public let providerID: String = "local-diagnostic"
+    public let modelName: String = "swoosh-local-diagnostic-v1"
 
     private let cannedResponse: String?
 
@@ -18,7 +18,6 @@ public struct LocalStubProvider: ModelProvider, Sendable {
     }
 
     public func complete(_ request: ModelCompletionRequest) async throws -> ModelCompletionResponse {
-        // If a canned response is provided, use it
         if let canned = cannedResponse {
             return ModelCompletionResponse(
                 content: canned,
@@ -27,7 +26,6 @@ public struct LocalStubProvider: ModelProvider, Sendable {
             )
         }
 
-        // Default: generate a response that proves we received the approved memories
         let systemPrompt = request.messages.first(where: { $0.role == .system })?.content ?? ""
         let userQuery = request.messages.last(where: { $0.role == .user })?.content ?? ""
 
@@ -35,7 +33,6 @@ public struct LocalStubProvider: ModelProvider, Sendable {
         responseLines.append("Based on your approved context, here's what I can help with:")
         responseLines.append("")
 
-        // Parse memories from system prompt to prove they were injected
         if systemPrompt.contains("Approved Memories") {
             let memLines = systemPrompt.components(separatedBy: "\n")
                 .filter { $0.hasPrefix("- [") }

@@ -28,14 +28,12 @@ public struct ProcessPolicy: Codable, Sendable {
         self.streamOutput = streamOutput
     }
 
-    /// 0.4C allowed executables: git, swift, xcrun. Nothing else.
     public static let defaultAllowed: Set<String> = [
         "git", "swift", "xcrun",
         "/usr/bin/git", "/usr/bin/swift", "/usr/bin/xcrun"
     ]
 
-    /// 0.4C default policy.
-    public static let v04C = ProcessPolicy()
+    public static let defaultDev = ProcessPolicy()
 
     /// Blocked executables — never allowed regardless of policy.
     public static let blockedExecutables: Set<String> = [

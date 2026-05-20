@@ -19,7 +19,7 @@ public enum SwooshGenerativeUISentinel {
         enc.dateEncodingStrategy = .iso8601
         struct Wrapper: Encodable {
             let _swoosh_ui: UISurfaceUpdate
-            enum CodingKeys: String, CodingKey { case _swoosh_ui = "_swoosh_ui" }
+            enum CodingKeys: String, CodingKey { case _swoosh_ui }
         }
         return try enc.encode(Wrapper(_swoosh_ui: surface))
     }
@@ -29,7 +29,7 @@ public enum SwooshGenerativeUISentinel {
     public static func decode(_ data: Data) -> UISurfaceUpdate? {
         struct Wrapper: Decodable {
             let _swoosh_ui: UISurfaceUpdate
-            enum CodingKeys: String, CodingKey { case _swoosh_ui = "_swoosh_ui" }
+            enum CodingKeys: String, CodingKey { case _swoosh_ui }
         }
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601

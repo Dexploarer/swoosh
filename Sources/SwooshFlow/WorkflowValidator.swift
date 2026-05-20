@@ -70,8 +70,8 @@ public struct WorkflowValidator: Sendable {
         }
 
         // 2. Trigger must be manual in 0.5A
-        if case .placeholder(let p) = draft.trigger {
-            warnings.append(.init(message: "Trigger '\(p.humanDescription)' is a placeholder. Only manual triggers are supported in 0.5A."))
+        if case .deferred(let p) = draft.trigger {
+            warnings.append(.init(message: "Trigger '\(p.humanDescription)' is deferred. Only manual triggers are supported in 0.5A."))
         }
 
         // 3. Validate steps

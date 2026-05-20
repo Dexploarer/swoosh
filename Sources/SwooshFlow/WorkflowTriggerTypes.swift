@@ -162,7 +162,7 @@ public enum ScheduleSpec: Codable, Sendable {
 public struct IntervalSchedule: Codable, Sendable { public let everySeconds: Int; public init(everySeconds: Int) { self.everySeconds = everySeconds } }
 public struct DailySchedule: Codable, Sendable { public let hour: Int; public let minute: Int; public init(hour: Int, minute: Int) { self.hour = hour; self.minute = minute } }
 public struct WeeklySchedule: Codable, Sendable { public let weekdays: [Int]; public let hour: Int; public let minute: Int; public init(weekdays: [Int], hour: Int, minute: Int) { self.weekdays = weekdays; self.hour = hour; self.minute = minute } }
-public struct CronSchedule: Codable, Sendable { public let expression: String; public init(expression: String) { self.expression = expression } }
+public typealias CronSchedule = SwooshSchedule
 
 // File changed
 public struct FileChangedTriggerConfig: Codable, Sendable {

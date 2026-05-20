@@ -68,6 +68,7 @@ public struct ToolApprovalRequest: Codable, Sendable, Identifiable {
     public let id: String
     public let toolName: String
     public let risk: ToolRisk
+    public let permission: SwooshPermission
     public let inputPreview: String
     public let sessionID: String
     public let createdAt: Date
@@ -76,6 +77,7 @@ public struct ToolApprovalRequest: Codable, Sendable, Identifiable {
         id: String = UUID().uuidString,
         toolName: String,
         risk: ToolRisk,
+        permission: SwooshPermission = .toolWrite,
         inputPreview: String,
         sessionID: String,
         createdAt: Date = Date()
@@ -83,6 +85,7 @@ public struct ToolApprovalRequest: Codable, Sendable, Identifiable {
         self.id = id
         self.toolName = toolName
         self.risk = risk
+        self.permission = permission
         self.inputPreview = inputPreview
         self.sessionID = sessionID
         self.createdAt = createdAt

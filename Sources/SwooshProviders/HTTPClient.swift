@@ -110,7 +110,28 @@ public actor MockHTTPClient: HTTPClient {
     }
 
     public func sendStreaming(_ request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
-        throw HTTPError.networkError("MockHTTPClient.sendStreaming not implemented")
+        recorded.append(request)
+        let response: HTTPResponse
+        if !queuedResponses.isEmpty {
+            let handler = queuedResponses.removeFirst()
+            response = handler(request)
+        } else {
+            response = HTTPResponse(statusCode: 500, data: Data("No mock response queued".utf8))
+        }
+        let url = request.url ?? URL(string: "http://localhost")!
+        let http = HTTPURLResponse(
+            url: url,
+            statusCode: response.statusCode,
+            httpVersion: "HTTP/1.1",
+            headerFields: response.headers
+        )!
+        let stream = AsyncThrowingStream<Data, Error> { continuation in
+            if !response.data.isEmpty {
+                continuation.yield(response.data)
+            }
+            continuation.finish()
+        }
+        return (http, stream)
     }
 
     public func getRecordedRequests() -> [URLRequest] { recorded }

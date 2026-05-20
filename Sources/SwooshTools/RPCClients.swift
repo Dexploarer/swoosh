@@ -110,7 +110,7 @@ public struct ToolDependencies: Sendable {
         firewall: any Firewall,
         audit: any AuditLogging,
         approvals: any ApprovalRequesting,
-        safetyConfig: SwooshSafetyConfig = .v04A,
+        safetyConfig: SwooshSafetyConfig = .defaultAgent,
         fileAccess: any FileAccessing,
         processRunner: any ProcessRunning,
         evmClient: (any EVMRPCClient)? = nil,
@@ -131,7 +131,7 @@ public struct ToolDependencies: Sendable {
     }
 }
 
-/// Default no-op resolver — always throws. Real implementation lives in SwooshSecrets.
+/// Resolver used when no secret store is configured.
 public struct NullSecretResolver: SecretResolving {
     public init() {}
     public func resolve(ref: String) async throws -> String {

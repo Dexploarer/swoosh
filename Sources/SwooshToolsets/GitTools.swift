@@ -81,7 +81,27 @@ public struct GitApplyPatchTool: SwooshTool {
     public static let risk = ToolRisk.high; public static let approval = ApprovalPolicy.askEveryTime; public static let toolset = ToolsetID.git
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        GitApplyPatchOutput(applied: false, output: "Not yet implemented")
+        let root = try await dependencies.fileAccess.resolveBookmark(id: input.rootBookmarkID)
+        let patchURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-git-apply-\(UUID().uuidString).patch")
+        try Data(input.unifiedDiff.utf8).write(to: patchURL, options: .atomic)
+        defer { try? FileManager.default.removeItem(at: patchURL) }
+
+        var arguments = ["apply"]
+        if input.check { arguments.append("--check") }
+        arguments.append(patchURL.path)
+
+        let result = try await dependencies.processRunner.run(
+            executable: "/usr/bin/git",
+            arguments: arguments,
+            workingDirectory: root,
+            environment: nil
+        )
+        let output = [result.stdout, result.stderr].filter { !$0.isEmpty }.joined(separator: "\n")
+        guard result.exitCode == 0 else {
+            throw ToolError.executionFailed(output.isEmpty ? "git apply failed" : output)
+        }
+        return GitApplyPatchOutput(applied: !input.check, output: output)
     }
 }
 

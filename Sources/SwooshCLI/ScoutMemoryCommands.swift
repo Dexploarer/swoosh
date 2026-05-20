@@ -43,7 +43,8 @@ struct ScoutRunCommand: AsyncParsableCommand {
 
         var sources: [any ScoutSource] = [
             DeviceSource(), InstalledAppsSource(),
-            RunningAppsSource(), ShellEnvironmentSource(),
+            RunningAppsSource(), PersonalizationSignalSource(),
+            ShellEnvironmentSource(),
         ]
 
         let folderPaths: [URL]
@@ -63,10 +64,15 @@ struct ScoutRunCommand: AsyncParsableCommand {
         }
         sources.append(HermesImportSource())
 
+        let backend = loadCLIBackend()
+        let existingMemories = await loadExistingMemorySummaries(backend: backend)
         let pipeline = ScoutPipeline(sources: sources)
-        let result = try await pipeline.run(depth: parsedDepth) { msg in print(msg) }
+        let result = try await pipeline.run(
+            depth: parsedDepth,
+            options: ScoutPipelineOptions(existingMemories: existingMemories)
+        ) { msg in print(msg) }
 
-        guard let backend = loadCLIBackend() else {
+        guard let backend else {
             print("  ⚠ \(cliBackendUnsetMessage)")
             print("  Pipeline ran but results were not persisted.")
             return
@@ -254,8 +260,8 @@ struct PermissionsCommand: AsyncParsableCommand {
     var status = false
     func run() async throws {
         guard status else {
-            print("Permission profile management — not yet implemented.")
-            print("Use `swoosh setup permissions` to configure or `swoosh permissions --status` to view.")
+            print("Use `swoosh setup permissions` for the profile summary.")
+            print("Use `swoosh permissions --status` to view live ActantDB grants.")
             return
         }
         guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
@@ -308,6 +314,15 @@ func printPreflight(_ hw: HardwareProfile) {
         print("\n  Local models: can run \(recs.map(\.sizeLabel).joined(separator: ", "))")
     }
     print()
+}
+
+private func loadExistingMemorySummaries(backend: AgentBackend?) async -> [ExistingMemorySummary] {
+    guard let backend else { return [] }
+    let memory = MemoryStore(backend: backend)
+    let approved = (try? await memory.listApproved()) ?? []
+    let pending = (try? await memory.listPending()) ?? []
+    return approved.map { ExistingMemorySummary(text: $0.text, category: $0.category) } +
+        pending.map { ExistingMemorySummary(text: $0.text, category: $0.category) }
 }
 
 // MARK: - CLI Setup UI

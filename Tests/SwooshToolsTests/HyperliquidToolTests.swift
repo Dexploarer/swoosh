@@ -232,7 +232,7 @@ struct HLTradingToolMetaTests {
     }
 }
 
-// MARK: - Trading tool guard clauses (NullSecretResolver → always throws)
+// MARK: - Trading tool guard clauses (NullSecretResolver always throws)
 
 @Suite("Hyperliquid Trading Tools — secret guard")
 struct HLTradingToolGuardTests {

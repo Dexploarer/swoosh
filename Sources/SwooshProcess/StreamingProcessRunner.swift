@@ -21,7 +21,7 @@ public struct StreamingProcessRunner: ProcessRunning, Sendable {
     public let policy: ProcessPolicy
     public let approvedRoots: [String]
 
-    public init(policy: ProcessPolicy = .v04C, approvedRoots: [String] = []) {
+    public init(policy: ProcessPolicy = .defaultDev, approvedRoots: [String] = []) {
         self.policy = policy
         self.approvedRoots = approvedRoots
     }

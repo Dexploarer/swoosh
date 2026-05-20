@@ -84,7 +84,7 @@ public enum WorkflowAction: Codable, Sendable {
     case conditional(condition: String, ifTrue: UUID, ifFalse: UUID)
 }
 
-// MARK: - Triggers (legacy stub — replaced by WorkflowTrigger in WorkflowTriggerTypes.swift)
+// MARK: - Triggers (legacy local diagnostic — replaced by WorkflowTrigger in WorkflowTriggerTypes.swift)
 
 public enum WorkflowTriggerLegacy: Codable, Sendable {
     // Time-based

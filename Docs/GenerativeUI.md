@@ -149,9 +149,9 @@ The wire shape isn't byte-identical to A2UI, but the *abstraction* is —
 which is what matters for migration: a translation layer maps either way in
 a few hundred lines.
 
-## Not yet
+## Planned
 
-These are out of scope for v0.4A but easy to add later:
+These are straightforward follow-up surfaces:
 
 - Streaming partial updates (current API takes whole-surface updates only).
 - Two-way bound widgets that propagate state back to the agent (currently

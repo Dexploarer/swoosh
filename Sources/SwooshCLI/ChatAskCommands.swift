@@ -6,6 +6,7 @@ import SwooshKit
 import SwooshConfig
 import SwooshTUI
 import SwooshProviders
+import SwooshProviderBridge
 import SwooshSecrets
 import SwooshTools
 import Foundation
@@ -72,6 +73,9 @@ struct AskCommand: AsyncParsableCommand {
     @Argument(help: "The question to ask.")
     var question: String
 
+    @Option(name: .long, help: "Session ID to use.")
+    var session: String = "default"
+
     func run() async throws {
         print("")
         print("  \u{001B}[36m⟳\u{001B}[0m Processing: \(question)")
@@ -84,17 +88,17 @@ struct AskCommand: AsyncParsableCommand {
             let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
             modelProvider = ProviderBridgeAdapter(router: router)
         } else {
-            modelProvider = LocalStubProvider()
+            modelProvider = LocalDiagnosticProvider()
         }
 
         let swoosh = try await Swoosh.configure {
             $0.modelProvider = modelProvider
         }
-        let response = try await swoosh.ask(question)
+        let response = try await swoosh.ask(question, sessionID: session)
 
-        let isStub = response.modelUsed.contains("stub")
-        let icon = isStub ? "○" : "✓"
-        let note = isStub ? " (stub — run `swoosh provider auth`)" : ""
+        let isDiagnostic = response.modelUsed.contains("local-diagnostic")
+        let icon = isDiagnostic ? "○" : "✓"
+        let note = isDiagnostic ? " (local diagnostic — run `swoosh provider auth`)" : ""
         print("  \u{001B}[32m\(icon)\u{001B}[0m Response (model: \(response.modelUsed)\(note)):")
         print("")
         for line in response.message.components(separatedBy: "\n") {

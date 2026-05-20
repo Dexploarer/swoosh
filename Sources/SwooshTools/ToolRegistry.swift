@@ -17,7 +17,7 @@ public actor ToolRegistry {
         firewall: any Firewall,
         audit: any AuditLogging,
         approvals: any ApprovalRequesting,
-        safetyConfig: SwooshSafetyConfig = .v04A
+        safetyConfig: SwooshSafetyConfig = .defaultAgent
     ) {
         self.firewall = firewall
         self.audit = audit
@@ -25,8 +25,18 @@ public actor ToolRegistry {
         self.safetyConfig = safetyConfig
     }
 
-    public func register(_ tool: any AnySwooshTool) {
-        tools[ToolName(tool.descriptor.name)] = tool
+    /// Register a tool. Tools whose `platforms` set does not include the
+    /// current host platform are silently dropped — the model's catalog
+    /// shouldn't list anything we can't actually execute. Returns true if
+    /// the tool was registered, false if it was filtered out.
+    @discardableResult
+    public func register(_ tool: any AnySwooshTool) -> Bool {
+        let descriptor = tool.descriptor
+        guard descriptor.platforms.contains(ToolPlatform.current) else {
+            return false
+        }
+        tools[ToolName(descriptor.name)] = tool
+        return true
     }
 
     public func listAvailable(
@@ -101,6 +111,7 @@ public actor ToolRegistry {
                 ToolApprovalRequest(
                     toolName: descriptor.name,
                     risk: descriptor.risk,
+                    permission: descriptor.permission,
                     inputPreview: input.redactedPreview(),
                     sessionID: context.sessionID
                 )
@@ -204,6 +215,7 @@ public actor ToolRegistry {
         if descriptor.approval.requiresUserApproval && descriptor.approval.modelCanInvoke {
             let approvalReq = ToolApprovalRequest(
                 toolName: descriptor.name, risk: descriptor.risk,
+                permission: descriptor.permission,
                 inputPreview: request.arguments.redactedPreview(), sessionID: context.sessionID
             )
             do {

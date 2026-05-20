@@ -5,6 +5,12 @@
 
 Swoosh is not "Hermes rewritten in Swift." It is the **native agent operating layer** for Apple devices and Swift apps — an embeddable SDK, a local daemon, a CLI, and a native macOS/iOS app.
 
+## Shipping Spine
+
+The setup-to-first-use spine is `swoosh setup quick`, provider/doctor checks, Scout scan, memory review, approved-context chat, bearer-gated Mac-to-iPhone chat through `swooshd`, skills, cron jobs, terminal backend selection, and chat adapter toggles.
+
+Swoosh should expose real configured state or explicit missing-configuration status. It must not return empty success JSON that looks connected.
+
 ## Strategic architecture
 
 ```

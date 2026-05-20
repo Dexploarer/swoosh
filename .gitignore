@@ -4,3 +4,9 @@ Backend/SwooshDB/target
 Swoosh.xcodeproj/project.xcworkspace
 .DS_Store
 Backend/SwooshDB/.build
+.codex/*
+!.codex/README.md
+!.codex/config.toml
+!.codex/hooks.json
+!.codex/scripts/
+!.codex/scripts/**

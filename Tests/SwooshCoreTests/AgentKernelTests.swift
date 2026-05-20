@@ -24,12 +24,12 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: InMemorySessionStore(),
         auditLogger: InMemoryResponseAuditor(),
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     let response = try await kernel.run(AgentRequest(input: "What do I use?"))
 
-    // The stub provider echoes back memories it received
+    // The local diagnostic provider echoes back memories it received
     #expect(response.message.contains("Xcode"))
     #expect(response.message.contains("Blender"))
     #expect(response.memoryIDsUsed.contains("mem-1"))
@@ -51,7 +51,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: InMemorySessionStore(),
         auditLogger: InMemoryResponseAuditor(),
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     let response = try await kernel.run(AgentRequest(input: "What languages?"))
@@ -73,7 +73,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: InMemorySessionStore(),
         auditLogger: InMemoryResponseAuditor(),
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     let response = try await kernel.run(AgentRequest(input: "Tell me about my apps"))
@@ -95,7 +95,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: InMemorySessionStore(),
         auditLogger: InMemoryResponseAuditor(),
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     let response = try await kernel.run(AgentRequest(input: "Tell me about myself"))
@@ -104,6 +104,28 @@ import Testing
     #expect(response.memoryIDsUsed.contains("id-abc"))
     #expect(response.memoryIDsUsed.contains("id-def"))
     #expect(response.memoryIDsUsed.contains("id-ghi"))
+}
+
+@Test func testDuplicateApprovedMemoriesAreInjectedOnce() async throws {
+    let loader = InMemoryMemoryLoader(memories: [
+        (id: "first", text: "User codes in Swift", category: "profile"),
+        (id: "duplicate", text: "  User codes   in Swift  ", category: "profile"),
+        (id: "device", text: "User has 3 monitors", category: "device"),
+    ])
+
+    let kernel = AgentKernel(
+        memoryLoader: loader,
+        reportLoader: InMemoryReportLoader(),
+        permSummarizer: InMemoryPermSummarizer(),
+        sessionStore: InMemorySessionStore(),
+        auditLogger: InMemoryResponseAuditor(),
+        modelProvider: LocalDiagnosticProvider()
+    )
+
+    let response = try await kernel.run(AgentRequest(input: "Tell me about myself"))
+
+    #expect(response.memoryIDsUsed == ["first", "device"])
+    #expect(response.message.components(separatedBy: "User codes in Swift").count == 2)
 }
 
 @Test func testResponseWritesAuditEvent() async throws {
@@ -118,7 +140,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(summary: "Granted: all"),
         sessionStore: InMemorySessionStore(),
         auditLogger: auditor,
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     _ = try await kernel.run(AgentRequest(sessionID: "test-session", input: "Hello"))
@@ -147,7 +169,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: InMemorySessionStore(),
         auditLogger: auditor,
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     _ = try await kernel.run(AgentRequest(sessionID: "why-test", input: "Hi"))
@@ -173,7 +195,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: InMemorySessionStore(),
         auditLogger: auditor,
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     _ = try await kernel.run(AgentRequest(sessionID: "cookie-test", input: "Check my browsing"))
@@ -222,7 +244,7 @@ import Testing
         permSummarizer: InMemoryPermSummarizer(),
         sessionStore: sessionStore,
         auditLogger: InMemoryResponseAuditor(),
-        modelProvider: LocalStubProvider()
+        modelProvider: LocalDiagnosticProvider()
     )
 
     _ = try await kernel.run(AgentRequest(sessionID: "persist-test", input: "Hello"))

@@ -55,6 +55,20 @@ public struct WorkerResult: Sendable {
     public var succeeded: Bool { exitCode == 0 }
 }
 
+public enum MCPBridgeError: Error, Sendable, LocalizedError {
+    case transportUnavailable(String)
+    case serverNotImported(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .transportUnavailable(let operation):
+            return "MCP bridge transport is unavailable for \(operation)"
+        case .serverNotImported(let name):
+            return "MCP server is not imported: \(name)"
+        }
+    }
+}
+
 // MARK: - MCP bridge
 
 /// Import MCP servers, export Swift tools as MCP, generate typed wrappers.
@@ -78,9 +92,7 @@ public actor MCPBridge {
 
     /// Import an MCP server and discover its tools.
     public func importServer(name: String, command: String, arguments: [String] = []) async throws {
-        // In production: spawn the process, handshake, list tools
-        let server = ImportedServer(name: name, command: command, arguments: arguments, tools: [])
-        servers[name] = server
+        throw MCPBridgeError.transportUnavailable("importServer(\(name), command: \(command), arguments: \(arguments.count))")
     }
 
     /// List all imported MCP tools with swoosh-prefixed names.
@@ -92,13 +104,12 @@ public actor MCPBridge {
 
     /// Export a set of Swoosh tools as an MCP server.
     public func exportAsServer(tools: [any AnySwooshTool], port: Int) async throws {
-        // In production: start an MCP-compatible stdio/HTTP server
-        // exposing the given tools with their schemas
+        throw MCPBridgeError.transportUnavailable("exportAsServer(tools: \(tools.count), port: \(port))")
     }
 
     /// Generate a typed Swift wrapper for an imported MCP server's tools.
-    public func generateSwiftWrapper(for serverName: String) -> String {
-        guard let server = servers[serverName] else { return "// Server not found" }
+    public func generateSwiftWrapper(for serverName: String) throws -> String {
+        guard let server = servers[serverName] else { throw MCPBridgeError.serverNotImported(serverName) }
 
         var code = "// Auto-generated Swift wrapper for MCP server: \(serverName)\n\n"
         code += "import SwooshTools\n\n"
@@ -107,8 +118,7 @@ public actor MCPBridge {
         for tool in server.tools {
             let funcName = tool.name.replacingOccurrences(of: ".", with: "_")
             code += "    public static func \(funcName)(_ arguments: JSONValue) async throws -> JSONValue {\n"
-            code += "        // Bridge call to MCP server '\(serverName)', tool '\(tool.name)'\n"
-            code += "        fatalError(\"Not yet implemented\")\n"
+            code += "        throw ToolError.executionFailed(\"MCP bridge wrapper \(serverName).\(tool.name) is not bound to an MCP transport\")\n"
             code += "    }\n\n"
         }
 

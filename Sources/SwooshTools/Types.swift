@@ -1,17 +1,5 @@
 // SwooshTools/Types.swift — Shared lightweight value types
 //
-// These are referenced by Tool.swift and the rest of the codebase.
-// Kept minimal and Sendable for actor isolation.
-//
-// NOTE: ToolsetID is now an enum in Tool.swift (0.4A)
-// NOTE: Permission is now SwooshPermission (0.4A)
-// NOTE: RiskLevel is now ToolRisk (0.4A)
-// NOTE: ToolDescriptor is now in Tool.swift (0.4A)
-// NOTE: ToolContext is now in Tool.swift (0.4A)
-// NOTE: AuditEvent is now AuditEntry/AuditEntryKind (0.4A)
-// NOTE: ApprovalEngine is now ApprovalRequesting (0.4A)
-// NOTE: AuditLog is now AuditLogging (0.4A)
-// NOTE: ToolError is now in Tool.swift (0.4A)
 
 import Foundation
 
@@ -196,12 +184,3 @@ public enum MemoryCategory: String, Codable, Sendable, CaseIterable {
     case sensitive
     case expiring
 }
-
-// MARK: - Legacy type aliases (for backward compat during 0.4A migration)
-
-@available(*, deprecated, renamed: "SwooshPermission")
-public typealias Permission = SwooshPermission
-
-@available(*, deprecated, renamed: "ToolRisk")
-public typealias RiskLevel = ToolRisk
-

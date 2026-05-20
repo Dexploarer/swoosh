@@ -260,17 +260,17 @@ struct WorkflowValidatorTests {
         #expect(!result.isValid)
     }
 
-    @Test("Placeholder trigger warns")
-    func placeholderTriggerWarns() {
+    @Test("Deferred trigger warns")
+    func deferredTriggerWarns() {
         let draft = WorkflowDraft05A(
             name: "Test", summary: "test",
-            trigger: .placeholder(WorkflowTriggerPlaceholder(kind: .schedule, humanDescription: "Daily at 8am")),
+            trigger: .deferred(WorkflowTriggerDeferred(kind: .schedule, humanDescription: "Daily at 8am")),
             steps: [WorkflowStep05A(index: 1, title: "t", kind: .note)],
             provenance: WorkflowProvenance(sourceSessionID: "s1")
         )
         let result = WorkflowValidator().validate(draft)
         #expect(result.isValid)
-        #expect(result.warnings.contains { $0.message.contains("placeholder") })
+        #expect(result.warnings.contains { $0.message.contains("deferred") })
     }
 }
 

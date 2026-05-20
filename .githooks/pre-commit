@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+staged=$(git diff --cached --name-only)
+[ -z "$staged" ] && exit 0
+
+if printf '%s\n' "$staged" | grep -q '\.DS_Store$'; then
+  printf '%s\n' "Do not commit .DS_Store files."
+  exit 1
+fi
+
+if ! git diff --cached --check >/tmp/swoosh-precommit-whitespace; then
+  cat /tmp/swoosh-precommit-whitespace
+  rm -f /tmp/swoosh-precommit-whitespace
+  exit 1
+fi
+rm -f /tmp/swoosh-precommit-whitespace
+
+if printf '%s\n' "$staged" | grep -q '^Swoosh\.xcodeproj/'; then
+  if ! printf '%s\n' "$staged" | grep -q '^project\.yml$'; then
+    printf '%s\n' "Swoosh.xcodeproj is generated. Stage project.yml with generated project changes."
+    exit 1
+  fi
+fi
+
+if git diff --cached --name-only -z | xargs -0 grep -nE '^(<<<<<<<|=======|>>>>>>>)' >/tmp/swoosh-precommit-conflicts 2>/dev/null; then
+  cat /tmp/swoosh-precommit-conflicts
+  rm -f /tmp/swoosh-precommit-conflicts
+  exit 1
+fi
+rm -f /tmp/swoosh-precommit-conflicts

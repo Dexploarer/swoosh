@@ -1,4 +1,4 @@
-# Swoosh v0 Architecture
+# Swoosh Architecture
 
 ## Process model
 
@@ -24,7 +24,7 @@ extensions over `ActantAgent.MemoryStore` / `ApprovalCenter` /
 The SQLite `SwooshStorage` target and the SpacetimeDB spike were both
 retired in favor of this stack.
 
-## Module map (v0 only)
+## Module Map
 
 ```
 SwooshKit             SDK entry point, re-exports
@@ -70,20 +70,28 @@ Permission gate
   → SecretRedactor.redact()
   → ActantClient.saveScoutRecord() (per record)
   → CandidateGenerator.generate()
+  → CandidateReviewPlanner.dedupe(existing pending + approved memories)
   → ActantAgent.MemoryStore.propose() (per candidate)
   → ActantClient.saveSetupReport()
   → User review (CLI or app)
   → ActantAgent.MemoryStore.approve() / reject()
 ```
 
-## Model path (v0)
+`swooshd` also runs Scout autopilot in the background. It uses
+`ScoutPermissionMode.skipUnavailable`, so it never raises OS permission prompts
+while unattended. It reads passive sources such as daemon app-focus signals,
+app-usage aggregates, installed/running apps, and any already-granted personal
+sources, then proposes only candidates whose normalized text is not already
+pending or approved.
+
+## Model Path
 
 ```
 Local summarizer:  Apple Foundation Models (free, on-device)
 Remote reasoner:   OpenAI-compatible provider via Keychain API key
 ```
 
-## CLI commands (v0)
+## CLI Commands
 
 ```
 swoosh setup quick       full onboarding flow
@@ -94,6 +102,12 @@ swoosh memory list       list memory candidates
 swoosh memory approve    approve pending memories
 swoosh memory show       show approved memories
 swoosh daemon status     check daemon
+swoosh skills list       list installed/promptable skills
+swoosh skills install    install an agentskills-style skill
+swoosh cron list         list scheduled jobs
+swoosh cron create       create a scheduled agent job
+swoosh terminal backends list terminal execution backends
+swoosh chat-adapters     list and toggle platform/state adapters
 ```
 
 ## Backend schema

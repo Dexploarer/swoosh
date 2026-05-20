@@ -17,6 +17,37 @@ public struct ScoutPipelineResult: Sendable {
     public let candidates: [MemoryCandidate]
 }
 
+public enum ScoutPermissionMode: Sendable {
+    case requestIfNeeded
+    case skipUnavailable
+}
+
+public struct ExistingMemorySummary: Sendable {
+    public let text: String
+    public let category: String
+
+    public init(text: String, category: String) {
+        self.text = text
+        self.category = category
+    }
+}
+
+public struct ScoutPipelineOptions: Sendable {
+    public let permissionMode: ScoutPermissionMode
+    public let existingMemories: [ExistingMemorySummary]
+    public let minimumConfidence: Double
+
+    public init(
+        permissionMode: ScoutPermissionMode = .requestIfNeeded,
+        existingMemories: [ExistingMemorySummary] = [],
+        minimumConfidence: Double = 0.0
+    ) {
+        self.permissionMode = permissionMode
+        self.existingMemories = existingMemories
+        self.minimumConfidence = minimumConfidence
+    }
+}
+
 public struct ScoutPipeline: Sendable {
     private let sources: [any ScoutSource]
     private let redactor: SecretRedactor
@@ -27,7 +58,11 @@ public struct ScoutPipeline: Sendable {
     }
 
     /// Run the full pipeline: scan → redact → generate candidates → produce report
-    public func run(depth: PersonalizationDepth, log: @Sendable (String) -> Void = { _ in }) async throws -> ScoutPipelineResult {
+    public func run(
+        depth: PersonalizationDepth,
+        options: ScoutPipelineOptions = ScoutPipelineOptions(),
+        log: @Sendable (String) -> Void = { _ in }
+    ) async throws -> ScoutPipelineResult {
         let progress = ScanProgress()
         var allRecords: [ScoutRecord] = []
         var sourcesScanned = 0
@@ -44,13 +79,20 @@ public struct ScoutPipeline: Sendable {
             var hasPermission = (permStatus == .granted)
 
             if !hasPermission {
-                log("  ⟳ Requesting permission for \(source.displayName)...")
-                let requested = try await source.requestPermission()
-                hasPermission = (requested == .granted)
+                switch options.permissionMode {
+                case .requestIfNeeded:
+                    log("  ⟳ Requesting permission for \(source.displayName)...")
+                    let requested = try await source.requestPermission()
+                    hasPermission = (requested == .granted)
+                case .skipUnavailable:
+                    log("  ○ \(source.displayName) — skipped (permission unavailable)")
+                }
             }
 
             guard hasPermission else {
-                log("  ✗ \(source.displayName) — permission denied")
+                if options.permissionMode == .requestIfNeeded {
+                    log("  ✗ \(source.displayName) — permission denied")
+                }
                 continue
             }
 
@@ -74,7 +116,11 @@ public struct ScoutPipeline: Sendable {
         }
 
         // Phase 3: Generate memory candidates
-        let candidates = generateCandidates(from: redactedRecords)
+        let candidates = CandidateReviewPlanner().plan(
+            candidates: generateCandidates(from: redactedRecords),
+            existingMemories: options.existingMemories,
+            minimumConfidence: options.minimumConfidence
+        )
         log("  ✓ Generated \(candidates.count) memory candidates")
 
         // Phase 4: Produce setup report
@@ -215,6 +261,117 @@ public struct ScoutPipeline: Sendable {
                 confidence: 1.0,
                 sensitivity: .low,
                 evidence: [EvidencePointer(source: "device", detail: "system info")]
+            ))
+        }
+
+        // ── Personal-layer candidates ────────────────────────────────
+        // Trust rule: aggregate signals only. The records may carry
+        // per-item metadata (calendar event counts, app bundle IDs,
+        // exact sleep hours), but candidates emit *patterns*, never
+        // raw quotes — titles, attendees, file names stay in the
+        // record store, never in the prompt-bound memory text.
+
+        // App usage — top apps + total time
+        let appUsage = records.filter { $0.kind == .appUsage }
+        if !appUsage.isEmpty {
+            let topApps = appUsage.prefix(3).map(\.content).joined(separator: "; ")
+            let totalSeconds = appUsage.reduce(0) { sum, record in
+                sum + (Int(record.metadata["seconds"] ?? "0") ?? 0)
+            }
+            let totalHours = Double(totalSeconds) / 3600.0
+            candidates.append(MemoryCandidate(
+                text: "Active app usage over the recent window — \(topApps). " +
+                      "Total focused time: \(String(format: "%.1f", totalHours))h.",
+                category: "workflow",
+                confidence: 0.85,
+                sensitivity: .high,
+                evidence: appUsage.prefix(5).map {
+                    EvidencePointer(source: "app_usage", detail: $0.content)
+                }
+            ))
+        }
+
+        // Focus mode — present state
+        let focus = records.filter { $0.kind == .focusMode }
+        if let primary = focus.first {
+            candidates.append(MemoryCandidate(
+                text: primary.content,
+                category: "preference",
+                confidence: 0.8,
+                sensitivity: .medium,
+                evidence: [EvidencePointer(source: "focus_mode", detail: primary.content)]
+            ))
+        }
+
+        // Calendar cadence — aggregate only
+        let calendarPatterns = records.filter { $0.kind == .calendarPattern }
+        if !calendarPatterns.isEmpty {
+            let summary = calendarPatterns.map(\.content).joined(separator: " ")
+            candidates.append(MemoryCandidate(
+                text: "Calendar cadence: \(summary)",
+                category: "workflow",
+                confidence: 0.85,
+                sensitivity: .medium,
+                evidence: calendarPatterns.map {
+                    EvidencePointer(source: "calendar", detail: $0.content)
+                }
+            ))
+        }
+
+        // Reminder load
+        let reminders = records.filter { $0.kind == .reminderSummary }
+        if let first = reminders.first {
+            candidates.append(MemoryCandidate(
+                text: "Reminder backlog: \(first.content)",
+                category: "workflow",
+                confidence: 0.8,
+                sensitivity: .medium,
+                evidence: [EvidencePointer(source: "reminders", detail: first.content)]
+            ))
+        }
+
+        // Sleep window — wellbeing baseline
+        let sleep = records.filter { $0.kind == .healthSleep }
+        if let primary = sleep.first {
+            candidates.append(MemoryCandidate(
+                text: primary.content,
+                category: "wellbeing",
+                confidence: 0.9,
+                sensitivity: .high,
+                evidence: [EvidencePointer(source: "health_sleep", detail: primary.content)]
+            ))
+        }
+
+        // Recent docs — working set proxy
+        let recentDocs = records.filter { $0.kind == .recentDocument }
+        if !recentDocs.isEmpty {
+            candidates.append(MemoryCandidate(
+                text: "User actively edits documents through \(recentDocs.count) tracked apps recently.",
+                category: "workflow",
+                confidence: 0.75,
+                sensitivity: .medium,
+                evidence: recentDocs.prefix(5).map {
+                    EvidencePointer(source: "recent_documents", detail: $0.metadata["list"] ?? $0.content)
+                }
+            ))
+        }
+
+        let signals = records.filter { $0.kind == .personalizationSignal }
+        let recurringApps = signals.filter {
+            $0.metadata["signal_kind"] == PersonalizationSignalKind.appFocus.rawValue &&
+            (Double($0.metadata["weight"] ?? "0") ?? 0) >= 15
+        }
+        if !recurringApps.isEmpty {
+            let labels = recurringApps.prefix(5).map(\.content).joined(separator: "; ")
+            candidates.append(MemoryCandidate(
+                text: "Recurring work surface signals: \(labels).",
+                category: "workflow",
+                confidence: 0.78,
+                sensitivity: .low,
+                evidence: recurringApps.prefix(5).map {
+                    EvidencePointer(source: "personalization_signals", detail: $0.content)
+                },
+                recommendedTTL: 14 * 24 * 60 * 60
             ))
         }
 

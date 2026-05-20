@@ -1,5 +1,7 @@
 // SwooshMLX/MLXInferenceEngine.swift — Local inference via MLX
 import Foundation
+import MLXLMCommon
+import MLXLMTokenizers
 
 public actor MLXInferenceEngine {
     public enum EngineState: Sendable, Equatable {
@@ -7,6 +9,7 @@ public actor MLXInferenceEngine {
     }
     private var state: EngineState = .idle
     private var loadedModelID: String?
+    private var container: ModelContainer?
     private let modelsDir: URL
 
     public init(modelsDir: URL? = nil) {
@@ -31,15 +34,32 @@ public actor MLXInferenceEngine {
         guard FileManager.default.fileExists(atPath: path.path) else {
             state = .error("Not found"); throw MLXError.modelNotFound(id)
         }
-        loadedModelID = id; state = .ready
+        do {
+            container = try await loadModelContainer(
+                from: path,
+                using: TokenizersLoader()
+            )
+            loadedModelID = id
+            state = .ready
+        } catch {
+            state = .error(error.localizedDescription)
+            throw MLXError.loadFailed(id, error.localizedDescription)
+        }
     }
 
-    public func unloadModel() { loadedModelID = nil; state = .idle }
+    public func unloadModel() { loadedModelID = nil; container = nil; state = .idle }
 
     public func generate(prompt: String, maxTokens: Int = 512, temperature: Double = 0.7) async throws -> String {
-        guard state == .ready else { throw MLXError.noModelLoaded }
+        guard state == .ready, let container else { throw MLXError.noModelLoaded }
         state = .generating; defer { state = .ready }
-        return "[MLX:\(loadedModelID ?? "?")] Local inference ready — pending MLXLLM integration"
+        let session = ChatSession(
+            container,
+            generateParameters: GenerateParameters(
+                maxTokens: maxTokens,
+                temperature: Float(temperature)
+            )
+        )
+        return try await session.respond(to: prompt)
     }
 
     public static var isAppleSilicon: Bool {
@@ -58,5 +78,8 @@ public struct LocalModelInfo: Sendable, Identifiable {
 }
 
 public enum MLXError: Error, Sendable {
-    case modelNotFound(String), noModelLoaded, insufficientMemory(required: Double, available: Double)
+    case modelNotFound(String)
+    case noModelLoaded
+    case loadFailed(String, String)
+    case insufficientMemory(required: Double, available: Double)
 }

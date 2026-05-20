@@ -17,7 +17,7 @@ swoosh
 Banner shows:
 
 ```
-Swoosh v0.1
+Swoosh
 Mode: interactive
 Memory: 0 approved, 0 pending
 Permissions: safe

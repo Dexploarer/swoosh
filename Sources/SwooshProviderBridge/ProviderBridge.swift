@@ -1,8 +1,10 @@
-// SwooshCLI/ProviderBridge.swift — 0.9P Bridge: SwooshProviders → SwooshCore
+// SwooshProviderBridge/ProviderBridge.swift — Bridge SwooshProviders → SwooshCore
 //
 // Adapts the real ProviderRouter to the SwooshCore ModelProvider protocol.
 // Handles type conversion between SwooshCore.ChatMessage and SwooshTools.ChatMessage.
-// Lives in the CLI layer because it depends on both SwooshCore and SwooshProviders.
+//
+// Originally lived in SwooshCLI; promoted to its own library so the daemon
+// can mount the real inference stack instead of LocalDiagnosticProvider.
 
 import Foundation
 import SwooshCore
