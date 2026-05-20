@@ -169,7 +169,7 @@ public struct SwooshDoctor {
         ))
 
         // Credential checks
-        let providerKeys = (try? await credentials.listKeys(service: "ai.swoosh.providers")) ?? []
+        let providerKeys = (try? await credentials.listKeys(service: "ai.swoosh.secrets")) ?? []
         checks.append(DoctorResult.Check(
             category: "Model",
             name: "Provider credentials",

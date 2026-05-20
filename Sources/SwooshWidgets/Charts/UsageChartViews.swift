@@ -190,7 +190,7 @@ public struct ProviderUsageBarChart: View {
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
 
             Chart {
-                ForEach(Array(data.enumerated()), id: \.offset) { _, item in
+                ForEach(data, id: \.provider) { item in
                     BarMark(
                         x: .value("Usage", item.usage),
                         y: .value("Provider", item.provider)

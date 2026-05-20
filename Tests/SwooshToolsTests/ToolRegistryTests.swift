@@ -66,6 +66,30 @@ struct StubFileAccess: FileAccessing {
     func searchFiles(root: URL, query: String, filePattern: String?, maxResults: Int?) async throws -> [FileSearchMatch] { [] }
 }
 
+actor PatchFileAccess: FileAccessing {
+    var files: [String: String]
+
+    init(files: [String: String]) {
+        self.files = files
+    }
+
+    func resolveBookmark(id: String) async throws -> URL { URL(fileURLWithPath: "/tmp/test") }
+    func listDirectory(root: URL, relativePath: String?, includeHidden: Bool, maxDepth: Int) async throws -> [FileEntry] { [] }
+    func readFile(root: URL, relativePath: String, maxBytes: Int?) async throws -> (content: String, truncated: Bool, redaction: RedactionReport?) {
+        guard let content = files[relativePath] else {
+            throw ToolError.notFound(relativePath)
+        }
+        return (content, false, nil)
+    }
+    func writeFile(root: URL, relativePath: String, content: String, createBackup: Bool) async throws -> (bytesWritten: Int64, backupPath: String?) {
+        files[relativePath] = content
+        return (Int64(content.utf8.count), createBackup ? "\(relativePath).bak" : nil)
+    }
+    func deleteFile(root: URL, relativePath: String) async throws {}
+    func searchFiles(root: URL, query: String, filePattern: String?, maxResults: Int?) async throws -> [FileSearchMatch] { [] }
+    func content(relativePath: String) -> String? { files[relativePath] }
+}
+
 /// Stub process runner
 struct StubProcessRunner: ProcessRunning {
     func run(executable: String, arguments: [String], workingDirectory: URL?, environment: [String: String]?) async throws -> ProcessResult {
@@ -73,8 +97,21 @@ struct StubProcessRunner: ProcessRunning {
     }
 }
 
-func makeTestDeps(firewall: any SwooshTools.Firewall, audit: any AuditLogging, approvals: any ApprovalRequesting) -> ToolDependencies {
-    ToolDependencies(firewall: firewall, audit: audit, approvals: approvals, fileAccess: StubFileAccess(), processRunner: StubProcessRunner())
+func makeTestDeps(
+    firewall: any SwooshTools.Firewall,
+    audit: any AuditLogging,
+    approvals: any ApprovalRequesting,
+    fileAccess: any FileAccessing = StubFileAccess(),
+    memoryStore: any MemoryToolStoring = InMemoryMemoryToolStore()
+) -> ToolDependencies {
+    ToolDependencies(
+        firewall: firewall,
+        audit: audit,
+        approvals: approvals,
+        fileAccess: fileAccess,
+        processRunner: StubProcessRunner(),
+        memoryStore: memoryStore
+    )
 }
 
 // MARK: - Tests
@@ -154,11 +191,19 @@ struct ToolRegistryTests {
         let fw = MockFirewall(granted: [.memoryWrite])
         let audit = MockAudit()
         let approvals = MockApprovals(autoApprove: true)
-        let deps = makeTestDeps(firewall: fw, audit: audit, approvals: approvals)
+        let memoryStore = InMemoryMemoryToolStore()
+        let candidateID = await memoryStore.propose(ProposeMemoryCandidateInput(
+            text: "User prefers Swift.",
+            category: .preference,
+            sensitivity: .normal,
+            confidence: 0.9,
+            evidence: []
+        ))
+        let deps = makeTestDeps(firewall: fw, audit: audit, approvals: approvals, memoryStore: memoryStore)
         let registry = ToolRegistry(firewall: fw, audit: audit, approvals: approvals)
         await registry.register(TypeErasedTool(ApproveCandidateTool(dependencies: deps)))
-        let ctx = ToolContext(sessionID: "test", isModelInvocation: false) // Human
-        let result = try await registry.call(name: "vault.approve_candidate", input: .object(["candidateID": .string("x")]), context: ctx)
+        let ctx = ToolContext(sessionID: "test", isModelInvocation: false)
+        let result = try await registry.call(name: "vault.approve_candidate", input: .object(["candidateID": .string(candidateID)]), context: ctx)
         // Should succeed
         if case .object(let dict) = result {
             #expect(dict["approvedMemoryID"] != nil)
@@ -212,6 +257,74 @@ struct ToolRegistryTests {
             if case .notFound = error { /* expected */ }
             else { Issue.record("Wrong error: \(error)") }
         }
+    }
+}
+
+@Suite("Operational tool stores")
+struct OperationalToolStoreTests {
+    @Test("Memory tools persist candidate approval")
+    func memoryToolsPersistCandidateApproval() async throws {
+        let fw = MockFirewall(granted: [.memoryWrite, .toolRead])
+        let audit = MockAudit()
+        let approvals = MockApprovals()
+        let memoryStore = InMemoryMemoryToolStore()
+        let deps = makeTestDeps(firewall: fw, audit: audit, approvals: approvals, memoryStore: memoryStore)
+        let context = ToolContext(sessionID: "test", isModelInvocation: false)
+
+        let proposed = try await ProposeCandidateTool(dependencies: deps).call(
+            ProposeMemoryCandidateInput(
+                text: "User prefers Swift.",
+                category: .preference,
+                sensitivity: .normal,
+                confidence: 0.9,
+                evidence: [EvidencePointer(sourceID: "test", description: "unit test")]
+            ),
+            context: context
+        )
+        let candidates = try await ListCandidatesTool(dependencies: deps).call(
+            ListCandidatesInput(status: .pending),
+            context: context
+        )
+        #expect(candidates.candidates.count == 1)
+        #expect(candidates.candidates[0].id == proposed.candidateID)
+
+        let approved = try await ApproveCandidateTool(dependencies: deps).call(
+            ApproveMemoryCandidateInput(candidateID: proposed.candidateID, finalText: "User strongly prefers Swift."),
+            context: context
+        )
+        let listed = try await ListApprovedMemoriesTool(dependencies: deps).call(
+            ListApprovedMemoriesInput(category: .preference),
+            context: context
+        )
+        #expect(listed.memories.count == 1)
+        #expect(listed.memories[0].id == approved.approvedMemoryID)
+        #expect(listed.memories[0].text == "User strongly prefers Swift.")
+    }
+
+    @Test("File patch applies unified diff")
+    func filePatchAppliesUnifiedDiff() async throws {
+        let fw = MockFirewall(granted: [.fileWrite])
+        let audit = MockAudit()
+        let approvals = MockApprovals()
+        let fileAccess = PatchFileAccess(files: ["README.md": "one\ntwo\nthree\n"])
+        let deps = makeTestDeps(firewall: fw, audit: audit, approvals: approvals, fileAccess: fileAccess)
+        let diff = """
+        --- a/README.md
+        +++ b/README.md
+        @@ -1,3 +1,3 @@
+         one
+        -two
+        +TWO
+         three
+        """
+
+        let output = try await FilePatchTool(dependencies: deps).call(
+            FilePatchInput(rootBookmarkID: "root", relativePath: "README.md", unifiedDiff: diff, createBackup: false),
+            context: ToolContext(sessionID: "test", isModelInvocation: false)
+        )
+        let content = await fileAccess.content(relativePath: "README.md")
+        #expect(output.applied)
+        #expect(content == "one\nTWO\nthree\n")
     }
 }
 

@@ -125,7 +125,7 @@ struct PlaceholderPane: View {
                 .foregroundStyle(.secondary)
             Text(title)
                 .font(.title)
-            Text("Coming soon")
+            Text("No live data connected")
                 .font(.subheadline)
                 .foregroundStyle(.tertiary)
         }

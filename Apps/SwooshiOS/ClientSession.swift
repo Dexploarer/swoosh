@@ -53,8 +53,18 @@ final class ClientSession {
             return
         }
         let healthy = await client.health()
-        lastHealth = healthy ? .ok : .unreachable
-        agentStatus = healthy ? try? await client.agentStatus() : nil
+        guard healthy else {
+            lastHealth = .unreachable
+            agentStatus = nil
+            return
+        }
+        do {
+            agentStatus = try await client.agentStatus()
+            lastHealth = .ok
+        } catch {
+            agentStatus = nil
+            lastHealth = .unreachable
+        }
     }
 
     /// Persist a new pairing and re-probe.

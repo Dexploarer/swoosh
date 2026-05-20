@@ -31,6 +31,12 @@ import SwooshSkills
 import SwooshGoals
 import SwooshManifesting
 import SwooshCron
+import SwooshToolsets
+import SwooshTools
+import SwooshFirewall
+import SwooshApprovals
+import SwooshFiles
+import SwooshProcess
 import SwooshProviderBridge
 import SwooshProviders
 import SwooshCore
@@ -95,8 +101,9 @@ struct SwooshDaemon {
         if host != "127.0.0.1" {
             log("WARNING: binding to \(host) — daemon is reachable from other devices on this network.")
         }
-        log("API token: \(token)")
-        log("Pair an iPhone by entering this token into the Swoosh iOS app.")
+        _ = token
+        log("API token resolved and stored at \(swooshDir.appendingPathComponent("api_token").path).")
+        log("Pair an iPhone by entering the stored token into the Swoosh iOS app.")
 
         // ── Provider router (real inference when keys are present) ───
         // Matches the CLI's wiring: detect any configured provider via
@@ -125,6 +132,11 @@ struct SwooshDaemon {
             return modelProvider
         }()
 
+        let toolRuntime = try await makeDaemonToolRuntime(
+            swooshDir: swooshDir,
+            backend: agentBackend
+        )
+
         // ── Real kernel ──────────────────────────────────────────────
         // ACTANT_BASE_URL is set; SwooshKit.configure picks it up and wires
         // the kernel through SwooshActantBackend so the iPhone's chat turns
@@ -133,12 +145,13 @@ struct SwooshDaemon {
         do {
             swoosh = try await Swoosh.configure { config in
                 config.modelProvider = modelProvider
+                config.toolRegistry = toolRuntime.registry
             }
         } catch {
             log("FATAL: failed to build agent kernel: \(error)")
             exit(1)
         }
-        log("Agent kernel ready")
+        log("Agent kernel ready with tool loop")
 
         // ── Self-improvement pillars ────────────────────────────────
         // Stores live entirely in process today. When the actantDB iOS
@@ -170,6 +183,19 @@ struct SwooshDaemon {
         )
         log("Manifester ready (\(metaProvider == nil ? "deterministic" : "model-backed") miner; scheduler armed).")
 
+        let cronStore = FileCronJobStore(root: swooshDir.appendingPathComponent("cron", isDirectory: true))
+        let cronScheduler = CronScheduler(store: cronStore, processRunner: CronProcessRunner())
+        await DefaultToolRegistrar.registerAll(
+            into: toolRuntime.registry,
+            dependencies: toolRuntime.dependencies,
+            selfImprovement: SelfImprovementDependencies(
+                skills: SkillToolDependencies(store: skillStore),
+                goals: GoalToolDependencies(store: goalStore),
+                manifest: ManifestToolDependencies(store: manifestStore, manifester: manifester),
+                cron: CronToolDependencies(store: cronStore, scheduler: cronScheduler)
+            )
+        )
+
         // Real judge for the goal runner.
         let judge: GoalRunner.Judge = makeJudge(metaProvider: metaProvider)
         let goalRunner = GoalRunner(
@@ -182,7 +208,7 @@ struct SwooshDaemon {
                     sessionID: "goal-\(goal.id)",
                     input: goal.statement
                 )
-                let response = try await swoosh.kernel.run(request)
+                let response = try await swoosh.ask(request.input, sessionID: request.sessionID)
                 return response.message
             },
             judge: judge
@@ -223,10 +249,8 @@ struct SwooshDaemon {
         log("Manifestation scheduler tick task started.")
         log("Scout autopilot scheduler started.")
 
-        let cronStore = FileCronJobStore(root: swooshDir.appendingPathComponent("cron", isDirectory: true))
-        let cronScheduler = CronScheduler(store: cronStore, processRunner: CronProcessRunner())
         let cronExecutor: CronAgentExecutor = { request in
-            let response = try await swoosh.kernel.run(AgentRequest(sessionID: request.sessionID, input: request.prompt))
+            let response = try await swoosh.ask(request.prompt, sessionID: request.sessionID)
             return response.message
         }
         let cronTask = Task.detached(priority: .background) {
@@ -280,6 +304,7 @@ struct SwooshDaemon {
             hostname: host,
             token: token,
             kernel: swoosh.kernel,
+            toolLoop: swoosh.toolLoop,
             snapshot: SwooshAPISnapshot(
                 providers: providerSummaries.providers,
                 activeProviderID: providerSummaries.activeProviderID,
@@ -391,6 +416,60 @@ struct SwooshDaemon {
 
         return (providers, activeID)
     }
+}
+
+// MARK: - Tool runtime
+
+private struct DaemonToolRuntime: Sendable {
+    let registry: ToolRegistry
+    let dependencies: ToolDependencies
+}
+
+private func makeDaemonToolRuntime(
+    swooshDir: URL,
+    backend: AgentBackend
+) async throws -> DaemonToolRuntime {
+    let audit = SwooshAuditLog()
+    let firewall = SwooshFirewallActor(granted: defaultDaemonToolPermissions())
+    let approvalCenter = SwooshApprovals.ApprovalCenter(store: InMemoryApprovalStore(), audit: audit)
+    let rootStore = InMemoryRootStore()
+    let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
+        .standardizedFileURL
+    await rootStore.add(ApprovedRoot(
+        id: "cwd",
+        displayName: cwd.lastPathComponent.isEmpty ? cwd.path : cwd.lastPathComponent,
+        absolutePath: cwd.path,
+        allowedRead: true,
+        allowedWrite: true
+    ))
+    await rootStore.add(ApprovedRoot(
+        id: "swoosh-state",
+        displayName: ".swoosh",
+        absolutePath: swooshDir.standardizedFileURL.path,
+        allowedRead: true,
+        allowedWrite: true
+    ))
+
+    let dependencies = ToolDependencies(
+        firewall: firewall,
+        audit: audit,
+        approvals: approvalCenter,
+        fileAccess: SafeFileAccessor(rootStore: rootStore),
+        processRunner: StreamingProcessRunner(approvedRoots: [cwd.path, swooshDir.path]),
+        memoryStore: MemoryStore(backend: backend),
+        scoutStore: InMemoryScoutToolStore(),
+        workflowStore: InMemoryWorkflowToolStore()
+    )
+    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
+    await DefaultToolRegistrar.registerAll(into: registry, dependencies: dependencies)
+    return DaemonToolRuntime(registry: registry, dependencies: dependencies)
+}
+
+private func defaultDaemonToolPermissions() -> Set<SwooshPermission> {
+    Set(SwooshPermission.allCases).subtracting([
+        .evmMainnetWrite,
+        .solanaMainnetWrite,
+    ])
 }
 
 // MARK: - Scout autopilot
@@ -528,15 +607,16 @@ private func jsonValue(_ metadata: [String: String]) -> ActantDB.JSONValue {
     return value
 }
 
-private func candidateEvidenceJSON(
-    evidence: [EvidencePointer],
+private struct CandidateEvidencePayload<Evidence: Encodable>: Encodable {
+    let evidence: Evidence
+    let recommendedTTL: TimeInterval?
+}
+
+private func candidateEvidenceJSON<Evidence: Encodable>(
+    evidence: Evidence,
     ttl: TimeInterval?
 ) -> ActantDB.JSONValue {
-    struct Payload: Encodable {
-        let evidence: [EvidencePointer]
-        let recommendedTTL: TimeInterval?
-    }
-    let payload = Payload(evidence: evidence, recommendedTTL: ttl)
+    let payload = CandidateEvidencePayload(evidence: evidence, recommendedTTL: ttl)
     guard
         let data = try? JSONEncoder().encode(payload),
         let value = try? JSONDecoder().decode(ActantDB.JSONValue.self, from: data)

@@ -176,7 +176,7 @@ struct KeychainAccessCheck: DoctorCheck {
     func run(context: DoctorContext) async throws -> DoctorCheckResult {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "ai.swoosh.provider-keys",
+            kSecAttrService as String: "ai.swoosh.secrets",
             kSecMatchLimit as String: kSecMatchLimitAll,
             kSecReturnAttributes as String: true,
         ]

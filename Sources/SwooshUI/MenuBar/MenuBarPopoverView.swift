@@ -205,7 +205,7 @@ struct MenuBarSectionCard: View {
                     .font(.system(size: compact ? 10 : 11))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("Coming soon")
+                Text("Not enabled")
                     .font(.system(size: 9))
                     .foregroundStyle(.tertiary)
             }

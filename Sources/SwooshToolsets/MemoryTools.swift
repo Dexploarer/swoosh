@@ -10,7 +10,11 @@ public struct ListApprovedMemoriesTool: SwooshTool {
     public static let permission = SwooshPermission.toolRead; public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { ListApprovedMemoriesOutput(memories: []) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        ListApprovedMemoriesOutput(
+            memories: try await dependencies.memoryStore.listApproved(category: input.category, limit: input.limit)
+        )
+    }
 }
 
 // ── memory.search_approved ────────────────────────────────────────
@@ -21,7 +25,15 @@ public struct SearchApprovedMemoriesTool: SwooshTool {
     public static let permission = SwooshPermission.toolRead; public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { SearchApprovedMemoriesOutput(results: []) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        SearchApprovedMemoriesOutput(
+            results: try await dependencies.memoryStore.searchApproved(
+                query: input.query,
+                category: input.category,
+                limit: input.limit
+            )
+        )
+    }
 }
 
 // ── memory.get_approved ───────────────────────────────────────────
@@ -32,7 +44,9 @@ public struct GetApprovedMemoryTool: SwooshTool {
     public static let permission = SwooshPermission.toolRead; public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { GetApprovedMemoryOutput(memory: nil) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        GetApprovedMemoryOutput(memory: try await dependencies.memoryStore.getApproved(id: input.memoryID))
+    }
 }
 
 // ── vault.list_candidates ─────────────────────────────────────────
@@ -43,7 +57,11 @@ public struct ListCandidatesTool: SwooshTool {
     public static let permission = SwooshPermission.toolRead; public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { ListCandidatesOutput(candidates: []) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        ListCandidatesOutput(
+            candidates: try await dependencies.memoryStore.listCandidates(status: input.status, limit: input.limit)
+        )
+    }
 }
 
 // ── vault.get_candidate ───────────────────────────────────────────
@@ -54,7 +72,9 @@ public struct GetCandidateTool: SwooshTool {
     public static let permission = SwooshPermission.toolRead; public static let risk = ToolRisk.readOnly
     public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { GetCandidateOutput(candidate: nil) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        GetCandidateOutput(candidate: try await dependencies.memoryStore.getCandidate(id: input.candidateID))
+    }
 }
 
 // ── vault.propose_candidate ───────────────────────────────────────
@@ -66,7 +86,7 @@ public struct ProposeCandidateTool: SwooshTool {
     public static let approval = ApprovalPolicy.askFirstTime; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        let id = UUID().uuidString
+        let id = try await dependencies.memoryStore.propose(input)
         try await dependencies.audit.append(AuditEntry(kind: .memoryProposed, detail: "Proposed: \(input.text.prefix(80))"))
         return ProposeMemoryCandidateOutput(candidateID: id, status: .pending)
     }
@@ -81,7 +101,10 @@ public struct ApproveCandidateTool: SwooshTool {
     public static let approval = ApprovalPolicy.humanOnly; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        let memID = UUID().uuidString
+        let memID = try await dependencies.memoryStore.approve(
+            candidateID: input.candidateID,
+            finalText: input.finalText
+        )
         try await dependencies.audit.append(AuditEntry(kind: .memoryApproved, detail: "Approved candidate \(input.candidateID)"))
         return ApproveMemoryCandidateOutput(approvedMemoryID: memID)
     }
@@ -96,6 +119,7 @@ public struct RejectCandidateTool: SwooshTool {
     public static let approval = ApprovalPolicy.humanOnly; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        try await dependencies.memoryStore.reject(candidateID: input.candidateID, reason: input.reason)
         try await dependencies.audit.append(AuditEntry(kind: .memoryRejected, detail: "Rejected candidate \(input.candidateID)"))
         return RejectMemoryCandidateOutput(candidateID: input.candidateID, status: .rejected)
     }
@@ -110,6 +134,12 @@ public struct EditCandidateTool: SwooshTool {
     public static let approval = ApprovalPolicy.humanOnly; public static let toolset = ToolsetID.memory
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        try await dependencies.memoryStore.edit(
+            candidateID: input.candidateID,
+            newText: input.newText,
+            newCategory: input.newCategory,
+            newSensitivity: input.newSensitivity
+        )
         try await dependencies.audit.append(AuditEntry(kind: .memoryEdited, detail: "Edited candidate \(input.candidateID)"))
         return EditMemoryCandidateOutput(candidateID: input.candidateID, status: .edited)
     }

@@ -7,8 +7,8 @@
 //                       When the daemon was started without one, the entire
 //                       `/api/*` tree is shadow-mounted under DenyAllMiddleware
 //                       so binding to 0.0.0.0 still can't expose the agent.
-//   3. Agent          — `POST /api/agent/chat` calls `AgentKernel.run()` and
-//                       returns a `ChatResponse` JSON body.
+//   3. Agent          — `POST /api/agent/chat` calls the tool loop when it is
+//                       configured, otherwise the plain kernel.
 //
 // Streaming / WebSocket and the audit/approvals endpoints will land on top of
 // this once the iOS slice is proven; this file is intentionally the smallest
@@ -62,7 +62,7 @@ public struct SwooshAPIServer: Sendable {
     private let port: Int
     private let hostname: String
     private let token: String?
-    private let kernel: KernelHandle?
+    private let agent: AgentHandle?
     private let snapshot: SwooshAPISnapshot
 
     /// - Parameters:
@@ -81,19 +81,26 @@ public struct SwooshAPIServer: Sendable {
         hostname: String = "127.0.0.1",
         token: String? = nil,
         kernel: AgentKernel? = nil,
+        toolLoop: AgentToolLoop? = nil,
         snapshot: SwooshAPISnapshot = SwooshAPISnapshot()
     ) {
         self.port = port
         self.hostname = hostname
         self.token = token
-        self.kernel = kernel.map(KernelHandle.init)
+        if let toolLoop {
+            self.agent = .toolLoop(ToolLoopHandle(toolLoop))
+        } else if let kernel {
+            self.agent = .kernel(KernelHandle(kernel))
+        } else {
+            self.agent = nil
+        }
         self.snapshot = snapshot
     }
 
     /// Build the Hummingbird application with all routes wired in.
     public func build() -> some ApplicationProtocol {
         let router = Router()
-        let kernel = self.kernel
+        let agent = self.agent
         let buildVersion = SwooshAPIServer.buildVersion
         let runtime = APIRuntimeState(snapshot: snapshot)
         let adapterCatalog = ChatAdapterCatalog()
@@ -116,7 +123,7 @@ public struct SwooshAPIServer: Sendable {
         }
 
         apiGroup.post("/agent/chat") { request, context -> ChatResponse in
-            guard let kernel else {
+            guard let agent else {
                 throw HTTPError(.serviceUnavailable, message: "kernel not configured")
             }
             let chatRequest = try await request.decode(as: ChatRequest.self, context: context)
@@ -126,7 +133,7 @@ public struct SwooshAPIServer: Sendable {
             )
             let agentResponse: AgentResponse
             do {
-                agentResponse = try await kernel.kernel.run(agentRequest)
+                agentResponse = try await agent.run(agentRequest)
             } catch {
                 throw HTTPError(.internalServerError, message: error.localizedDescription)
             }
@@ -141,7 +148,7 @@ public struct SwooshAPIServer: Sendable {
         }
 
         apiGroup.get("/agent/status") { _, _ -> AgentStatusResponse in
-            await runtime.agentStatus(chatEnabled: kernel != nil)
+            await runtime.agentStatus(chatEnabled: agent != nil)
         }
 
         apiGroup.get("/providers") { _, _ -> ProvidersResponse in
@@ -151,10 +158,10 @@ public struct SwooshAPIServer: Sendable {
             await runtime.providerStatus()
         }
         apiGroup.get("/board/cards") { _, _ -> BoardCardsResponse in
-            await runtime.boardCards(chatEnabled: kernel != nil)
+            await runtime.boardCards(chatEnabled: agent != nil)
         }
         apiGroup.get("/board/lanes") { _, _ -> BoardLanesResponse in
-            await runtime.boardLanes(chatEnabled: kernel != nil)
+            await runtime.boardLanes(chatEnabled: agent != nil)
         }
         apiGroup.get("/metrics") { _, _ -> MetricsResponse in
             await runtime.metrics()
@@ -214,6 +221,25 @@ private func makeChatAdaptersResponse(
 private struct KernelHandle: Sendable {
     let kernel: AgentKernel
     init(_ kernel: AgentKernel) { self.kernel = kernel }
+}
+
+private struct ToolLoopHandle: Sendable {
+    let loop: AgentToolLoop
+    init(_ loop: AgentToolLoop) { self.loop = loop }
+}
+
+private enum AgentHandle: Sendable {
+    case kernel(KernelHandle)
+    case toolLoop(ToolLoopHandle)
+
+    func run(_ request: AgentRequest) async throws -> AgentResponse {
+        switch self {
+        case .kernel(let handle):
+            return try await handle.kernel.run(request)
+        case .toolLoop(let handle):
+            return try await handle.loop.run(request).agentResponse
+        }
+    }
 }
 
 private actor APIRuntimeState {

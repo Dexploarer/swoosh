@@ -87,6 +87,10 @@ let package = Package(
                 "SwooshChatSDK",
                 "SwooshSecrets",
                 "SwooshActantBackend",
+                "SwooshFirewall",
+                "SwooshApprovals",
+                "SwooshFiles",
+                "SwooshProcess",
                 .product(name: "ActantAgent", package: "swift"),
                 .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -109,6 +113,12 @@ let package = Package(
                 "SwooshSecrets",
                 "SwooshProviders",
                 "SwooshDaemonSupport",
+                "SwooshToolsets",
+                "SwooshTools",
+                "SwooshFirewall",
+                "SwooshApprovals",
+                "SwooshFiles",
+                "SwooshProcess",
                 .product(name: "ActantAgent", package: "swift"),
             ]
         ),
@@ -124,6 +134,7 @@ let package = Package(
             name: "SwooshKit",
             dependencies: [
                 "SwooshCore",
+                "SwooshTools",
                 "SwooshActantBackend",
                 "SwooshClient",
                 .product(name: "ActantAgent", package: "swift"),
@@ -206,6 +217,7 @@ let package = Package(
         ]),
         .target(name: "SwooshToolsets", dependencies: [
             "SwooshTools",
+            "SwooshScout",
             "SwooshSkills",
             "SwooshGoals",
             "SwooshManifesting",
@@ -319,6 +331,7 @@ let package = Package(
             name: "SwooshActantBackend",
             dependencies: [
                 "SwooshCore",
+                "SwooshTools",
                 .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ActantAgent", package: "swift"),
             ]
@@ -397,7 +410,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshAgentLoopTests",
-            dependencies: ["SwooshCore", "SwooshTools", "SwooshFirewall", "SwooshApprovals", "SwooshToolsets"]
+            dependencies: ["SwooshCore", "SwooshKit", "SwooshTools", "SwooshFirewall", "SwooshApprovals", "SwooshToolsets"]
         ),
         .testTarget(
             name: "SwooshDevToolsTests",
@@ -439,6 +452,10 @@ let package = Package(
             name: "SwooshAPITests",
             dependencies: [
                 "SwooshAPI",
+                "SwooshCore",
+                "SwooshTools",
+                "SwooshFirewall",
+                "SwooshApprovals",
                 .product(name: "HummingbirdTesting", package: "hummingbird"),
             ]
         ),
