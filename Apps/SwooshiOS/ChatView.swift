@@ -35,6 +35,10 @@ struct ChatView: View {
 
     private var paired: some View {
         VStack(spacing: 0) {
+            if isDiagnosticProvider {
+                ProviderWarningBanner()
+            }
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 12) {
@@ -90,6 +94,10 @@ struct ChatView: View {
             .padding()
             .background(.ultraThinMaterial)
         }
+    }
+
+    private var isDiagnosticProvider: Bool {
+        session.agentStatus?.model == "swoosh-local-diagnostic-v1"
     }
 
     private var unpaired: some View {
@@ -179,6 +187,22 @@ struct Message: Identifiable, Equatable, Sendable {
         case .system, .tool:
             return nil
         }
+    }
+}
+
+private struct ProviderWarningBanner: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+            Text("Mac daemon is connected, but no model provider is active. Replies are diagnostic until you save a provider key in Control and restart swooshd.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(.thinMaterial)
     }
 }
 

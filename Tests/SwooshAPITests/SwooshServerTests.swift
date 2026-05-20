@@ -282,6 +282,133 @@ struct SwooshServerTests {
         }
     }
 
+    @Test("Runtime mutation and wallet routes use shared sources")
+    func runtimeMutationAndWalletRoutesUseSharedSources() async throws {
+        let config = RuntimeConfigResponse(
+            configured: true,
+            setupMode: "phone",
+            permissionProfile: "autonomous",
+            modelPath: "auto",
+            daemonHost: "0.0.0.0",
+            daemonPort: 8787,
+            preferredProviderID: "openai",
+            localDiagnosticFallback: true,
+            toolPolicy: ToolPolicySummary(
+                maxToolCallsPerTurn: 64,
+                maxToolChainDepth: 64,
+                allowModelToolCalls: true,
+                allowHumanOnlyFromModel: true,
+                allowCriticalToolsFromModel: true,
+                requireApprovalForMediumRiskAndAbove: false
+            ),
+            safetyFlags: [
+                RuntimeFlagSummary(id: "autonomousTradingEnabled", label: "Autonomous trading", enabled: true),
+            ]
+        )
+        let mutation = RuntimeConfigMutationResponse(
+            config: config,
+            requiresRestart: true,
+            message: "saved"
+        )
+        let wallet = WalletDashboardResponse(
+            connected: false,
+            walletLabel: nil,
+            analytics: WalletAnalyticsSummary(
+                totalValueUSD: nil,
+                realizedPnLUSD: nil,
+                unrealizedPnLUSD: nil,
+                totalPnLPercent: nil,
+                dailyChangePercent: nil,
+                openPositions: 0
+            ),
+            assets: [],
+            insights: [
+                WalletInsightSummary(
+                    id: "wallet.bridge_missing",
+                    severity: .warning,
+                    title: "No wallet bridge connected",
+                    detail: "Connect a wallet bridge.",
+                    source: "runtime"
+                ),
+            ],
+            capabilities: [
+                WalletTradingCapabilitySummary(
+                    id: "hyperliquid.trading",
+                    name: "Hyperliquid trading",
+                    enabled: true,
+                    configured: false,
+                    status: "waiting_for_keychain_secret_ref",
+                    risk: "critical"
+                ),
+            ]
+        )
+        let sources = SwooshAPIRuntimeSources(
+            updateRuntimeFlags: { request in
+                #expect(request.flags.first?.id == "autonomousTradingEnabled")
+                return mutation
+            },
+            updateRuntimeProfile: { request in
+                #expect(request.permissionProfile == "autonomous")
+                return mutation
+            },
+            wallet: { wallet }
+        )
+        let app = SwooshAPIServer(token: "secret", runtimeSources: sources).build()
+        let encoder = JSONEncoder.swooshDefault
+        let flagsData = try encoder.encode(RuntimeFlagUpdateRequest(flags: [
+            RuntimeFlagUpdate(id: "autonomousTradingEnabled", enabled: true),
+        ]))
+        let flagsBody: ByteBuffer = {
+            var buffer = ByteBufferAllocator().buffer(capacity: flagsData.count)
+            buffer.writeBytes(flagsData)
+            return buffer
+        }()
+        let profileData = try encoder.encode(RuntimeProfileUpdateRequest(permissionProfile: "autonomous"))
+        let profileBody: ByteBuffer = {
+            var buffer = ByteBufferAllocator().buffer(capacity: profileData.count)
+            buffer.writeBytes(profileData)
+            return buffer
+        }()
+
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/runtime/flags",
+                method: .post,
+                headers: [.authorization: "Bearer secret", .contentType: "application/json"],
+                body: flagsBody
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try JSONDecoder.swooshDefault.decode(
+                    RuntimeConfigMutationResponse.self,
+                    from: response.body.getData(at: response.body.readerIndex, length: response.body.readableBytes) ?? Data()
+                )
+                #expect(decoded.requiresRestart)
+                #expect(decoded.config.permissionProfile == "autonomous")
+            }
+            try await client.execute(
+                uri: "/api/runtime/profile",
+                method: .post,
+                headers: [.authorization: "Bearer secret", .contentType: "application/json"],
+                body: profileBody
+            ) { response in
+                #expect(response.status == .ok)
+            }
+            try await client.execute(
+                uri: "/api/wallet",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try JSONDecoder.swooshDefault.decode(
+                    WalletDashboardResponse.self,
+                    from: response.body.getData(at: response.body.readerIndex, length: response.body.readableBytes) ?? Data()
+                )
+                #expect(decoded.capabilities.first?.id == "hyperliquid.trading")
+                #expect(decoded.insights.first?.severity == .warning)
+            }
+        }
+    }
+
     @Test("Auth-gated chat rejects missing bearer token")
     func chatRejectsMissingBearer() async throws {
         let app = SwooshAPIServer(token: "secret").build()
@@ -307,6 +434,12 @@ struct SwooshServerTests {
                     role: .assistant,
                     content: "hi from the Mac",
                     createdAt: Date(timeIntervalSince1970: 1_800_000_001)
+                ),
+                SwooshCore.ChatMessage(
+                    id: "audit",
+                    role: .assistant,
+                    content: #"{"_swoosh_audit":{"v":1,"r":{"sessionID":"ios-default"}}}"#,
+                    createdAt: Date(timeIntervalSince1970: 1_800_000_002)
                 ),
             ],
         ])

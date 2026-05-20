@@ -1,68 +1,59 @@
 # Swoosh Permission Model
 
-## Permission types
+Swoosh has two independent controls:
 
-```swift
-enum SwooshPermission: String, Codable, Sendable {
-    case fileRead
-    case fileWrite
-    case shellRun
-    case calendarRead
-    case remindersRead
-    case contactsRead
-    case browserTabsRead
-    case browserHistoryRead
-    case screenCapture
-    case appleEvents
-    case memoryWrite
-    case networkAccess
-}
-```
+- `PermissionProfilePreset` decides which `SwooshPermission` cases the firewall grants.
+- `ToolCallPolicy` and `SwooshSafetyConfig` decide whether the model may call tools, whether approvals are required, and whether normally gated capabilities are unlocked.
 
-## Default modes
+## Profiles
 
-| Profile | File R/W | Shell | Calendar | Contacts | Browser | Memory |
-|---------|----------|-------|----------|----------|---------|--------|
-| Safe | deny | deny | deny | deny | deny | ask |
-| Developer | ask/allow | ask | deny | deny | deny | ask |
-| Automation | allow | ask | allow | deny | ask | allow |
-| Power | allow | ask | allow | ask | allow | allow |
+| Profile | Firewall grants | Tool policy | Safety flags |
+|---------|-----------------|-------------|--------------|
+| `safe` | Read-only runtime, memory, audit, and network status | Restrictive, low chain depth | Locked |
+| `developer` | File, Git, Swift/Xcode, memory, workflow, skills, and provider access | Default agent policy | Locked |
+| `automation` | Developer plus calendar, reminders, scheduling, app usage, focus signals | Default agent policy | Locked |
+| `power` | Nearly all permissions except mainnet writes | Critical model calls allowed, approvals still required | Development safety |
+| `autonomous` | Every `SwooshPermission` case | Full model tool access, high limits, approvals optional | All safety flags enabled |
+| `custom` | Developer defaults until edited | Default agent policy | Locked |
 
-## High-risk data — always ask or deny
+`autonomous` is intentional: it is the explicit opt-in for unattended agents that can run without human approval. Safe modes remain available and are still the default unless the user chooses otherwise.
 
-- Shell destructive commands
-- sudo
-- File writes outside approved folders
-- Contacts
-- Messages
-- Screen capture
-- Raw email
+## Runtime Policy Fields
 
-## Excluded from ingestion — never
+`ToolCallPolicy` is enforced by the agent loop and registry:
 
-- Browser cookies
-- Passwords / Keychain exports
-- Raw API keys (redacted before storage)
-- SSH private keys
-- .env file values
-- Private tokens
+| Field | Effect |
+|-------|--------|
+| `maxToolCallsPerTurn` | Total tool calls allowed in one turn |
+| `maxToolChainDepth` | Maximum chained model tool-call depth |
+| `allowModelToolCalls` | If false, the model receives no tool descriptors and returned tool calls are blocked |
+| `allowHumanOnlyFromModel` | If false, human-only tools are hidden from and blocked for model-origin calls |
+| `allowCriticalToolsFromModel` | If false, critical-risk tools are hidden from and blocked for model-origin calls |
+| `requireApprovalForMediumRiskAndAbove` | If true, model-origin medium, high, and critical calls require approval even when a tool itself says `never` |
 
-## Approval UX
+`SwooshSafetyConfig` gates advanced capabilities:
 
-Every risky action produces an approval record:
+| Flag | Capability |
+|------|------------|
+| `autonomousTradingEnabled` | Autonomous trading workflows |
+| `swapExecutionEnabled` | DEX swap execution |
+| `portfolioRecommendationsEnabled` | Portfolio recommendation tools |
+| `privateKeyCustodyEnabled` | Private-key custody in Keychain |
+| `seedPhraseIngestionEnabled` | Seed phrase ingestion |
+| `cookieIngestionEnabled` | Browser cookie ingestion |
+| `shellToBlockchainBridgeEnabled` | Shell-to-wallet escalation path |
+| `modelSelfApprovalEnabled` | Model-origin calls can bypass approval prompts |
+| `mainnetWritesByDefault` | Mainnet write permissions can be granted by default |
 
-```
-tool_name | arguments_summary | risk_level | status | timestamp
-```
+## Surfaces
 
-Approve from: Swoosh.app, CLI, future mobile companion.
+- Setup: `swoosh setup quick --permissions <safe|developer|automation|power|autonomous|custom>`.
+- CLI status: `swoosh permissions --status` prints the active profile, tool policy, and key safety flags.
+- macOS dashboard: Settings shows runtime config, every `ToolCallPolicy` field, and every `SwooshSafetyConfig` flag.
+- iOS companion: Settings reads `/api/runtime/config` and shows the paired Mac daemon profile, tool policy, and safety flags.
 
-## Audit logging
+## Approval Semantics
 
-Every permission decision, Scout scan, memory write, tool call, and approval is logged with:
+`askFirstTime` can be approved for the session. `askEveryTime` always creates a new approval request, even after a session approval. `humanOnly` blocks model-origin calls unless both the runtime tool policy and safety config explicitly opt into autonomous behavior.
 
-```
-event_type | actor | target | details | timestamp
-```
-
-Immutable append-only. User can view full audit trail.
+Every tool call still passes through `SwooshFirewallActor`, is audited, and records approval state when approval is required.

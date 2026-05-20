@@ -44,6 +44,7 @@ public actor ToolRegistry {
     ) async -> [ToolDescriptor] {
         tools.values
             .filter { enabledToolsets.contains($0.descriptor.toolset) }
+            .filter { descriptorAllowedInCatalog($0.descriptor, context: context) }
             .map(\.descriptor)
     }
 
@@ -73,14 +74,19 @@ public actor ToolRegistry {
         }
 
         let descriptor = tool.descriptor
+        let effectiveContext = context.withSafetyConfig(safetyConfig)
 
         // 1. Check toolset is enabled
         guard enabledToolsets.contains(descriptor.toolset) else {
             throw ToolError.toolsetDisabled(descriptor.toolset.rawValue)
         }
 
+        if descriptor.approval == .disabled {
+            throw ToolError.disabled(descriptor.name)
+        }
+
         // 2. Check approval policy allows model invocation
-        if context.isModelInvocation && !descriptor.approval.modelCanInvoke {
+        if effectiveContext.isModelInvocation && descriptor.approval == .humanOnly && !canModelPromptHumanOnly(descriptor) {
             try await audit.append(AuditEntry(
                 kind: .toolCallDenied,
                 toolName: descriptor.name,
@@ -89,6 +95,28 @@ public actor ToolRegistry {
                 success: false
             ))
             throw ToolError.humanOnly(descriptor.name)
+        }
+
+        if let denial = tradingSafetyDenial(for: descriptor) {
+            try await audit.append(AuditEntry(
+                kind: .toolCallDenied,
+                toolName: descriptor.name,
+                sessionID: context.sessionID,
+                detail: denial,
+                success: false
+            ))
+            throw ToolError.policyViolation(denial)
+        }
+
+        if let denial = policyDenial(for: descriptor, context: effectiveContext) {
+            try await audit.append(AuditEntry(
+                kind: .toolCallDenied,
+                toolName: descriptor.name,
+                sessionID: context.sessionID,
+                detail: denial,
+                success: false
+            ))
+            throw ToolError.policyViolation(denial)
         }
 
         // 3. Firewall permission check (no bypass)
@@ -106,12 +134,13 @@ public actor ToolRegistry {
         }
 
         // 4. Approval check
-        if descriptor.approval.requiresUserApproval {
+        if approvalRequired(for: descriptor, context: effectiveContext) {
             try await approvals.requireApproval(
                 ToolApprovalRequest(
                     toolName: descriptor.name,
                     risk: descriptor.risk,
                     permission: descriptor.permission,
+                    approvalPolicy: descriptor.approval,
                     inputPreview: input.redactedPreview(),
                     sessionID: context.sessionID
                 )
@@ -128,7 +157,7 @@ public actor ToolRegistry {
 
         // 6. Execute
         do {
-            let output = try await tool.callJSON(input, context: context)
+            let output = try await tool.callJSON(input, context: effectiveContext)
             try await audit.append(AuditEntry(
                 kind: .toolCallSucceeded,
                 toolName: descriptor.name,
@@ -167,6 +196,7 @@ public actor ToolRegistry {
         }
 
         let descriptor = tool.descriptor
+        let effectiveContext = context.withSafetyConfig(safetyConfig)
 
         // 1. Toolset check
         guard enabledToolsets.contains(descriptor.toolset) else {
@@ -185,7 +215,7 @@ public actor ToolRegistry {
         }
 
         // 3. humanOnly check
-        if context.isModelInvocation && !descriptor.approval.modelCanInvoke {
+        if effectiveContext.isModelInvocation && descriptor.approval == .humanOnly && !canModelPromptHumanOnly(descriptor) {
             try? await audit.append(AuditEntry(
                 kind: .toolCallDenied, toolName: descriptor.name, sessionID: context.sessionID,
                 detail: "humanOnly tool \(descriptor.name) cannot be invoked by model", success: false
@@ -194,6 +224,30 @@ public actor ToolRegistry {
                 requestID: request.id, toolName: request.toolName,
                 status: .blockedByPermission,
                 errorMessage: "\(request.toolName) is human-only and cannot be executed by the model"
+            )
+        }
+
+        if let denial = tradingSafetyDenial(for: descriptor) {
+            try? await audit.append(AuditEntry(
+                kind: .toolCallDenied, toolName: descriptor.name, sessionID: context.sessionID,
+                detail: denial, success: false
+            ))
+            return ToolExecutionResult(
+                requestID: request.id, toolName: request.toolName,
+                status: .blockedByPermission,
+                errorMessage: denial
+            )
+        }
+
+        if let denial = policyDenial(for: descriptor, context: effectiveContext) {
+            try? await audit.append(AuditEntry(
+                kind: .toolCallDenied, toolName: descriptor.name, sessionID: context.sessionID,
+                detail: denial, success: false
+            ))
+            return ToolExecutionResult(
+                requestID: request.id, toolName: request.toolName,
+                status: .blockedByPermission,
+                errorMessage: denial
             )
         }
 
@@ -211,11 +265,12 @@ public actor ToolRegistry {
             )
         }
 
-        // 5. Approval check (for tools where model CAN invoke but approval is required)
-        if descriptor.approval.requiresUserApproval && descriptor.approval.modelCanInvoke {
+        // 5. Approval check
+        if approvalRequired(for: descriptor, context: effectiveContext) {
             let approvalReq = ToolApprovalRequest(
                 toolName: descriptor.name, risk: descriptor.risk,
                 permission: descriptor.permission,
+                approvalPolicy: descriptor.approval,
                 inputPreview: request.arguments.redactedPreview(), sessionID: context.sessionID
             )
             do {
@@ -247,7 +302,7 @@ public actor ToolRegistry {
 
         // 7. Execute
         do {
-            let output = try await tool.callJSON(request.arguments, context: context)
+            let output = try await tool.callJSON(request.arguments, context: effectiveContext)
             let finishedAt = Date()
             try? await audit.append(AuditEntry(
                 kind: .toolCallSucceeded, toolName: descriptor.name, sessionID: context.sessionID,
@@ -282,6 +337,88 @@ public actor ToolRegistry {
                 requestID: request.id, toolName: request.toolName,
                 status: .failed, errorMessage: error.localizedDescription, trace: trace
             )
+        }
+    }
+
+    private func descriptorAllowedInCatalog(_ descriptor: ToolDescriptor, context: ToolContext) -> Bool {
+        guard context.isModelInvocation else { return true }
+        guard descriptor.approval != .disabled else { return false }
+        guard tradingSafetyDenial(for: descriptor) == nil else { return false }
+        if humanPromptedTradingAllowsModelInvocation(for: descriptor) {
+            return true
+        }
+        return context.toolPolicy.modelInvocationDenial(for: descriptor) == nil
+    }
+
+    private func policyDenial(for descriptor: ToolDescriptor, context: ToolContext) -> String? {
+        guard context.isModelInvocation else { return nil }
+        if descriptor.approval == .disabled {
+            return "\(descriptor.name) is disabled"
+        }
+        if safetyConfig.modelSelfApprovalEnabled {
+            return nil
+        }
+        if humanPromptedTradingAllowsModelInvocation(for: descriptor) {
+            return nil
+        }
+        return context.toolPolicy.modelInvocationDenial(for: descriptor)
+    }
+
+    private func approvalRequired(for descriptor: ToolDescriptor, context: ToolContext) -> Bool {
+        if context.isModelInvocation && safetyConfig.modelSelfApprovalEnabled {
+            return false
+        }
+        if context.isModelInvocation && humanPromptedTradingAllowsModelInvocation(for: descriptor) {
+            return true
+        }
+        switch descriptor.approval {
+        case .never:
+            break
+        case .askFirstTime, .askEveryTime:
+            return true
+        case .askForRiskAtLeast(let minimumRisk):
+            return descriptor.risk >= minimumRisk
+        case .humanOnly, .disabled:
+            return false
+        }
+        return context.isModelInvocation &&
+            context.toolPolicy.requireApprovalForMediumRiskAndAbove &&
+            descriptor.risk >= .medium
+    }
+
+    private func canModelPromptHumanOnly(_ descriptor: ToolDescriptor) -> Bool {
+        safetyConfig.modelSelfApprovalEnabled || humanPromptedTradingAllowsModelInvocation(for: descriptor)
+    }
+
+    private func humanPromptedTradingAllowsModelInvocation(for descriptor: ToolDescriptor) -> Bool {
+        safetyConfig.humanPromptedTradingEnabled && descriptor.isTradingWriteTool
+    }
+
+    private func tradingSafetyDenial(for descriptor: ToolDescriptor) -> String? {
+        guard descriptor.isTradingWriteTool else { return nil }
+        guard safetyConfig.humanPromptedTradingEnabled || safetyConfig.autonomousTradingEnabled else {
+            return "\(descriptor.name) requires human-prompted or autonomous trading to be enabled"
+        }
+        return nil
+    }
+}
+
+private extension ToolDescriptor {
+    var isTradingWriteTool: Bool {
+        switch permission {
+        case .evmBuildTransaction,
+             .evmRequestSignature,
+             .evmBroadcast,
+             .evmMainnetWrite,
+             .solanaBuildTransaction,
+             .solanaRequestSignature,
+             .solanaBroadcast,
+             .solanaMainnetWrite,
+             .hyperliquidTrade,
+             .hyperliquidTransfer:
+            return true
+        default:
+            return false
         }
     }
 }

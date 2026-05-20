@@ -141,12 +141,13 @@ struct PermissionProfileTests {
         #expect(!p.allowGitWrite) // Never auto-allows git push
     }
 
-    @Test("No profile allows git push by default")
-    func noGitPush() {
+    @Test("Only autonomous allows git push by default")
+    func onlyAutonomousAllowsGitPush() {
         #expect(!PermissionProfileSpec.safe.allowGitWrite)
         #expect(!PermissionProfileSpec.developer.allowGitWrite)
         #expect(!PermissionProfileSpec.automation.allowGitWrite)
         #expect(!PermissionProfileSpec.power.allowGitWrite)
+        #expect(PermissionProfileSpec.autonomous.allowGitWrite)
     }
 }
 

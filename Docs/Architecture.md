@@ -60,7 +60,10 @@ SwooshDaemon          swooshd entry point (also supervises actantdb subprocess)
 └── models/               downloaded MLX models
 ```
 
-Keychain service: `ai.swoosh.agent`
+Keychain services:
+
+- `ai.swoosh.agent` for setup/runtime credentials managed by `SwooshConfig`.
+- `ai.swoosh.secrets` for provider secrets managed by `SwooshSecrets.KeychainSecretStore`.
 
 ## Scout pipeline
 

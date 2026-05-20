@@ -196,19 +196,32 @@ public struct ToolDescriptor: Codable, Sendable, Identifiable {
 public struct ToolContext: Sendable {
     public let sessionID: String
     public let safetyConfig: SwooshSafetyConfig
+    public let toolPolicy: ToolCallPolicy
     public let isModelInvocation: Bool
     public let callerIdentity: String
 
     public init(
         sessionID: String,
         safetyConfig: SwooshSafetyConfig = .defaultAgent,
+        toolPolicy: ToolCallPolicy = .defaultAgent,
         isModelInvocation: Bool = true,
         callerIdentity: String = "agent"
     ) {
         self.sessionID = sessionID
         self.safetyConfig = safetyConfig
+        self.toolPolicy = toolPolicy
         self.isModelInvocation = isModelInvocation
         self.callerIdentity = callerIdentity
+    }
+
+    public func withSafetyConfig(_ safetyConfig: SwooshSafetyConfig) -> ToolContext {
+        ToolContext(
+            sessionID: sessionID,
+            safetyConfig: safetyConfig,
+            toolPolicy: toolPolicy,
+            isModelInvocation: isModelInvocation,
+            callerIdentity: callerIdentity
+        )
     }
 }
 

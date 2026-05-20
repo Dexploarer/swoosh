@@ -50,6 +50,6 @@ ScoutSource.scan()
   → [MemoryCandidate]
   → UserReviewQueue
   → approve/reject/edit
-  → [ApprovedMemory] → SQLite vault
+  → [ApprovedMemory] → ActantDB memory store
   → AuditLog.append()
 ```

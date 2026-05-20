@@ -85,7 +85,7 @@ Registration: `DefaultToolRegistrar.registerAll(into:dependencies:selfImprovemen
 
 - All durable agent state — sessions, memories, approvals, audit records — lives in **ActantDB** at `~/.swoosh/actant.db`, fronted by `actantdb serve` (spawned by `swooshd` via `ActantAgent.ActantDBSupervisor`). Schema sketch in `Docs/Architecture.md`.
 - A handful of subsystems (`SwooshVault`, `SwooshFirewall`, `SwooshBoard`) still use `SQLite.swift` directly for local caches that don't belong on the event ledger; that's why the `SQLite.swift` package dependency stays.
-- Secrets live in Keychain under service `ai.swoosh.agent`. `SwooshSecrets` provides scavengers (Environment / ConfigFile / Keychain) — read order matters; `KeychainSecretStore` is the canonical store.
+- Setup/runtime credentials use Keychain service `ai.swoosh.agent`. Provider secrets use `ai.swoosh.secrets` through `SwooshSecrets.KeychainSecretStore`. `SwooshSecrets` provides scavengers (Environment / ConfigFile / Keychain) — read order matters.
 - Other state lives under `~/.swoosh/{config.json, theme.json, setup-reports/, logs/, artifacts/, models/}`.
 - macOS sandbox is **disabled** for both the app and widget extension (see `project.yml` — `ENABLE_APP_SANDBOX: false`, and `App/Swoosh.entitlements`). App group: `group.ai.swoosh.shared`.
 

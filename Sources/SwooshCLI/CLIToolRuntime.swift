@@ -3,6 +3,7 @@ import Foundation
 import ActantAgent
 import SwooshActantBackend
 import SwooshApprovals
+import SwooshConfig
 import SwooshCron
 import SwooshFiles
 import SwooshFirewall
@@ -13,7 +14,9 @@ import SwooshToolsets
 
 func makeCLIToolRegistry() async throws -> ToolRegistry {
     let audit = SwooshAuditLog()
-    let firewall = SwooshFirewallActor(granted: defaultAgentToolPermissions())
+    let runtimeConfig = loadCLIRuntimeConfig()
+    let preset = PermissionProfilePreset(rawValue: runtimeConfig?.permissionProfile ?? "") ?? .developer
+    let firewall = SwooshFirewallActor(granted: preset.grantedSwooshPermissions)
     let approvalCenter = SwooshApprovals.ApprovalCenter(store: InMemoryApprovalStore(), audit: audit)
     let rootStore = InMemoryRootStore()
     let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
@@ -33,7 +36,12 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
         memoryStore = InMemoryMemoryToolStore()
     }
 
-    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
+    let registry = ToolRegistry(
+        firewall: firewall,
+        audit: audit,
+        approvals: approvalCenter,
+        safetyConfig: runtimeConfig?.safetyConfig ?? preset.defaultSafetyConfig
+    )
     let stateRoot = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".swoosh", isDirectory: true)
     let deps = ToolDependencies(
@@ -65,9 +73,12 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
     return registry
 }
 
-private func defaultAgentToolPermissions() -> Set<SwooshPermission> {
-    Set(SwooshPermission.allCases).subtracting([
-        .evmMainnetWrite,
-        .solanaMainnetWrite,
-    ])
+func loadCLIRuntimeConfig() -> SwooshRuntimeConfig? {
+    try? SwooshConfigStore().load(SwooshRuntimeConfig.self)
+}
+
+func loadCLIToolPolicy() -> ToolCallPolicy {
+    let runtimeConfig = loadCLIRuntimeConfig()
+    let preset = PermissionProfilePreset(rawValue: runtimeConfig?.permissionProfile ?? "") ?? .developer
+    return runtimeConfig?.toolPolicy ?? preset.defaultToolPolicy
 }

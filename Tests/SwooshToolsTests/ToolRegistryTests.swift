@@ -90,10 +90,41 @@ actor PatchFileAccess: FileAccessing {
     func content(relativePath: String) -> String? { files[relativePath] }
 }
 
+struct HumanPromptedTradeInput: Codable, Sendable {}
+
+struct HumanPromptedTradeOutput: Codable, Sendable {
+    let accepted: Bool
+}
+
+struct HumanPromptedTradeTool: SwooshTool {
+    typealias Input = HumanPromptedTradeInput
+    typealias Output = HumanPromptedTradeOutput
+
+    static let name: ToolName = "test.human_prompted_trade"
+    static let displayName = "Human Prompted Trade"
+    static let description = "Test trading write tool"
+    static let permission = SwooshPermission.evmBroadcast
+    static let risk = ToolRisk.critical
+    static let approval = ApprovalPolicy.humanOnly
+    static let toolset = ToolsetID.evm
+
+    func call(_ input: Input, context: ToolContext) async throws -> Output {
+        HumanPromptedTradeOutput(accepted: true)
+    }
+}
+
 /// Stub process runner
 struct StubProcessRunner: ProcessRunning {
     func run(executable: String, arguments: [String], workingDirectory: URL?, environment: [String: String]?) async throws -> ProcessResult {
         ProcessResult(exitCode: 0, stdout: "", stderr: "")
+    }
+}
+
+struct FixedProcessRunner: ProcessRunning {
+    let result: ProcessResult
+
+    func run(executable: String, arguments: [String], workingDirectory: URL?, environment: [String: String]?) async throws -> ProcessResult {
+        result
     }
 }
 
@@ -235,6 +266,28 @@ struct ToolRegistryTests {
         } catch let error as ToolError {
             if case .humanOnly = error { /* expected */ }
             else { Issue.record("Wrong error: \(error)") }
+        }
+    }
+
+    @Test("human-prompted trading lets model queue human-only trade")
+    func testHumanPromptedTradingQueuesApproval() async throws {
+        let fw = MockFirewall(granted: [.evmBroadcast])
+        let audit = MockAudit()
+        let approvals = MockApprovals(autoApprove: true)
+        let registry = ToolRegistry(
+            firewall: fw,
+            audit: audit,
+            approvals: approvals,
+            safetyConfig: SwooshSafetyConfig(humanPromptedTradingEnabled: true)
+        )
+        await registry.register(TypeErasedTool(HumanPromptedTradeTool()))
+        let ctx = ToolContext(sessionID: "test", isModelInvocation: true)
+        let result = try await registry.call(name: "test.human_prompted_trade", input: .object([:]), context: ctx)
+        #expect(await approvals.approvalRequested)
+        if case .object(let dict) = result {
+            #expect(dict["accepted"] == .bool(true))
+        } else {
+            Issue.record("Expected object output")
         }
     }
 
@@ -522,6 +575,7 @@ struct SafetyConfigTests {
     func testDefaultsLocked() throws {
         let config = SwooshSafetyConfig.defaultAgent
         #expect(!config.autonomousTradingEnabled)
+        #expect(!config.humanPromptedTradingEnabled)
         #expect(!config.swapExecutionEnabled)
         #expect(!config.privateKeyCustodyEnabled)
         #expect(!config.seedPhraseIngestionEnabled)
@@ -535,6 +589,7 @@ struct SafetyConfigTests {
     func testSafetyViolations() throws {
         let config = SwooshSafetyConfig.defaultAgent
         #expect(throws: SafetyViolation.self) { try config.requireAutonomousTrading() }
+        #expect(throws: SafetyViolation.self) { try config.requireHumanPromptedTrading() }
         #expect(throws: SafetyViolation.self) { try config.requirePrivateKeyCustody() }
         #expect(throws: SafetyViolation.self) { try config.requireSeedPhraseIngestion() }
         #expect(throws: SafetyViolation.self) { try config.requireModelSelfApproval() }
@@ -544,7 +599,62 @@ struct SafetyConfigTests {
     func testCustomConfig() throws {
         var config = SwooshSafetyConfig.defaultAgent
         config.autonomousTradingEnabled = true
+        config.humanPromptedTradingEnabled = true
         try config.requireAutonomousTrading() // should not throw
+        try config.requireHumanPromptedTrading()
+    }
+}
+
+@Suite("Swift developer tools")
+struct SwiftDeveloperToolTests {
+    @Test("Package describe parses JSON output")
+    func packageDescribeParsesJSON() async throws {
+        let fw = MockFirewall(granted: [.swiftBuild])
+        let audit = MockAudit()
+        let approvals = MockApprovals()
+        let stdout = """
+        {"name":"Demo","products":[{"name":"DemoLib"}],"targets":[{"name":"DemoLib","type":"library"},{"name":"DemoTests","type":"test"}],"dependencies":[{"identity":"swift-argument-parser"}]}
+        """
+        let deps = makeTestDeps(
+            firewall: fw,
+            audit: audit,
+            approvals: approvals,
+            processRunner: FixedProcessRunner(result: ProcessResult(exitCode: 0, stdout: stdout, stderr: ""))
+        )
+
+        let output = try await SwiftPackageDescribeTool(dependencies: deps).call(
+            SwiftPackageDescribeInput(rootBookmarkID: "cwd"),
+            context: ToolContext(sessionID: "s1")
+        )
+
+        #expect(output.packageName == "Demo")
+        #expect(output.products == ["DemoLib"])
+        #expect(output.targets.map(\.name).contains("DemoTests"))
+        #expect(output.dependencies == ["swift-argument-parser"])
+    }
+
+    @Test("Swift test parses test summary")
+    func swiftTestParsesSummary() async throws {
+        let fw = MockFirewall(granted: [.swiftBuild])
+        let audit = MockAudit()
+        let approvals = MockApprovals()
+        let stdout = "Test Suite 'All tests' passed. Executed 5 tests, with 1 failure (0 unexpected) in 0.1 seconds."
+        let deps = makeTestDeps(
+            firewall: fw,
+            audit: audit,
+            approvals: approvals,
+            processRunner: FixedProcessRunner(result: ProcessResult(exitCode: 1, stdout: stdout, stderr: "/tmp/File.swift:4:2: error: bad"))
+        )
+
+        let output = try await SwiftTestTool(dependencies: deps).call(
+            SwiftTestInput(rootBookmarkID: "cwd"),
+            context: ToolContext(sessionID: "s1")
+        )
+
+        #expect(output.exitCode == 1)
+        #expect(output.testsPassed == 4)
+        #expect(output.testsFailed == 1)
+        #expect(output.diagnostics.count == 1)
     }
 }
 

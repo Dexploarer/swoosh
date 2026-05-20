@@ -17,6 +17,9 @@ struct SwooshiOSApp: App {
             RootView()
                 .environment(session)
                 .task { await session.refresh() }
+                .onOpenURL { url in
+                    Task { await session.pair(url: url) }
+                }
         }
     }
 }

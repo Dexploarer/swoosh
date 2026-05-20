@@ -4,6 +4,7 @@
 // Permissions should be visible at onboarding, not discovered only when a dangerous command appears.
 
 import Foundation
+import SwooshTools
 
 // MARK: - Permission profile
 
@@ -19,6 +20,12 @@ public enum PermissionProfilePreset: String, Codable, Sendable, CaseIterable {
 
     /// Shell, browser, file writes, MCP, workflow scheduling. High-risk still requires approval.
     case power
+
+    /// Mainnet trading with explicit human prompts for write/sign/broadcast actions.
+    case trader
+
+    /// Full unattended operation. The model can use every permission and approval gate can be disabled.
+    case autonomous
 
     /// Fully custom.
     case custom
@@ -88,8 +95,130 @@ public struct PermissionProfile: Codable, Sendable {
                 network: .init(providerAPIs: .allow, arbitraryFetch: .allow),
                 memory: .init(saveFacts: .allow, sensitiveFacts: .ask, autoSave: true)
             )
+        case .trader:
+            return PermissionProfile(
+                preset: .trader,
+                files: FilePermissions(desktopAccess: .ask, documentsAccess: .ask, selectedRepos: .allow, downloads: .ask),
+                shell: ShellPermissions(readOnly: .allow, packageInstall: .ask, destructive: .ask, sudo: .deny),
+                apps: .default,
+                network: .init(providerAPIs: .allow, arbitraryFetch: .allow),
+                memory: .default
+            )
+        case .autonomous:
+            return PermissionProfile(
+                preset: .autonomous,
+                files: FilePermissions(desktopAccess: .allow, documentsAccess: .allow, selectedRepos: .allow, downloads: .allow),
+                shell: ShellPermissions(readOnly: .allow, packageInstall: .allow, destructive: .allow, sudo: .allow),
+                apps: .init(calendar: .allow, reminders: .allow, mail: .allow, messages: .allow),
+                network: .init(providerAPIs: .allow, arbitraryFetch: .allow),
+                memory: .init(saveFacts: .allow, sensitiveFacts: .allow, autoSave: true)
+            )
         case .custom:
             return .init(preset: .custom)
+        }
+    }
+}
+
+extension PermissionProfilePreset {
+    public var defaultToolPolicy: ToolCallPolicy {
+        switch self {
+        case .safe:
+            return .restrictive
+        case .developer, .automation:
+            return .defaultAgent
+        case .power:
+            return ToolCallPolicy(
+                maxToolCallsPerTurn: 16,
+                maxToolChainDepth: 12,
+                allowModelToolCalls: true,
+                allowHumanOnlyFromModel: false,
+                allowCriticalToolsFromModel: true,
+                requireApprovalForMediumRiskAndAbove: true
+            )
+        case .trader:
+            return ToolCallPolicy(
+                maxToolCallsPerTurn: 16,
+                maxToolChainDepth: 12,
+                allowModelToolCalls: true,
+                allowHumanOnlyFromModel: true,
+                allowCriticalToolsFromModel: true,
+                requireApprovalForMediumRiskAndAbove: true
+            )
+        case .autonomous:
+            return .autonomous
+        case .custom:
+            return .defaultAgent
+        }
+    }
+
+    public var defaultSafetyConfig: SwooshSafetyConfig {
+        switch self {
+        case .autonomous:
+            return .autonomous
+        case .trader:
+            return .trader
+        case .power:
+            return .development
+        case .safe, .developer, .automation, .custom:
+            return .defaultAgent
+        }
+    }
+
+    public var grantedSwooshPermissions: Set<SwooshPermission> {
+        PermissionProfile.from(preset: self).grantedSwooshPermissions
+    }
+}
+
+extension PermissionProfile {
+    public var grantedSwooshPermissions: Set<SwooshPermission> {
+        switch preset {
+        case .safe:
+            return [
+                .deviceProfileRead, .toolRead, .memoryRead, .auditRead,
+                .networkAccess, .networkRead
+            ]
+        case .developer:
+            return [
+                .deviceProfileRead, .installedAppsRead, .runningAppsRead,
+                .selectedFolderRead, .selectedFolderWrite, .fileRead, .fileWrite,
+                .shellRead, .shellRun, .toolRead, .toolWrite, .memoryRead, .memoryWrite,
+                .auditRead, .auditWrite, .gitRead, .gitWrite, .swiftBuild, .xcodeBuild,
+                .webSearch, .webExtract, .networkAccess, .networkRead,
+                .workflowRead, .workflowWrite, .workflowRun,
+                .skillsRead, .skillsWrite, .goalsRead, .goalsWrite,
+                .manifestRead, .manifestRun
+            ]
+        case .automation:
+            return PermissionProfile.from(preset: .developer).grantedSwooshPermissions.union([
+                .calendarRead, .calendarWrite, .remindersRead, .remindersWrite,
+                .shortcutsRun, .scheduleRead, .scheduleWrite, .scheduleRun,
+                .appUsageRead, .focusModeRead
+            ])
+        case .power:
+            return Set(SwooshPermission.allCases).subtracting([
+                .evmMainnetWrite,
+                .solanaMainnetWrite
+            ])
+        case .trader:
+            return PermissionProfile.from(preset: .developer).grantedSwooshPermissions.union([
+                .evmRead,
+                .evmBuildTransaction,
+                .evmRequestSignature,
+                .evmBroadcast,
+                .evmMainnetWrite,
+                .solanaRead,
+                .solanaBuildTransaction,
+                .solanaRequestSignature,
+                .solanaBroadcast,
+                .solanaMainnetWrite,
+                .networkRead,
+                .hyperliquidTrade,
+                .hyperliquidTransfer,
+            ])
+        case .autonomous:
+            return Set(SwooshPermission.allCases)
+        case .custom:
+            return PermissionProfile.from(preset: .developer).grantedSwooshPermissions
         }
     }
 }

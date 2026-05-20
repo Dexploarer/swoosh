@@ -21,10 +21,12 @@ xcodegen generate                        # regenerate Swoosh.xcodeproj from proj
 xcodebuild -project Swoosh.xcodeproj -scheme Swoosh -destination 'platform=macOS' build   # menu-bar app
 xcodebuild -project Swoosh.xcodeproj -scheme SwooshWidgetExtension build                  # widget extension
 xcodebuild -project Swoosh.xcodeproj -scheme SwooshiOS \
-  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build             # iOS app (sim build, no team)
+  -destination 'generic/platform=iOS Simulator' build                                      # iOS app (sim build)
+xcodebuild -project Swoosh.xcodeproj -scheme SwooshiOS \
+  -destination 'generic/platform=iOS' build                                                # iOS app (device build, signs with team GY5597YK9P)
 ```
 
-The Xcode project (`Swoosh.xcodeproj`) is **generated** from `project.yml` via [XcodeGen]; do not edit `.xcodeproj` files directly. It wraps the SwiftPM package for the menu-bar app, widget extension, and iOS companion app — library/CLI/daemon work happens via `swift build`. After changing `project.yml`, run `xcodegen generate` before building in Xcode. The `SwooshiOS` target needs a `DEVELOPMENT_TEAM` to install on a real iPhone; the slice currently leaves it blank and uses `CODE_SIGNING_ALLOWED=NO` for simulator verification.
+The Xcode project (`Swoosh.xcodeproj`) is **generated** from `project.yml` via [XcodeGen]; do not edit `.xcodeproj` files directly. It wraps the SwiftPM package for the menu-bar app, widget extension, and iOS companion app — library/CLI/daemon work happens via `swift build`. After changing `project.yml`, run `xcodegen generate` before building in Xcode. `DEVELOPMENT_TEAM` is set to `GY5597YK9P` (Apple Development: dexploarer@gmail.com) in `project.yml`, so `SwooshiOS` signs automatically for both simulator and on-device installs; the matching team provisioning profile for `ai.swoosh.app.ios` is already in `~/Library/Developer/Xcode/UserData/Provisioning Profiles/`.
 
 **Backend strategy:** all durable state — memories, setup reports, permissions, session messages, response audit records — goes through **ActantDB** (the event-sourced sibling repo at `/Users/home/actantDB/`). Swoosh consumes ActantDB via two layers: the low-level `ActantDB` Swift SDK and the opinionated `ActantAgent` facade (both at `actantDB/sdks/swift/`). `SwooshActantBackend` is a thin conformance shim (<100 LoC) that lets `ActantAgent.MemoryStore` / `Session<ChatMessage>` / `Auditor<ResponseAuditRecord>` / `ApprovalCenter` satisfy `SwooshCore`'s five protocols directly. `swooshd` spawns `actantdb serve` as a child via `ActantAgent.ActantDBSupervisor` at startup and exports the listening URL as `ACTANT_BASE_URL`; `SwooshKit.configure` picks up that env var to build the default kernel context. The earlier SQLite `SwooshStorage` target and the SpacetimeDB spike were both retired in favor of this stack.
 

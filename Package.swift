@@ -173,7 +173,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Config, credentials, setup, diagnostics
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshConfig", dependencies: ["SwooshClient"]),
+        .target(name: "SwooshConfig", dependencies: ["SwooshClient", "SwooshTools"]),
         .target(name: "SwooshTUI", dependencies: ["SwooshTools"]),
         .target(
             name: "SwooshObservability",
@@ -219,6 +219,7 @@ let package = Package(
         ]),
         .target(name: "SwooshToolsets", dependencies: [
             "SwooshTools",
+            "SwooshFiles",
             "SwooshScout",
             "SwooshSkills",
             "SwooshGoals",
@@ -310,6 +311,7 @@ let package = Package(
                 "SwooshCore",
                 "SwooshClient",
                 "SwooshConfig",
+                "SwooshTools",
                 "SwooshChatSDK",
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
@@ -320,7 +322,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI"]
+            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI"]
         ),
         .target(
             name: "SwooshWidgets",

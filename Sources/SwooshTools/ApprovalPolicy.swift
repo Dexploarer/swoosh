@@ -69,6 +69,7 @@ public struct ToolApprovalRequest: Codable, Sendable, Identifiable {
     public let toolName: String
     public let risk: ToolRisk
     public let permission: SwooshPermission
+    public let approvalPolicy: ApprovalPolicy
     public let inputPreview: String
     public let sessionID: String
     public let createdAt: Date
@@ -78,6 +79,7 @@ public struct ToolApprovalRequest: Codable, Sendable, Identifiable {
         toolName: String,
         risk: ToolRisk,
         permission: SwooshPermission = .toolWrite,
+        approvalPolicy: ApprovalPolicy = .askEveryTime,
         inputPreview: String,
         sessionID: String,
         createdAt: Date = Date()
@@ -86,6 +88,7 @@ public struct ToolApprovalRequest: Codable, Sendable, Identifiable {
         self.toolName = toolName
         self.risk = risk
         self.permission = permission
+        self.approvalPolicy = approvalPolicy
         self.inputPreview = inputPreview
         self.sessionID = sessionID
         self.createdAt = createdAt

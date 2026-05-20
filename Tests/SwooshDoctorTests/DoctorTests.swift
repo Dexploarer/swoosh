@@ -1,7 +1,7 @@
 // Tests/SwooshDoctorTests/DoctorTests.swift — 0.9A
 
-import Testing
 import Foundation
+import XCTest
 import SwooshConfig
 @testable import SwooshDoctor
 @testable import SwooshTools
@@ -10,56 +10,49 @@ import SwooshConfig
 // MARK: - Doctor Report Tests
 // ═══════════════════════════════════════════════════════════════
 
-@Suite("Doctor Report")
-struct DoctorReportTests {
+final class DoctorReportTests: XCTestCase {
 
-    @Test("Healthy report with all passing")
-    func healthyReport() {
+    func testHealthyReport() {
         let report = DoctorReport(checks: [
             DoctorCheckResult(checkID: "app_installed", title: "Swoosh.app installed", category: .installation, status: .pass),
             DoctorCheckResult(checkID: "cli_installed", title: "CLI installed", category: .installation, status: .pass),
             DoctorCheckResult(checkID: "daemon_running", title: "Daemon running", category: .daemon, status: .pass),
         ])
-        #expect(report.isHealthy)
-        #expect(report.summary.passed == 3)
-        #expect(report.summary.failures == 0)
+        XCTAssertTrue(report.isHealthy)
+        XCTAssertEqual(report.summary.passed, 3)
+        XCTAssertEqual(report.summary.failures, 0)
     }
 
-    @Test("Unhealthy report with failures")
-    func unhealthyReport() {
+    func testUnhealthyReport() {
         let report = DoctorReport(checks: [
             DoctorCheckResult(checkID: "model_test", title: "Model test", category: .model,
                               status: .fail, message: "No provider", fixCommand: "swoosh model test"),
         ])
-        #expect(!report.isHealthy)
-        #expect(report.summary.failures == 1)
+        XCTAssertFalse(report.isHealthy)
+        XCTAssertEqual(report.summary.failures, 1)
     }
 
-    @Test("Report with warnings")
-    func reportWarnings() {
+    func testReportWarnings() {
         let report = DoctorReport(checks: [
             DoctorCheckResult(checkID: "secret_check", title: "Keychain", category: .secrets, status: .warning, message: "Key missing"),
         ])
-        #expect(report.isHealthy) // warnings don't fail
-        #expect(report.summary.warnings == 1)
+        XCTAssertTrue(report.isHealthy)
+        XCTAssertEqual(report.summary.warnings, 1)
     }
 
-    @Test("Fix command present on failures")
-    func fixCommand() {
+    func testFixCommand() {
         let result = DoctorCheckResult(
             checkID: "model_test", title: "Model test", category: .model,
             status: .fail, fixCommand: "swoosh model test"
         )
-        #expect(result.fixCommand == "swoosh model test")
+        XCTAssertEqual(result.fixCommand, "swoosh model test")
     }
 
-    @Test("All categories available")
-    func allCategories() {
-        #expect(DoctorCategory.allCases.count == 13)
+    func testAllCategories() {
+        XCTAssertEqual(DoctorCategory.allCases.count, 13)
     }
 
-    @Test("Swoosh directory check uses configured state path")
-    func swooshDirectoryCheckUsesContextPath() async throws {
+    func testSwooshDirectoryCheckUsesContextPath() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("swoosh-doctor-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -69,7 +62,7 @@ struct DoctorReportTests {
             statePath: root.path,
             logPath: root.appendingPathComponent("logs").path
         ))
-        #expect(missing.status == .fail)
+        XCTAssertEqual(missing.status, .fail)
 
         for directory in [
             "memories",
@@ -98,19 +91,18 @@ struct DoctorReportTests {
             statePath: root.path,
             logPath: root.appendingPathComponent("logs").path
         ))
-        #expect(repaired.status == .pass)
+        XCTAssertEqual(repaired.status, .pass)
     }
 
-    @Test("Runtime readiness uses shared config state")
-    func runtimeReadinessUsesSharedConfigState() throws {
+    func testRuntimeReadinessUsesSharedConfigState() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("swoosh-readiness-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
 
         let config = SwooshConfigStore(configDirectory: root)
         let missing = SwooshReadinessDetector(config: config).report()
-        #expect(missing.state == .blocked)
-        #expect(missing.component(id: "config.file")?.status == .blocked)
+        XCTAssertEqual(missing.state, .blocked)
+        XCTAssertEqual(missing.component(id: "config.file")?.status, .blocked)
 
         try config.ensureDirectories()
         try config.save(SwooshRuntimeConfig(
@@ -128,12 +120,22 @@ struct DoctorReportTests {
             activeModel: "swoosh-local-diagnostic-v1",
             promptableSkillCount: 1
         ))
-        #expect(readyLocal.state == .ready)
-        #expect(readyLocal.component(id: "model.provider")?.status == .ready)
+        XCTAssertEqual(readyLocal.state, .ready)
+        XCTAssertEqual(readyLocal.component(id: "model.provider")?.status, .ready)
     }
 
-    @Test("Runtime readiness doctor check maps shared state")
-    func runtimeReadinessDoctorCheckMapsSharedState() async throws {
+    func testAutonomousRuntimeConfigDerivesUnrestrictedPolicy() throws {
+        let config = SwooshRuntimeConfig(
+            setupMode: "quick",
+            permissionProfile: "autonomous",
+            modelPath: "hybrid"
+        )
+        XCTAssertEqual(config.toolPolicy, .autonomous)
+        XCTAssertEqual(config.safetyConfig, .autonomous)
+        XCTAssertEqual(PermissionProfilePreset.autonomous.grantedSwooshPermissions.count, SwooshPermission.allCases.count)
+    }
+
+    func testRuntimeReadinessDoctorCheckMapsSharedState() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("swoosh-readiness-check-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -153,8 +155,8 @@ struct DoctorReportTests {
             statePath: root.path,
             logPath: config.logsDir.path
         ))
-        #expect(result.status == .warning)
-        #expect(result.message?.contains("Degraded") == true)
+        XCTAssertEqual(result.status, .warning)
+        XCTAssertTrue(result.message?.contains("Degraded") == true)
     }
 }
 
@@ -162,39 +164,33 @@ struct DoctorReportTests {
 // MARK: - Privacy Report Tests
 // ═══════════════════════════════════════════════════════════════
 
-@Suite("Privacy Report")
-struct PrivacyReportTests {
+final class PrivacyReportTests: XCTestCase {
 
-    @Test("Clean privacy report")
-    func cleanReport() {
+    func testCleanReport() {
         let report = PrivacyReport(approvedMemoryCount: 5, pendingMemoryCandidateCount: 2)
-        #expect(report.isClean)
-        #expect(!report.cookieLikeDataFound)
-        #expect(!report.rawTokensFoundInConfig)
+        XCTAssertTrue(report.isClean)
+        XCTAssertFalse(report.cookieLikeDataFound)
+        XCTAssertFalse(report.rawTokensFoundInConfig)
     }
 
-    @Test("Unclean report — cookies found")
-    func cookiesFound() {
+    func testCookiesFound() {
         let report = PrivacyReport(cookieLikeDataFound: true)
-        #expect(!report.isClean)
+        XCTAssertFalse(report.isClean)
     }
 
-    @Test("Unclean report — tokens in config")
-    func tokensInConfig() {
+    func testTokensInConfig() {
         let report = PrivacyReport(rawTokensFoundInConfig: true)
-        #expect(!report.isClean)
+        XCTAssertFalse(report.isClean)
     }
 
-    @Test("Unclean report — private keys found")
-    func privateKeysFound() {
+    func testPrivateKeysFound() {
         let report = PrivacyReport(privateKeysFound: true)
-        #expect(!report.isClean)
+        XCTAssertFalse(report.isClean)
     }
 
-    @Test("Unclean report — seed phrases found")
-    func seedPhrasesFound() {
+    func testSeedPhrasesFound() {
         let report = PrivacyReport(seedPhrasesFound: true)
-        #expect(!report.isClean)
+        XCTAssertFalse(report.isClean)
     }
 }
 
@@ -202,59 +198,51 @@ struct PrivacyReportTests {
 // MARK: - Privacy Scanner Tests
 // ═══════════════════════════════════════════════════════════════
 
-@Suite("Privacy Scanner")
-struct PrivacyScannerTests {
+final class PrivacyScannerTests: XCTestCase {
 
-    @Test("Detects private keys")
-    func detectsPrivateKeys() {
+    func testDetectsPrivateKeys() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("found -----BEGIN PRIVATE KEY in file")
-        #expect(result.hasSecrets)
-        #expect(!result.isClean)
+        XCTAssertTrue(result.hasSecrets)
+        XCTAssertFalse(result.isClean)
     }
 
-    @Test("Detects cookies")
-    func detectsCookies() {
+    func testDetectsCookies() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("cookie: session=abc123")
-        #expect(result.hasCookies)
-        #expect(!result.isClean)
+        XCTAssertTrue(result.hasCookies)
+        XCTAssertFalse(result.isClean)
     }
 
-    @Test("Detects seed phrases")
-    func detectsSeedPhrases() {
+    func testDetectsSeedPhrases() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("mnemonic: word1 word2 word3")
-        #expect(result.hasSeedPhrases)
-        #expect(!result.isClean)
+        XCTAssertTrue(result.hasSeedPhrases)
+        XCTAssertFalse(result.isClean)
     }
 
-    @Test("Detects API keys")
-    func detectsAPIKeys() {
+    func testDetectsAPIKeys() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("api_key=sk_live_12345")
-        #expect(result.hasSecrets)
+        XCTAssertTrue(result.hasSecrets)
     }
 
-    @Test("Detects Bearer tokens")
-    func detectsBearerTokens() {
+    func testDetectsBearerTokens() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("Authorization: Bearer eyJhbGc...")
-        #expect(result.hasSecrets)
+        XCTAssertTrue(result.hasSecrets)
     }
 
-    @Test("Clean text passes")
-    func cleanTextPasses() {
+    func testCleanTextPasses() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("Hello, this is a normal log message about Swift compilation.")
-        #expect(result.isClean)
+        XCTAssertTrue(result.isClean)
     }
 
-    @Test("Issues list populated")
-    func issuesPopulated() {
+    func testIssuesPopulated() {
         let scanner = PrivacyScanner()
         let result = scanner.scanText("found sk_live_123 and cookie: session=abc")
-        #expect(result.issues.count >= 2)
+        XCTAssertGreaterThanOrEqual(result.issues.count, 2)
     }
 }
 
@@ -262,29 +250,25 @@ struct PrivacyScannerTests {
 // MARK: - Debug Bundle Tests
 // ═══════════════════════════════════════════════════════════════
 
-@Suite("Debug Bundle")
-struct DebugBundleTests {
+final class DebugBundleTests: XCTestCase {
 
-    @Test("Bundle contains doctor report")
-    func containsDoctorReport() {
+    func testContainsDoctorReport() {
         let doctorReport = DoctorReport(checks: [
             DoctorCheckResult(checkID: "test", title: "Test", category: .config, status: .pass),
         ])
         let bundle = DebugBundle(doctorReport: doctorReport, privacyReport: PrivacyReport(),
                                  redactedConfig: "model: test")
-        #expect(bundle.doctorReport.isHealthy)
+        XCTAssertTrue(bundle.doctorReport.isHealthy)
     }
 
-    @Test("Bundle contains privacy report")
-    func containsPrivacyReport() {
+    func testContainsPrivacyReport() {
         let bundle = DebugBundle(doctorReport: DoctorReport(checks: []),
                                  privacyReport: PrivacyReport(),
                                  redactedConfig: "")
-        #expect(bundle.privacyReport.isClean)
+        XCTAssertTrue(bundle.privacyReport.isClean)
     }
 
-    @Test("Config is redacted in bundle")
-    func configRedacted() {
+    func testConfigRedacted() {
         let redactor = DebugBundleRedactor()
         let raw = """
         model: gpt-4
@@ -293,39 +277,35 @@ struct DebugBundleTests {
         password: hunter2
         """
         let redacted = redactor.redactConfig(raw)
-        #expect(!redacted.contains("sk_live_12345"))
-        #expect(!redacted.contains("abc123"))
-        #expect(!redacted.contains("hunter2"))
-        #expect(redacted.contains("[REDACTED]"))
+        XCTAssertFalse(redacted.contains("sk_live_12345"))
+        XCTAssertFalse(redacted.contains("abc123"))
+        XCTAssertFalse(redacted.contains("hunter2"))
+        XCTAssertTrue(redacted.contains("[REDACTED]"))
     }
 
-    @Test("Redactor preserves safe lines")
-    func redactorPreservesSafe() {
+    func testRedactorPreservesSafe() {
         let redactor = DebugBundleRedactor()
         let raw = "model: gpt-4\nprofile: developer"
         let redacted = redactor.redactConfig(raw)
-        #expect(redacted.contains("model: gpt-4"))
-        #expect(redacted.contains("profile: developer"))
+        XCTAssertTrue(redacted.contains("model: gpt-4"))
+        XCTAssertTrue(redacted.contains("profile: developer"))
     }
 
-    @Test("Redactor catches private keys")
-    func redactorCatchesPrivateKeys() {
+    func testRedactorCatchesPrivateKeys() {
         let redactor = DebugBundleRedactor()
         let raw = "cert: -----BEGIN PRIVATE KEY data"
         let redacted = redactor.redactConfig(raw)
-        #expect(!redacted.contains("-----BEGIN"))
+        XCTAssertFalse(redacted.contains("-----BEGIN"))
     }
 
-    @Test("Redactor catches seed phrases")
-    func redactorCatchesSeed() {
+    func testRedactorCatchesSeed() {
         let redactor = DebugBundleRedactor()
         let raw = "backup: mnemonic word1 word2"
         let redacted = redactor.redactConfig(raw)
-        #expect(!redacted.contains("mnemonic"))
+        XCTAssertFalse(redacted.contains("mnemonic"))
     }
 
-    @Test("Bundle does not contain raw secrets")
-    func bundleNoRawSecrets() {
+    func testBundleNoRawSecrets() {
         let redactor = DebugBundleRedactor()
         let redactedConfig = redactor.redactConfig("api_key: sk_live_real_key\ntoken: real_token")
         let bundle = DebugBundle(
@@ -333,7 +313,7 @@ struct DebugBundleTests {
             privacyReport: PrivacyReport(),
             redactedConfig: redactedConfig
         )
-        #expect(!bundle.redactedConfig.contains("sk_live_real_key"))
-        #expect(!bundle.redactedConfig.contains("real_token"))
+        XCTAssertFalse(bundle.redactedConfig.contains("sk_live_real_key"))
+        XCTAssertFalse(bundle.redactedConfig.contains("real_token"))
     }
 }

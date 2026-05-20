@@ -10,6 +10,7 @@ import SwooshVault
 import SwooshFirewall
 import SwooshBoard
 import SwooshFlow
+import SwooshTools
 import Foundation
 
 public struct DashboardView: View {
@@ -103,7 +104,7 @@ public struct DashboardView: View {
         case .auditLog:    RuntimePane(title: "Audit Log", icon: "list.bullet.rectangle", rows: runtime.auditRows)
         case .benchmarks:  RuntimePane(title: "Benchmarks", icon: "chart.bar", rows: runtime.benchmarkRows)
         case .appearance:  AppearanceEditorView(manager: themeManager)
-        case .settings:    RuntimePane(title: "Settings", icon: "gear", rows: runtime.settingsRows)
+        case .settings:    RuntimeSettingsPane(runtimeConfig: runtime.runtimeConfig, readinessRows: runtime.settingsRows)
         }
     }
 }
@@ -129,19 +130,27 @@ struct RuntimePane: View {
         List {
             Section {
                 ForEach(rows) { row in
-                    HStack(alignment: .firstTextBaseline) {
-                        Label(row.title, systemImage: row.systemImage)
-                        Spacer()
-                        Text(row.value)
-                            .foregroundStyle(row.level.color)
-                            .multilineTextAlignment(.trailing)
-                    }
+                    RuntimeRowView(row: row)
                 }
             } header: {
                 Label(title, systemImage: icon)
             }
         }
         .navigationTitle(title)
+    }
+}
+
+struct RuntimeRowView: View {
+    let row: RuntimeRow
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Label(row.title, systemImage: row.systemImage)
+            Spacer()
+            Text(row.value)
+                .foregroundStyle(row.level.color)
+                .multilineTextAlignment(.trailing)
+        }
     }
 }
 
@@ -160,6 +169,79 @@ struct BoardPane: View {
             .padding(.vertical, 4)
         }
         .navigationTitle("Swoosh Board")
+    }
+}
+
+struct RuntimeSettingsPane: View {
+    let runtimeConfig: SwooshRuntimeConfig?
+    let readinessRows: [RuntimeRow]
+
+    var body: some View {
+        List {
+            Section {
+                if let runtimeConfig {
+                    RuntimeRowView(row: RuntimeRow("Setup mode", runtimeConfig.setupMode, systemImage: "switch.2"))
+                    RuntimeRowView(row: RuntimeRow("Permission profile", runtimeConfig.permissionProfile, systemImage: "person.badge.key"))
+                    RuntimeRowView(row: RuntimeRow("Model path", runtimeConfig.modelPath, systemImage: "brain"))
+                    RuntimeRowView(row: RuntimeRow("Daemon", "\(runtimeConfig.daemonHost):\(runtimeConfig.daemonPort)", systemImage: "network"))
+                    RuntimeRowView(row: RuntimeRow("Diagnostic fallback", runtimeConfig.localDiagnosticFallback ? "Enabled" : "Disabled", systemImage: "stethoscope"))
+                } else {
+                    RuntimeRowView(row: RuntimeRow("Runtime config", "Not configured", systemImage: "gear", level: .warning))
+                }
+            } header: {
+                Label("Runtime", systemImage: "gear")
+            }
+
+            if let policy = runtimeConfig?.toolPolicy {
+                Section {
+                    RuntimeRowView(row: RuntimeRow("Model tool calls", policy.allowModelToolCalls ? "Enabled" : "Disabled", systemImage: "wrench.and.screwdriver", level: policy.allowModelToolCalls ? .good : .warning))
+                    RuntimeRowView(row: RuntimeRow("Max calls per turn", "\(policy.maxToolCallsPerTurn)", systemImage: "number"))
+                    RuntimeRowView(row: RuntimeRow("Max chain depth", "\(policy.maxToolChainDepth)", systemImage: "point.3.connected.trianglepath.dotted"))
+                    RuntimeRowView(row: RuntimeRow("Human-only from model", policy.allowHumanOnlyFromModel ? "Allowed" : "Blocked", systemImage: "hand.raised", level: policy.allowHumanOnlyFromModel ? .warning : .good))
+                    RuntimeRowView(row: RuntimeRow("Critical tools from model", policy.allowCriticalToolsFromModel ? "Allowed" : "Blocked", systemImage: "exclamationmark.triangle", level: policy.allowCriticalToolsFromModel ? .warning : .good))
+                    RuntimeRowView(row: RuntimeRow("Medium-risk approval", policy.requireApprovalForMediumRiskAndAbove ? "Required" : "Optional", systemImage: "checkmark.seal", level: policy.requireApprovalForMediumRiskAndAbove ? .good : .warning))
+                } header: {
+                    Label("Tool Policy", systemImage: "wrench.and.screwdriver")
+                }
+            }
+
+            if let safetyConfig = runtimeConfig?.safetyConfig {
+                Section {
+                    ForEach(safetyRows(safetyConfig)) { row in
+                        RuntimeRowView(row: row)
+                    }
+                } header: {
+                    Label("Safety Flags", systemImage: "shield.checkered")
+                }
+            }
+
+            Section {
+                ForEach(readinessRows) { row in
+                    RuntimeRowView(row: row)
+                }
+            } header: {
+                Label("Readiness", systemImage: "checkmark.seal")
+            }
+        }
+        .navigationTitle("Settings")
+    }
+
+    private func safetyRows(_ config: SwooshSafetyConfig) -> [RuntimeRow] {
+        [
+            flagRow("Autonomous trading", config.autonomousTradingEnabled),
+            flagRow("Swap execution", config.swapExecutionEnabled),
+            flagRow("Portfolio recommendations", config.portfolioRecommendationsEnabled),
+            flagRow("Private-key custody", config.privateKeyCustodyEnabled),
+            flagRow("Seed phrase ingestion", config.seedPhraseIngestionEnabled),
+            flagRow("Cookie ingestion", config.cookieIngestionEnabled),
+            flagRow("Shell to blockchain bridge", config.shellToBlockchainBridgeEnabled),
+            flagRow("Model self-approval", config.modelSelfApprovalEnabled),
+            flagRow("Mainnet writes by default", config.mainnetWritesByDefault),
+        ]
+    }
+
+    private func flagRow(_ title: String, _ enabled: Bool) -> RuntimeRow {
+        RuntimeRow(title, enabled ? "Enabled" : "Disabled", systemImage: enabled ? "checkmark.circle" : "xmark.circle", level: enabled ? .warning : .good)
     }
 }
 
@@ -211,6 +293,7 @@ struct DashboardRuntimeSnapshot: Sendable {
     var usage: UsageResponse?
     var skills: [SkillSummary]
     var readiness: SwooshReadinessReport
+    var runtimeConfig: SwooshRuntimeConfig?
     var local: LocalRuntimeCounts
     var daemonReachable: Bool
 
@@ -222,6 +305,7 @@ struct DashboardRuntimeSnapshot: Sendable {
         usage: nil,
         skills: [],
         readiness: SwooshReadinessDetector().report(inputs: SwooshReadinessInputs(daemonReachable: false)),
+        runtimeConfig: try? SwooshConfigStore().load(SwooshRuntimeConfig.self),
         local: LocalRuntimeCounts.load(),
         daemonReachable: false
     )
@@ -253,6 +337,7 @@ struct DashboardRuntimeSnapshot: Sendable {
                 usage: usageResponse,
                 skills: skillResponse.skills,
                 readiness: readinessResponse,
+                runtimeConfig: local.runtimeConfig,
                 local: local,
                 daemonReachable: true
             )
@@ -264,6 +349,7 @@ struct DashboardRuntimeSnapshot: Sendable {
     func with(local: LocalRuntimeCounts) -> DashboardRuntimeSnapshot {
         var copy = self
         copy.local = local
+        copy.runtimeConfig = local.runtimeConfig
         return copy
     }
 
@@ -338,6 +424,7 @@ struct LocalRuntimeCounts: Sendable {
     let pluginFiles: Int
     let logFiles: Int
     let artifacts: Int
+    let runtimeConfig: SwooshRuntimeConfig?
 
     static func load() -> LocalRuntimeCounts {
         let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".swoosh", isDirectory: true)
@@ -350,7 +437,8 @@ struct LocalRuntimeCounts: Sendable {
             mcpFiles: countFiles(root.appendingPathComponent("mcp", isDirectory: true), extensionFilter: "json"),
             pluginFiles: countFiles(root.appendingPathComponent("plugins", isDirectory: true), extensionFilter: "json"),
             logFiles: countFiles(root.appendingPathComponent("logs", isDirectory: true), extensionFilter: "log"),
-            artifacts: countFiles(root.appendingPathComponent("artifacts", isDirectory: true), extensionFilter: nil)
+            artifacts: countFiles(root.appendingPathComponent("artifacts", isDirectory: true), extensionFilter: nil),
+            runtimeConfig: try? SwooshConfigStore().load(SwooshRuntimeConfig.self)
         )
     }
 

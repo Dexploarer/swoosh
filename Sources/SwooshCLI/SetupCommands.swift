@@ -101,9 +101,10 @@ struct SetupQuickCommand: AsyncParsableCommand {
             print("  1. Safe — read-only, no shell, no app access")
             print("  2. Developer — file/git/shell with approval")
             print("  3. Automation — calendar, reminders, Shortcuts")
-            print("  4. Power — full tool access, high-risk requires approval\n")
+            print("  4. Power — full tool access, high-risk requires approval")
+            print("  5. Trader — mainnet trading, every write requires human approval\n")
 
-            let profiles: [PermissionProfilePreset] = [.safe, .developer, .automation, .power]
+            let profiles: [PermissionProfilePreset] = [.safe, .developer, .automation, .power, .trader, .autonomous]
             let permChoice = await ui.askChoice("Select", options: profiles.map(\.rawValue), default: 1)
             preset = profiles[min(permChoice, profiles.count - 1)]
         }
@@ -439,6 +440,8 @@ private func commissionLocalRuntime(
         daemonHost: daemonHost,
         daemonPort: daemonPort,
         localDiagnosticFallback: true,
+        toolPolicy: profile.defaultToolPolicy,
+        safetyConfig: profile.defaultSafetyConfig,
         configuredAt: ISO8601DateFormatter().string(from: Date())
     )
     try config.save(runtimeConfig)

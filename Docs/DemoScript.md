@@ -114,8 +114,8 @@ swoosh doctor
 - Interactive shell with 15 slash commands
 - Scout scan with real hardware detection
 - Memory candidate → approval → vault lifecycle
-- SQLite persistence with audit trail
-- ActantDB event ledger (sessions + audit) wired via SwooshActantBackend
+- ActantDB event ledger for sessions, memory, approvals, setup reports, and audit
+- SQLite-backed local caches only where a subsystem does not belong on the event ledger
 - `swoosh ask` one-shot with memory context detection
 
 ## What's next (0.3A)

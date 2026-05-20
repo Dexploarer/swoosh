@@ -159,9 +159,10 @@ struct TestApprovalRequiredTool: SwooshTool {
 func makeTestRegistry(
     firewall: any SwooshTools.Firewall = GrantAllFirewall(),
     audit: any AuditLogging = SwooshAuditLog(),
-    approvals: any ApprovalRequesting = PassthroughApproval()
+    approvals: any ApprovalRequesting = PassthroughApproval(),
+    safetyConfig: SwooshSafetyConfig = .defaultAgent
 ) async -> ToolRegistry {
-    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvals)
+    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvals, safetyConfig: safetyConfig)
     await registry.register(TypeErasedTool(TestStatusTool()))
     await registry.register(TypeErasedTool(TestHumanOnlyTool()))
     await registry.register(TypeErasedTool(TestApprovalRequiredTool()))
@@ -263,6 +264,18 @@ struct ToolRegistryExecutionTests {
         let ctx = ToolContext(sessionID: "s1", isModelInvocation: true)
         let result = await registry.execute(request: request, context: ctx)
         #expect(result.status == .blockedByPermission)
+    }
+
+    @Test("autonomous safety allows model to invoke humanOnly tool")
+    func autonomousAllowsHumanOnlyFromModel() async {
+        let registry = await makeTestRegistry(safetyConfig: .autonomous)
+        let request = ToolExecutionRequest(
+            toolName: "vault.approve_candidate", arguments: .object([:]),
+            origin: .model, sessionID: "s1"
+        )
+        let ctx = ToolContext(sessionID: "s1", toolPolicy: .autonomous, isModelInvocation: true)
+        let result = await registry.execute(request: request, context: ctx)
+        #expect(result.status == .succeeded)
     }
 
     @Test("humanOnly tool succeeds for human origin")
@@ -391,11 +404,30 @@ struct ApprovalCenterTests {
     func sessionApprovalPersists() async throws {
         let store = InMemoryApprovalStore()
         let center = ApprovalCenter(store: store, audit: SwooshAuditLog())
-        let req = ToolApprovalRequest(id: "a4", toolName: "test.tool", risk: .high, inputPreview: "{}", sessionID: "s1")
+        let req = ToolApprovalRequest(id: "a4", toolName: "test.tool", risk: .high, approvalPolicy: .askFirstTime, inputPreview: "{}", sessionID: "s1")
         _ = try? await center.requireApproval(req)
         try await center.resolveByHuman(id: "a4", decision: .approveForSession, origin: .human)
         let isApproved = await store.isApprovedForSession(toolName: "test.tool", sessionID: "s1")
         #expect(isApproved == true)
+    }
+
+    @Test("Ask every time ignores session approval")
+    func askEveryTimeIgnoresSessionApproval() async throws {
+        let store = InMemoryApprovalStore()
+        let center = ApprovalCenter(store: store, audit: SwooshAuditLog())
+        let first = ToolApprovalRequest(id: "a5", toolName: "test.tool", risk: .high, approvalPolicy: .askEveryTime, inputPreview: "{}", sessionID: "s1")
+        _ = try? await center.requireApproval(first)
+        try await center.resolveByHuman(id: "a5", decision: .approveForSession, origin: .human)
+        let second = ToolApprovalRequest(id: "a6", toolName: "test.tool", risk: .high, approvalPolicy: .askEveryTime, inputPreview: "{}", sessionID: "s1")
+        do {
+            try await center.requireApproval(second)
+            Issue.record("askEveryTime should create a new approval")
+        } catch let error as ToolError {
+            guard case .pendingApproval(let approvalID) = error else {
+                Issue.record("Expected pendingApproval"); return
+            }
+            #expect(approvalID == "a6")
+        }
     }
 }
 
@@ -459,6 +491,35 @@ struct AgentToolLoopTests {
         #expect(requests.count == 1)
         #expect(requests[0].tools.contains { $0.name == "core.status" })
         #expect(requests[0].tools.contains { $0.name == "evm.tx_build_native_transfer" })
+        #expect(!requests[0].tools.contains { $0.name == "vault.approve_candidate" })
+    }
+
+    @Test("No-tools policy sends no tools and blocks model tool call")
+    func noToolsPolicySendsNoToolsAndBlocksToolCall() async throws {
+        let registry = await makeTestRegistry()
+        let provider = SequenceModelProvider(responses: [
+            ModelCompletionResponse(
+                content: "",
+                model: "test-model",
+                toolCalls: [NativeToolCall(name: "core.status", arguments: .object([:]))]
+            )
+        ])
+        let loop = AgentToolLoop(
+            memoryLoader: MockMemoryLoader(),
+            reportLoader: MockReportLoader(),
+            permSummarizer: MockPermSummarizer(),
+            sessionStore: MockSessionStore(),
+            auditLogger: MockResponseAuditor(),
+            modelProvider: provider,
+            toolRegistry: registry,
+            policy: .noTools
+        )
+
+        let response = try await loop.run(AgentRequest(input: "check tools"))
+        let requests = await provider.capturedRequests()
+        #expect(requests.first?.tools.isEmpty == true)
+        #expect(response.toolCallCount == 0)
+        #expect(response.message.contains("disabled"))
     }
 
     @Test("Swoosh SDK uses tool loop when registry is configured")

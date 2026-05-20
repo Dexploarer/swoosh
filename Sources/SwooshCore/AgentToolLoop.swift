@@ -169,9 +169,12 @@ public actor AgentToolLoop {
         // 3. Get available tools
         let toolContext = ToolContext(
             sessionID: request.sessionID,
+            toolPolicy: policy,
             isModelInvocation: true
         )
-        let availableTools = await toolRegistry.listAvailable(context: toolContext)
+        let availableTools = policy.allowModelToolCalls
+            ? await toolRegistry.listAvailable(context: toolContext)
+            : []
 
         // 4. Build tool instructions
         let toolInstructions = toolPromptBuilder.buildToolInstructions(
@@ -200,12 +203,13 @@ public actor AgentToolLoop {
         var toolCallsUsed: [ToolCallTrace] = []
         var toolCallCount = 0
         var lastModel = "unknown"
+        let toolLimit = policy.effectiveToolLimit
 
         while true {
             // Enforce tool-call limit
-            if toolCallCount >= policy.maxToolCallsPerTurn {
+            if policy.allowModelToolCalls && toolCallCount >= toolLimit {
                 return try await finishResponse(
-                    text: "I've reached the maximum number of tool calls (\(policy.maxToolCallsPerTurn)) for this turn. Here's what I know so far based on the tool results above.",
+                    text: "I've reached the maximum number of tool calls (\(toolLimit)) for this turn. Here's what I know so far based on the tool results above.",
                     request: request,
                     memoryIDs: memoryIDs,
                     toolTraces: toolCallsUsed,
@@ -243,6 +247,19 @@ public actor AgentToolLoop {
                 )
 
             case .toolCall(let toolRequest):
+                guard policy.allowModelToolCalls else {
+                    return try await finishResponse(
+                        text: "Tool calls are disabled by the current runtime policy.",
+                        request: request,
+                        memoryIDs: memoryIDs,
+                        toolTraces: toolCallsUsed,
+                        setupReportUsed: report != nil,
+                        permSummaryUsed: !permSummary.isEmpty,
+                        model: lastModel,
+                        toolCallCount: toolCallCount,
+                        transcript: &transcript
+                    )
+                }
                 toolCallCount += 1
                 let result = await executeAndAppend(
                     toolRequest: toolRequest,
@@ -267,9 +284,22 @@ public actor AgentToolLoop {
                 }
 
             case .multipleToolCalls(let requests):
+                guard policy.allowModelToolCalls else {
+                    return try await finishResponse(
+                        text: "Tool calls are disabled by the current runtime policy.",
+                        request: request,
+                        memoryIDs: memoryIDs,
+                        toolTraces: toolCallsUsed,
+                        setupReportUsed: report != nil,
+                        permSummaryUsed: !permSummary.isEmpty,
+                        model: lastModel,
+                        toolCallCount: toolCallCount,
+                        transcript: &transcript
+                    )
+                }
                 for toolRequest in requests {
                     toolCallCount += 1
-                    if toolCallCount > policy.maxToolCallsPerTurn { break }
+                    if toolCallCount > toolLimit { break }
 
                     let result = await executeAndAppend(
                         toolRequest: toolRequest,
@@ -342,6 +372,7 @@ public actor AgentToolLoop {
     ) async -> ToolExecutionResult {
         let toolContext = ToolContext(
             sessionID: request.sessionID,
+            toolPolicy: policy,
             isModelInvocation: toolRequest.origin.isModelInvocation
         )
         let result = await toolRegistry.execute(

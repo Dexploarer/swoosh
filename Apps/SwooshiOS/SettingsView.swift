@@ -13,6 +13,10 @@ struct SettingsView: View {
     @State private var tokenText: String = ""
     @State private var saveError: String?
     @State private var isProbing: Bool = false
+    @State private var selectedProfile: String = ""
+    @State private var safetyFlagDrafts: [String: Bool] = [:]
+    @State private var isSavingRuntime = false
+    @State private var runtimeMessage: String?
 
     var body: some View {
         Form {
@@ -30,10 +34,83 @@ struct SettingsView: View {
                     LabeledContent("Model", value: status.model ?? "Unavailable")
                         .foregroundStyle(.secondary)
                 }
+                if let config = session.runtimeConfig {
+                    LabeledContent("Profile", value: config.permissionProfile ?? "Unconfigured")
+                        .foregroundStyle(.secondary)
+                    LabeledContent("Mode", value: config.setupMode ?? "Unknown")
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("Pairing status")
             } footer: {
                 Text("The agent runs on your Mac. This phone is a thin client to it.")
+            }
+
+            if session.runtimeConfig != nil {
+                Section {
+                    Picker("Profile", selection: $selectedProfile) {
+                        ForEach(RuntimeProfileOption.allCases) { option in
+                            Text(option.title).tag(option.rawValue)
+                        }
+                    }
+                    Button {
+                        Task { await saveRuntimeProfile() }
+                    } label: {
+                        HStack {
+                            Text("Save profile")
+                            Spacer()
+                            if isSavingRuntime { ProgressView() }
+                        }
+                    }
+                    .disabled(selectedProfile.isEmpty || isSavingRuntime)
+                } header: {
+                    Text("Permission profile")
+                } footer: {
+                    Text("Trader enables mainnet write permissions with human approval. Autonomous enables the broadest unattended policy. Restart swooshd after saving.")
+                }
+            }
+
+            if let policy = session.runtimeConfig?.toolPolicy {
+                Section("Tool policy") {
+                    LabeledContent("Tool calls", value: policy.allowModelToolCalls ? "Enabled" : "Disabled")
+                    LabeledContent("Max calls", value: "\(policy.maxToolCallsPerTurn)")
+                    LabeledContent("Chain depth", value: "\(policy.maxToolChainDepth)")
+                    LabeledContent("Critical tools", value: policy.allowCriticalToolsFromModel ? "Model allowed" : "Blocked")
+                    LabeledContent("Human-only tools", value: policy.allowHumanOnlyFromModel ? "Model allowed" : "Human only")
+                    LabeledContent("Medium-risk approval", value: policy.requireApprovalForMediumRiskAndAbove ? "Required" : "Optional")
+                }
+            }
+
+            if let flags = session.runtimeConfig?.safetyFlags, !flags.isEmpty {
+                Section {
+                    ForEach(flags) { flag in
+                        Toggle(isOn: flagBinding(for: flag)) {
+                            Text(flag.label)
+                        }
+                    }
+                    Button {
+                        Task { await saveRuntimeFlags(flags) }
+                    } label: {
+                        HStack {
+                            Text("Save safety flags")
+                            Spacer()
+                            if isSavingRuntime { ProgressView() }
+                        }
+                    }
+                    .disabled(isSavingRuntime)
+                } header: {
+                    Text("Safety flags")
+                } footer: {
+                    Text("These gates are optional configuration, but live tool execution uses them only after the Mac daemon restarts.")
+                }
+            }
+
+            if let runtimeMessage {
+                Section {
+                    Label(runtimeMessage, systemImage: "checkmark.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.green)
+                }
             }
 
             Section("Mac swooshd") {
@@ -74,7 +151,7 @@ struct SettingsView: View {
             }
 
             Section("Where do I find the token?") {
-                Text("Run `swooshd` on your Mac, then read `~/.swoosh/api_token`. Paste that token here.")
+                Text("From this checkout, run `cd /Users/home/swoosh && SWOOSH_HOST=0.0.0.0 swift run swooshd`, then read `~/.swoosh/api_token`. Paste that token here.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -83,6 +160,10 @@ struct SettingsView: View {
             if hostText.isEmpty, let host = session.host {
                 hostText = host.absoluteString
             }
+            syncRuntimeDrafts()
+        }
+        .onChange(of: session.runtimeConfig) {
+            syncRuntimeDrafts()
         }
     }
 
@@ -130,6 +211,77 @@ struct SettingsView: View {
             tokenText = ""
         } catch {
             saveError = error.localizedDescription
+        }
+    }
+
+    private func syncRuntimeDrafts() {
+        selectedProfile = session.runtimeConfig?.permissionProfile ?? selectedProfile
+        if let flags = session.runtimeConfig?.safetyFlags {
+            safetyFlagDrafts = Dictionary(uniqueKeysWithValues: flags.map { ($0.id, $0.enabled) })
+        }
+    }
+
+    private func flagBinding(for flag: RuntimeFlagSummary) -> Binding<Bool> {
+        Binding(
+            get: { safetyFlagDrafts[flag.id] ?? flag.enabled },
+            set: { safetyFlagDrafts[flag.id] = $0 }
+        )
+    }
+
+    private func saveRuntimeFlags(_ flags: [RuntimeFlagSummary]) async {
+        guard let client = session.client() else { return }
+        isSavingRuntime = true
+        runtimeMessage = nil
+        saveError = nil
+        defer { isSavingRuntime = false }
+        let updates = flags.map { RuntimeFlagUpdate(id: $0.id, enabled: safetyFlagDrafts[$0.id] ?? $0.enabled) }
+        do {
+            let response = try await client.updateRuntimeFlags(updates)
+            runtimeMessage = response.message
+            await session.refresh()
+            syncRuntimeDrafts()
+        } catch {
+            saveError = error.localizedDescription
+        }
+    }
+
+    private func saveRuntimeProfile() async {
+        guard let client = session.client(), !selectedProfile.isEmpty else { return }
+        isSavingRuntime = true
+        runtimeMessage = nil
+        saveError = nil
+        defer { isSavingRuntime = false }
+        do {
+            let response = try await client.updateRuntimeProfile(selectedProfile)
+            runtimeMessage = response.message
+            await session.refresh()
+            syncRuntimeDrafts()
+        } catch {
+            saveError = error.localizedDescription
+        }
+    }
+}
+
+private enum RuntimeProfileOption: String, CaseIterable, Identifiable {
+    case safe
+    case developer
+    case automation
+    case power
+    case trader
+    case autonomous
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .safe: "Safe"
+        case .developer: "Developer"
+        case .automation: "Automation"
+        case .power: "Power"
+        case .trader: "Trader"
+        case .autonomous: "Autonomous"
+        case .custom: "Custom"
         }
     }
 }

@@ -57,6 +57,10 @@ struct SwooshDaemon {
         // ── ~/.swoosh state directory ─────────────────────────────────
         let swooshDir = stateDirectory(env: env)
         let configStore = SwooshConfigStore(configDirectory: swooshDir)
+        let runtimeConfig = try? configStore.load(SwooshRuntimeConfig.self)
+        let permissionPreset = PermissionProfilePreset(rawValue: runtimeConfig?.permissionProfile ?? "") ?? .developer
+        let toolPolicy = runtimeConfig?.toolPolicy ?? permissionPreset.defaultToolPolicy
+        let safetyConfig = runtimeConfig?.safetyConfig ?? permissionPreset.defaultSafetyConfig
         try? FileManager.default.createDirectory(at: swooshDir, withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(
             at: swooshDir.appendingPathComponent("logs", isDirectory: true),
@@ -113,10 +117,16 @@ struct SwooshDaemon {
         // when no keys are configured so chat keeps returning *some*
         // response while the user finishes provisioning.
         let secrets = KeychainSecretStore()
-        let providerInfo = await ProviderFactory.detectActiveProvider(secrets: secrets)
+        let providerInfo = await ProviderFactory.detectActiveProvider(
+            secrets: secrets,
+            preferredProviderID: runtimeConfig?.preferredProviderID
+        )
         let modelProvider: any SwooshCore.ModelProvider
         if let info = providerInfo {
-            let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
+            let (router, _) = await ProviderFactory.buildRouter(
+                secrets: secrets,
+                preferredProviderID: runtimeConfig?.preferredProviderID
+            )
             modelProvider = ProviderBridgeAdapter(router: router, role: .primaryChat, modelName: info.model)
             log("Provider: \(info.name) (\(info.model))")
         } else {
@@ -135,7 +145,9 @@ struct SwooshDaemon {
 
         let toolRuntime = try await makeDaemonToolRuntime(
             swooshDir: swooshDir,
-            backend: agentBackend
+            backend: agentBackend,
+            grantedPermissions: permissionPreset.grantedSwooshPermissions,
+            safetyConfig: safetyConfig
         )
 
         // ── Real kernel ──────────────────────────────────────────────
@@ -147,6 +159,7 @@ struct SwooshDaemon {
             swoosh = try await Swoosh.configure { config in
                 config.modelProvider = modelProvider
                 config.toolRegistry = toolRuntime.registry
+                config.toolPolicy = toolPolicy
             }
         } catch {
             log("FATAL: failed to build agent kernel: \(error)")
@@ -294,7 +307,8 @@ struct SwooshDaemon {
         log("Chat:   POST http://\(host):\(port)/api/agent/chat (bearer-gated)")
         let providerSummaries = await makeProviderSummaries(
             secrets: secrets,
-            activeProvider: providerInfo
+            activeProvider: providerInfo,
+            preferredProviderID: runtimeConfig?.preferredProviderID
         )
         let skillSummaries = loadedSkills
             .filter { SkillTrust.promptable.contains($0.trust) }
@@ -312,9 +326,33 @@ struct SwooshDaemon {
             ),
             runtimeSources: SwooshAPIRuntimeSources(
                 providers: {
-                    let active = await ProviderFactory.detectActiveProvider(secrets: secrets)
-                    let summary = await SwooshDaemon.makeProviderSummaries(secrets: secrets, activeProvider: active)
-                    return ProvidersResponse(providers: summary.providers, activeProviderID: summary.activeProviderID)
+                    let preferredProviderID = (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+                    let summary = await SwooshDaemon.makeProviderSummaries(
+                        secrets: secrets,
+                        activeProvider: providerInfo,
+                        preferredProviderID: preferredProviderID
+                    )
+                    return ProvidersResponse(
+                        providers: summary.providers,
+                        activeProviderID: summary.activeProviderID,
+                        preferredProviderID: summary.preferredProviderID
+                    )
+                },
+                saveProviderKey: { request in
+                    try await SwooshDaemon.saveProviderKey(
+                        request,
+                        secrets: secrets,
+                        configStore: configStore,
+                        currentProvider: providerInfo
+                    )
+                },
+                selectProvider: { request in
+                    try await SwooshDaemon.selectProvider(
+                        request,
+                        configStore: configStore,
+                        secrets: secrets,
+                        currentProvider: providerInfo
+                    )
                 },
                 skills: {
                     let skills = (try? await skillStore.listAll()) ?? []
@@ -322,9 +360,29 @@ struct SwooshDaemon {
                         .filter { SkillTrust.promptable.contains($0.trust) }
                         .map(SwooshDaemon.skillSummary))
                 },
+                memories: {
+                    await SwooshDaemon.memoriesResponse(backend: agentBackend)
+                },
+                records: {
+                    await SwooshDaemon.recordsResponse(
+                        configStore: configStore,
+                        secrets: secrets,
+                        skillStore: skillStore,
+                        goalStore: goalStore,
+                        manifestStore: manifestStore,
+                        cronStore: cronStore
+                    )
+                },
+                media: {
+                    SwooshDaemon.mediaResponse(root: swooshDir.appendingPathComponent("artifacts", isDirectory: true))
+                },
                 readiness: {
-                    let active = await ProviderFactory.detectActiveProvider(secrets: secrets)
-                    let summary = await SwooshDaemon.makeProviderSummaries(secrets: secrets, activeProvider: active)
+                    let preferredProviderID = (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+                    let summary = await SwooshDaemon.makeProviderSummaries(
+                        secrets: secrets,
+                        activeProvider: providerInfo,
+                        preferredProviderID: preferredProviderID
+                    )
                     let skills = (try? await skillStore.listAll()) ?? []
                     let activeProvider = summary.providers.first { $0.id == summary.activeProviderID }
                         ?? summary.providers.first(where: \.active)
@@ -335,6 +393,19 @@ struct SwooshDaemon {
                         activeModel: activeProvider?.model,
                         promptableSkillCount: skills.filter { SkillTrust.promptable.contains($0.trust) }.count
                     ))
+                },
+                updateRuntimeFlags: { request in
+                    try await SwooshDaemon.updateRuntimeFlags(request, configStore: configStore)
+                },
+                updateRuntimeProfile: { request in
+                    try await SwooshDaemon.updateRuntimeProfile(request, configStore: configStore)
+                },
+                wallet: {
+                    await SwooshDaemon.walletDashboard(
+                        configStore: configStore,
+                        secrets: secrets,
+                        dependencies: toolRuntime.dependencies
+                    )
                 }
             )
         )
@@ -386,8 +457,9 @@ struct SwooshDaemon {
 
     static func makeProviderSummaries(
         secrets: KeychainSecretStore,
-        activeProvider: (name: String, model: String)?
-    ) async -> (providers: [ProviderSummary], activeProviderID: String?) {
+        activeProvider: (name: String, model: String)?,
+        preferredProviderID: String? = nil
+    ) async -> (providers: [ProviderSummary], activeProviderID: String?, preferredProviderID: String?) {
         let openAIConfigured = (try? await secrets.exists(SecretRef("openai", "api_key"))) ?? false
         let openRouterConfigured = (try? await secrets.exists(SecretRef("openrouter", "api_key"))) ?? false
         let elizaConfigured = (try? await secrets.exists(SecretRef("eliza-cloud", "api_key"))) ?? false
@@ -450,7 +522,7 @@ struct SwooshDaemon {
             ))
         }
 
-        return (providers, activeID)
+        return (providers, activeID, preferredProviderID)
     }
 
     static func skillSummary(_ skill: SkillDocument) -> SkillSummary {
@@ -461,6 +533,583 @@ struct SwooshDaemon {
             category: skill.category.rawValue,
             trust: skill.trust.rawValue
         )
+    }
+
+    static func saveProviderKey(
+        _ request: ProviderAuthRequest,
+        secrets: KeychainSecretStore,
+        configStore: SwooshConfigStore,
+        currentProvider: (name: String, model: String)?
+    ) async throws -> ProviderMutationResponse {
+        guard ["openai", "openrouter", "eliza-cloud"].contains(request.providerID) else {
+            throw APIError.badRequest("provider does not accept API keys from the iOS app")
+        }
+        let key = request.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            throw APIError.badRequest("apiKey is required")
+        }
+        try await secrets.set(key, ref: SecretRef(request.providerID, "api_key"))
+        try savePreferredProvider(request.providerID, configStore: configStore)
+        return try await providerMutationResponse(
+            message: "Key stored in the Mac keychain. Restart swooshd to move chat onto this provider.",
+            configStore: configStore,
+            secrets: secrets,
+            currentProvider: currentProvider
+        )
+    }
+
+    static func selectProvider(
+        _ request: ProviderSelectionRequest,
+        configStore: SwooshConfigStore,
+        secrets: KeychainSecretStore,
+        currentProvider: (name: String, model: String)?
+    ) async throws -> ProviderMutationResponse {
+        guard ["openai", "openrouter", "eliza-cloud", "local-openai"].contains(request.providerID) else {
+            throw APIError.badRequest("unknown provider: \(request.providerID)")
+        }
+        try savePreferredProvider(request.providerID, configStore: configStore)
+        return try await providerMutationResponse(
+            message: "Provider preference saved. Restart swooshd to apply it to new chat turns.",
+            configStore: configStore,
+            secrets: secrets,
+            currentProvider: currentProvider
+        )
+    }
+
+    static func memoriesResponse(backend: AgentBackend) async -> SwooshClient.MemoriesResponse? {
+        let store = MemoryStore(backend: backend)
+        guard let approved = try? await store.listApproved(),
+              let pending = try? await store.listPending() else { return nil }
+        let rejectedRows = (try? await backend.client.memories(
+            workspaceID: backend.workspaceID,
+            status: "rejected"
+        )) ?? []
+        let rejected = rejectedRows.compactMap { row -> MemorySummary? in
+            if case .rejected(let candidate) = row {
+                return memorySummary(candidate)
+            }
+            return nil
+        }
+        return SwooshClient.MemoriesResponse(
+            approved: approved.map(memorySummary),
+            pending: pending.map(memorySummary),
+            rejected: rejected
+        )
+    }
+
+    static func recordsResponse(
+        configStore: SwooshConfigStore,
+        secrets: KeychainSecretStore,
+        skillStore: FileSkillStore,
+        goalStore: FileGoalStore,
+        manifestStore: FileManifestationStore,
+        cronStore: FileCronJobStore
+    ) async -> RecordsResponse? {
+        let skills = (try? await skillStore.listAll()) ?? []
+        let active = await ProviderFactory.detectActiveProvider(
+            secrets: secrets,
+            preferredProviderID: (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+        )
+        let readiness = SwooshReadinessDetector(config: configStore).report(inputs: SwooshReadinessInputs(
+            daemonReachable: true,
+            chatEnabled: true,
+            activeProviderName: active?.name,
+            activeModel: active?.model,
+            promptableSkillCount: skills.filter { SkillTrust.promptable.contains($0.trust) }.count
+        ))
+        let goals = ((try? await goalStore.listAll()) ?? []).map { goal in
+            GoalRecordSummary(
+                id: goal.id,
+                statement: goal.statement,
+                state: goal.state.rawValue,
+                progress: "\(goal.progress.completed)/\(goal.progress.ceiling)",
+                updatedAt: goal.updatedAt
+            )
+        }
+        let manifestations = ((try? await manifestStore.listRecent(limit: 20)) ?? []).map { manifestation in
+            ManifestationRecordSummary(
+                id: manifestation.id,
+                status: manifestation.status.rawValue,
+                triggerReason: manifestation.triggerReason,
+                proposalCount: manifestation.proposals.count,
+                summary: manifestation.summary,
+                startedAt: manifestation.startedAt
+            )
+        }
+        let cronJobs = ((try? await cronStore.list()) ?? []).map { job in
+            CronJobRecordSummary(
+                id: job.id,
+                name: job.name,
+                state: job.state.rawValue,
+                enabled: job.enabled,
+                nextRunAt: job.nextRunAt,
+                lastRunAt: job.lastRunAt
+            )
+        }
+        return RecordsResponse(
+            readiness: readiness,
+            metrics: MetricsResponse(counters: [
+                MetricCounter(id: "skills", value: skills.count),
+                MetricCounter(id: "goals", value: goals.count),
+                MetricCounter(id: "manifestations", value: manifestations.count),
+                MetricCounter(id: "cron_jobs", value: cronJobs.count),
+            ]),
+            usage: UsageResponse(chatTurns: 0, approvedMemoryReferences: 0, lastChatAt: nil),
+            boardCards: [],
+            goals: goals,
+            manifestations: manifestations,
+            cronJobs: cronJobs
+        )
+    }
+
+    static func updateRuntimeFlags(
+        _ request: RuntimeFlagUpdateRequest,
+        configStore: SwooshConfigStore
+    ) async throws -> RuntimeConfigMutationResponse {
+        let current = runtimeConfigOrDefault(configStore: configStore)
+        var safety = current.safetyConfig
+        for flag in request.flags {
+            switch flag.id {
+            case "autonomousTradingEnabled":
+                safety.autonomousTradingEnabled = flag.enabled
+            case "humanPromptedTradingEnabled":
+                safety.humanPromptedTradingEnabled = flag.enabled
+            case "swapExecutionEnabled":
+                safety.swapExecutionEnabled = flag.enabled
+            case "portfolioRecommendationsEnabled":
+                safety.portfolioRecommendationsEnabled = flag.enabled
+            case "privateKeyCustodyEnabled":
+                safety.privateKeyCustodyEnabled = flag.enabled
+            case "seedPhraseIngestionEnabled":
+                safety.seedPhraseIngestionEnabled = flag.enabled
+            case "cookieIngestionEnabled":
+                safety.cookieIngestionEnabled = flag.enabled
+            case "shellToBlockchainBridgeEnabled":
+                safety.shellToBlockchainBridgeEnabled = flag.enabled
+            case "modelSelfApprovalEnabled":
+                safety.modelSelfApprovalEnabled = flag.enabled
+            case "mainnetWritesByDefault":
+                safety.mainnetWritesByDefault = flag.enabled
+            default:
+                throw APIError.badRequest("unknown safety flag: \(flag.id)")
+            }
+        }
+        let updated = runtimeConfig(from: current, safetyConfig: safety)
+        try configStore.save(updated)
+        let changed = updated.safetyConfig != current.safetyConfig
+        return RuntimeConfigMutationResponse(
+            config: runtimeConfigResponse(updated),
+            requiresRestart: changed,
+            message: changed
+                ? "Safety flags saved. Restart swooshd to rebuild the firewall and tool registry with the new policy."
+                : "Safety flags were already up to date."
+        )
+    }
+
+    static func updateRuntimeProfile(
+        _ request: RuntimeProfileUpdateRequest,
+        configStore: SwooshConfigStore
+    ) async throws -> RuntimeConfigMutationResponse {
+        guard let preset = PermissionProfilePreset(rawValue: request.permissionProfile) else {
+            throw APIError.badRequest("unknown permission profile: \(request.permissionProfile)")
+        }
+        let current = runtimeConfigOrDefault(configStore: configStore)
+        let updated = runtimeConfig(
+            from: current,
+            permissionProfile: preset.rawValue,
+            toolPolicy: preset.defaultToolPolicy,
+            safetyConfig: preset.defaultSafetyConfig
+        )
+        try configStore.save(updated)
+        let changed = updated.permissionProfile != current.permissionProfile
+            || updated.toolPolicy != current.toolPolicy
+            || updated.safetyConfig != current.safetyConfig
+        return RuntimeConfigMutationResponse(
+            config: runtimeConfigResponse(updated),
+            requiresRestart: changed,
+            message: changed
+                ? "Permission profile saved. Restart swooshd to apply the new permissions to tool calls."
+                : "Permission profile was already up to date."
+        )
+    }
+
+    static func walletDashboard(
+        configStore: SwooshConfigStore,
+        secrets: KeychainSecretStore,
+        dependencies: ToolDependencies
+    ) async -> WalletDashboardResponse {
+        let config = runtimeConfigOrDefault(configStore: configStore)
+        let permissions = PermissionProfilePreset(rawValue: config.permissionProfile)?.grantedSwooshPermissions ?? []
+        let safety = config.safetyConfig
+        let walletBridgeAvailable = dependencies.walletBridge != nil
+        let evmRPCConfigured = dependencies.evmClient != nil
+        let solanaRPCConfigured = dependencies.solanaClient != nil
+        let hyperliquidRefs = (try? await secrets.listRefs(namespace: "hyperliquid")) ?? []
+        let hyperliquidSecretConfigured = !hyperliquidRefs.isEmpty
+        let provider = await ProviderFactory.detectActiveProvider(
+            secrets: secrets,
+            preferredProviderID: config.preferredProviderID
+        )
+        let promptedTradingEnabled = safety.humanPromptedTradingEnabled || safety.autonomousTradingEnabled
+        let mainnetWritesEnabled = safety.mainnetWritesByDefault
+            && permissions.contains(.evmMainnetWrite)
+            && permissions.contains(.solanaMainnetWrite)
+
+        let capabilities = [
+            WalletTradingCapabilitySummary(
+                id: "wallet.bridge",
+                name: "External wallet bridge",
+                enabled: permissions.contains(.evmRequestSignature) || permissions.contains(.solanaRequestSignature),
+                configured: walletBridgeAvailable,
+                status: walletBridgeAvailable ? "available" : "not_connected",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "evm.read",
+                name: "EVM balances",
+                enabled: permissions.contains(.evmRead),
+                configured: evmRPCConfigured,
+                status: evmRPCConfigured ? "rpc_ready" : "rpc_not_configured",
+                risk: "read-only"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "solana.read",
+                name: "Solana balances",
+                enabled: permissions.contains(.solanaRead),
+                configured: solanaRPCConfigured,
+                status: solanaRPCConfigured ? "rpc_ready" : "rpc_not_configured",
+                risk: "read-only"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "trading.human_prompted",
+                name: "Human-prompted trading",
+                enabled: safety.humanPromptedTradingEnabled,
+                configured: true,
+                status: safety.humanPromptedTradingEnabled ? "approval_required" : "disabled_by_safety_flag",
+                risk: "critical"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "mainnet.write",
+                name: "Mainnet writes",
+                enabled: mainnetWritesEnabled,
+                configured: permissions.contains(.evmMainnetWrite) || permissions.contains(.solanaMainnetWrite),
+                status: mainnetWritesEnabled ? "mainnet_enabled" : "requires_trader_or_autonomous_profile",
+                risk: "critical"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "jupiter.swaps",
+                name: "Jupiter swaps",
+                enabled: promptedTradingEnabled && safety.swapExecutionEnabled && permissions.contains(.solanaRequestSignature),
+                configured: walletBridgeAvailable,
+                status: walletBridgeAvailable ? "wallet_ready" : "waiting_for_wallet_bridge",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "uniswap.swaps",
+                name: "Uniswap swap builder",
+                enabled: promptedTradingEnabled && safety.swapExecutionEnabled && permissions.contains(.evmBuildTransaction),
+                configured: evmRPCConfigured,
+                status: evmRPCConfigured ? "rpc_ready" : "waiting_for_evm_rpc",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "hyperliquid.market_data",
+                name: "Hyperliquid market data",
+                enabled: permissions.contains(.networkRead),
+                configured: true,
+                status: "public_read_client",
+                risk: "read-only"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "hyperliquid.trading",
+                name: "Hyperliquid trading",
+                enabled: promptedTradingEnabled && permissions.contains(.hyperliquidTrade),
+                configured: hyperliquidSecretConfigured,
+                status: hyperliquidSecretConfigured ? "secret_ref_available" : "waiting_for_keychain_secret_ref",
+                risk: "critical"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "portfolio.insights",
+                name: "Portfolio AI insights",
+                enabled: safety.portfolioRecommendationsEnabled,
+                configured: provider != nil,
+                status: provider == nil ? "waiting_for_model_provider" : "model_provider_ready",
+                risk: "medium"
+            ),
+        ]
+        return WalletDashboardResponse(
+            connected: walletBridgeAvailable,
+            walletLabel: walletBridgeAvailable ? "External wallet bridge" : nil,
+            analytics: WalletAnalyticsSummary(
+                totalValueUSD: nil,
+                realizedPnLUSD: nil,
+                unrealizedPnLUSD: nil,
+                totalPnLPercent: nil,
+                dailyChangePercent: nil,
+                openPositions: 0
+            ),
+            assets: [],
+            insights: walletInsights(
+                safety: safety,
+                walletBridgeAvailable: walletBridgeAvailable,
+                providerConfigured: provider != nil,
+                hyperliquidSecretConfigured: hyperliquidSecretConfigured,
+                mainnetWritesEnabled: mainnetWritesEnabled
+            ),
+            capabilities: capabilities
+        )
+    }
+
+    static func mediaResponse(root: URL) -> MediaGalleryResponse {
+        let manager = FileManager.default
+        let root = root.standardizedFileURL
+        guard let enumerator = manager.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return MediaGalleryResponse(items: [], root: root.path)
+        }
+        let rootPrefix = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        let items = enumerator.compactMap { entry -> MediaGalleryItem? in
+            guard let url = entry as? URL else { return nil }
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .fileSizeKey])
+            guard values?.isRegularFile == true else { return nil }
+            let path = url.standardizedFileURL.path
+            let relativePath = path.hasPrefix(rootPrefix) ? String(path.dropFirst(rootPrefix.count)) : url.lastPathComponent
+            return MediaGalleryItem(
+                id: relativePath,
+                title: url.lastPathComponent,
+                kind: mediaKind(for: url.pathExtension),
+                relativePath: relativePath,
+                byteSize: Int64(values?.fileSize ?? 0),
+                createdAt: values?.creationDate
+            )
+        }
+        .sorted { lhs, rhs in
+            (lhs.createdAt ?? .distantPast) > (rhs.createdAt ?? .distantPast)
+        }
+        return MediaGalleryResponse(items: Array(items.prefix(200)), root: root.path)
+    }
+
+    private static func savePreferredProvider(_ providerID: String, configStore: SwooshConfigStore) throws {
+        let current = try? configStore.load(SwooshRuntimeConfig.self)
+        let updated = SwooshRuntimeConfig(
+            version: current?.version ?? 1,
+            setupMode: current?.setupMode ?? "phone",
+            permissionProfile: current?.permissionProfile ?? PermissionProfilePreset.developer.rawValue,
+            modelPath: current?.modelPath ?? "auto",
+            daemonHost: current?.daemonHost ?? "0.0.0.0",
+            daemonPort: current?.daemonPort ?? 8787,
+            preferredProviderID: providerID,
+            localDiagnosticFallback: current?.localDiagnosticFallback ?? true,
+            toolPolicy: current?.toolPolicy,
+            safetyConfig: current?.safetyConfig,
+            configuredAt: current?.configuredAt ?? ISO8601DateFormatter().string(from: Date())
+        )
+        try configStore.save(updated)
+    }
+
+    private static func providerMutationResponse(
+        message: String,
+        configStore: SwooshConfigStore,
+        secrets: KeychainSecretStore,
+        currentProvider: (name: String, model: String)?
+    ) async throws -> ProviderMutationResponse {
+        let preferredProviderID = (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+        let summary = await makeProviderSummaries(
+            secrets: secrets,
+            activeProvider: currentProvider,
+            preferredProviderID: preferredProviderID
+        )
+        return ProviderMutationResponse(
+            providers: summary.providers,
+            activeProviderID: summary.activeProviderID,
+            preferredProviderID: summary.preferredProviderID,
+            requiresRestart: summary.activeProviderID != preferredProviderID,
+            message: message
+        )
+    }
+
+    private static func runtimeConfigOrDefault(configStore: SwooshConfigStore) -> SwooshRuntimeConfig {
+        (try? configStore.load(SwooshRuntimeConfig.self)) ?? SwooshRuntimeConfig(
+            setupMode: "phone",
+            permissionProfile: PermissionProfilePreset.developer.rawValue,
+            modelPath: "auto",
+            daemonHost: "0.0.0.0",
+            daemonPort: 8787,
+            preferredProviderID: nil
+        )
+    }
+
+    private static func runtimeConfig(
+        from current: SwooshRuntimeConfig,
+        permissionProfile: String? = nil,
+        toolPolicy: ToolCallPolicy? = nil,
+        safetyConfig: SwooshSafetyConfig? = nil
+    ) -> SwooshRuntimeConfig {
+        SwooshRuntimeConfig(
+            version: current.version,
+            setupMode: current.setupMode,
+            permissionProfile: permissionProfile ?? current.permissionProfile,
+            modelPath: current.modelPath,
+            daemonHost: current.daemonHost,
+            daemonPort: current.daemonPort,
+            preferredProviderID: current.preferredProviderID,
+            localDiagnosticFallback: current.localDiagnosticFallback,
+            toolPolicy: toolPolicy ?? current.toolPolicy,
+            safetyConfig: safetyConfig ?? current.safetyConfig,
+            configuredAt: current.configuredAt
+        )
+    }
+
+    private static func runtimeConfigResponse(_ config: SwooshRuntimeConfig) -> RuntimeConfigResponse {
+        RuntimeConfigResponse(
+            configured: true,
+            setupMode: config.setupMode,
+            permissionProfile: config.permissionProfile,
+            modelPath: config.modelPath,
+            daemonHost: config.daemonHost,
+            daemonPort: config.daemonPort,
+            preferredProviderID: config.preferredProviderID,
+            localDiagnosticFallback: config.localDiagnosticFallback,
+            toolPolicy: ToolPolicySummary(
+                maxToolCallsPerTurn: config.toolPolicy.maxToolCallsPerTurn,
+                maxToolChainDepth: config.toolPolicy.maxToolChainDepth,
+                allowModelToolCalls: config.toolPolicy.allowModelToolCalls,
+                allowHumanOnlyFromModel: config.toolPolicy.allowHumanOnlyFromModel,
+                allowCriticalToolsFromModel: config.toolPolicy.allowCriticalToolsFromModel,
+                requireApprovalForMediumRiskAndAbove: config.toolPolicy.requireApprovalForMediumRiskAndAbove
+            ),
+            safetyFlags: safetyFlagSummaries(config.safetyConfig)
+        )
+    }
+
+    private static func safetyFlagSummaries(_ config: SwooshSafetyConfig) -> [RuntimeFlagSummary] {
+        [
+            RuntimeFlagSummary(id: "autonomousTradingEnabled", label: "Autonomous trading", enabled: config.autonomousTradingEnabled),
+            RuntimeFlagSummary(id: "humanPromptedTradingEnabled", label: "Human-prompted trading", enabled: config.humanPromptedTradingEnabled),
+            RuntimeFlagSummary(id: "swapExecutionEnabled", label: "Swap execution", enabled: config.swapExecutionEnabled),
+            RuntimeFlagSummary(id: "portfolioRecommendationsEnabled", label: "Portfolio recommendations", enabled: config.portfolioRecommendationsEnabled),
+            RuntimeFlagSummary(id: "privateKeyCustodyEnabled", label: "Private-key custody", enabled: config.privateKeyCustodyEnabled),
+            RuntimeFlagSummary(id: "seedPhraseIngestionEnabled", label: "Seed phrase ingestion", enabled: config.seedPhraseIngestionEnabled),
+            RuntimeFlagSummary(id: "cookieIngestionEnabled", label: "Cookie ingestion", enabled: config.cookieIngestionEnabled),
+            RuntimeFlagSummary(id: "shellToBlockchainBridgeEnabled", label: "Shell to blockchain bridge", enabled: config.shellToBlockchainBridgeEnabled),
+            RuntimeFlagSummary(id: "modelSelfApprovalEnabled", label: "Model self-approval", enabled: config.modelSelfApprovalEnabled),
+            RuntimeFlagSummary(id: "mainnetWritesByDefault", label: "Mainnet writes by default", enabled: config.mainnetWritesByDefault),
+        ]
+    }
+
+    private static func walletInsights(
+        safety: SwooshSafetyConfig,
+        walletBridgeAvailable: Bool,
+        providerConfigured: Bool,
+        hyperliquidSecretConfigured: Bool,
+        mainnetWritesEnabled: Bool
+    ) -> [WalletInsightSummary] {
+        var insights: [WalletInsightSummary] = []
+        if walletBridgeAvailable {
+            insights.append(WalletInsightSummary(
+                id: "wallet.bridge_available",
+                severity: .info,
+                title: "Wallet bridge is available",
+                detail: "Trading tools can request accounts and signatures through the configured bridge.",
+                source: "runtime"
+            ))
+        } else {
+            insights.append(WalletInsightSummary(
+                id: "wallet.bridge_missing",
+                severity: .warning,
+                title: "No wallet bridge connected",
+                detail: "EVM, Solana, Jupiter, and Uniswap write flows need a wallet bridge before analytics can attach to live accounts.",
+                source: "runtime"
+            ))
+        }
+        if safety.portfolioRecommendationsEnabled {
+            insights.append(WalletInsightSummary(
+                id: "portfolio.insights_enabled",
+                severity: providerConfigured ? .info : .warning,
+                title: "Portfolio insights are enabled",
+                detail: providerConfigured
+                    ? "The configured model provider can generate portfolio commentary once wallet data is available."
+                    : "Add a model provider key before treating insights as model-backed analysis.",
+                source: "runtime"
+            ))
+        }
+        if safety.humanPromptedTradingEnabled {
+            insights.append(WalletInsightSummary(
+                id: "trading.human_prompted_enabled",
+                severity: .warning,
+                title: "Human-prompted trading is enabled",
+                detail: "Trading tools may be requested by the agent, but write/sign/broadcast actions still require approval.",
+                source: "safety_config"
+            ))
+        }
+        if safety.autonomousTradingEnabled {
+            insights.append(WalletInsightSummary(
+                id: "trading.autonomous_enabled",
+                severity: .warning,
+                title: "Autonomous trading is enabled",
+                detail: "The runtime will allow trading tools after a daemon restart when matching permissions and credentials are present.",
+                source: "safety_config"
+            ))
+        }
+        if mainnetWritesEnabled {
+            insights.append(WalletInsightSummary(
+                id: "trading.mainnet_enabled",
+                severity: .critical,
+                title: "Mainnet writes are enabled",
+                detail: "Mainnet write tools will be eligible by default after the daemon reloads this config.",
+                source: "safety_config"
+            ))
+        }
+        if !hyperliquidSecretConfigured {
+            insights.append(WalletInsightSummary(
+                id: "hyperliquid.secret_missing",
+                severity: .info,
+                title: "Hyperliquid key is not configured",
+                detail: "Read-only Hyperliquid market data is available, but trading needs a Keychain secret ref.",
+                source: "keychain"
+            ))
+        }
+        return insights
+    }
+
+    private static func memorySummary(_ memory: ActantDB.ApprovedMemory) -> MemorySummary {
+        MemorySummary(
+            id: memory.id,
+            text: memory.text,
+            category: memory.category,
+            status: memory.status,
+            sensitivity: memory.sensitivity.rawValue,
+            confidence: memory.confidence,
+            createdAt: memory.createdAt
+        )
+    }
+
+    private static func memorySummary(_ candidate: ActantDB.MemoryCandidate) -> MemorySummary {
+        MemorySummary(
+            id: candidate.id,
+            text: candidate.text,
+            category: candidate.category,
+            status: candidate.status,
+            sensitivity: candidate.sensitivity.rawValue,
+            confidence: candidate.confidence,
+            createdAt: candidate.createdAt
+        )
+    }
+
+    private static func mediaKind(for fileExtension: String) -> MediaGalleryKind {
+        switch fileExtension.lowercased() {
+        case "png", "jpg", "jpeg", "gif", "webp", "heic", "tif", "tiff":
+            return .image
+        case "mp4", "mov", "m4v", "webm":
+            return .video
+        case "mp3", "wav", "m4a", "aac", "flac", "ogg":
+            return .audio
+        default:
+            return .other
+        }
     }
 }
 
@@ -473,10 +1122,12 @@ private struct DaemonToolRuntime: Sendable {
 
 private func makeDaemonToolRuntime(
     swooshDir: URL,
-    backend: AgentBackend
+    backend: AgentBackend,
+    grantedPermissions: Set<SwooshPermission>,
+    safetyConfig: SwooshSafetyConfig
 ) async throws -> DaemonToolRuntime {
     let audit = SwooshAuditLog()
-    let firewall = SwooshFirewallActor(granted: defaultDaemonToolPermissions())
+    let firewall = SwooshFirewallActor(granted: grantedPermissions)
     let approvalCenter = SwooshApprovals.ApprovalCenter(store: InMemoryApprovalStore(), audit: audit)
     let rootStore = InMemoryRootStore()
     let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
@@ -496,11 +1147,17 @@ private func makeDaemonToolRuntime(
         allowedWrite: true
     ))
 
-    let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvalCenter)
+    let registry = ToolRegistry(
+        firewall: firewall,
+        audit: audit,
+        approvals: approvalCenter,
+        safetyConfig: safetyConfig
+    )
     let dependencies = ToolDependencies(
         firewall: firewall,
         audit: audit,
         approvals: approvalCenter,
+        safetyConfig: safetyConfig,
         fileAccess: SafeFileAccessor(rootStore: rootStore),
         processRunner: StreamingProcessRunner(approvedRoots: [cwd.path, swooshDir.path]),
         memoryStore: MemoryStore(backend: backend),
@@ -510,13 +1167,6 @@ private func makeDaemonToolRuntime(
     )
     await DefaultToolRegistrar.registerAll(into: registry, dependencies: dependencies)
     return DaemonToolRuntime(registry: registry, dependencies: dependencies)
-}
-
-private func defaultDaemonToolPermissions() -> Set<SwooshPermission> {
-    Set(SwooshPermission.allCases).subtracting([
-        .evmMainnetWrite,
-        .solanaMainnetWrite,
-    ])
 }
 
 // MARK: - Scout autopilot

@@ -11,13 +11,17 @@ import Foundation
 /// Controls which advanced capabilities are enabled.
 /// All flags default to `false` for 0.4A. Future milestones
 /// unlock them behind proper guardrails.
-public struct SwooshSafetyConfig: Codable, Sendable {
+public struct SwooshSafetyConfig: Codable, Sendable, Equatable {
 
     // ── Trading & financial ───────────────────────────────────────
 
     /// When true, enables autonomous trading tools (swap, limit order, etc.).
     /// 0.4A default: false. Requires dedicated audit trail + risk limits.
     public var autonomousTradingEnabled: Bool
+
+    /// When true, the model may request trading actions that require human approval.
+    /// 0.4A default: false. Human approval stays mandatory.
+    public var humanPromptedTradingEnabled: Bool
 
     /// When true, enables swap execution tools (DEX aggregator calls).
     /// 0.4A default: false. Requires slippage protection + preview.
@@ -61,6 +65,7 @@ public struct SwooshSafetyConfig: Codable, Sendable {
 
     public init(
         autonomousTradingEnabled: Bool = false,
+        humanPromptedTradingEnabled: Bool = false,
         swapExecutionEnabled: Bool = false,
         portfolioRecommendationsEnabled: Bool = false,
         privateKeyCustodyEnabled: Bool = false,
@@ -71,6 +76,7 @@ public struct SwooshSafetyConfig: Codable, Sendable {
         mainnetWritesByDefault: Bool = false
     ) {
         self.autonomousTradingEnabled = autonomousTradingEnabled
+        self.humanPromptedTradingEnabled = humanPromptedTradingEnabled
         self.swapExecutionEnabled = swapExecutionEnabled
         self.portfolioRecommendationsEnabled = portfolioRecommendationsEnabled
         self.privateKeyCustodyEnabled = privateKeyCustodyEnabled
@@ -81,12 +87,64 @@ public struct SwooshSafetyConfig: Codable, Sendable {
         self.mainnetWritesByDefault = mainnetWritesByDefault
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case autonomousTradingEnabled
+        case humanPromptedTradingEnabled
+        case swapExecutionEnabled
+        case portfolioRecommendationsEnabled
+        case privateKeyCustodyEnabled
+        case seedPhraseIngestionEnabled
+        case cookieIngestionEnabled
+        case shellToBlockchainBridgeEnabled
+        case modelSelfApprovalEnabled
+        case mainnetWritesByDefault
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            autonomousTradingEnabled: try container.decodeIfPresent(Bool.self, forKey: .autonomousTradingEnabled) ?? false,
+            humanPromptedTradingEnabled: try container.decodeIfPresent(Bool.self, forKey: .humanPromptedTradingEnabled) ?? false,
+            swapExecutionEnabled: try container.decodeIfPresent(Bool.self, forKey: .swapExecutionEnabled) ?? false,
+            portfolioRecommendationsEnabled: try container.decodeIfPresent(Bool.self, forKey: .portfolioRecommendationsEnabled) ?? false,
+            privateKeyCustodyEnabled: try container.decodeIfPresent(Bool.self, forKey: .privateKeyCustodyEnabled) ?? false,
+            seedPhraseIngestionEnabled: try container.decodeIfPresent(Bool.self, forKey: .seedPhraseIngestionEnabled) ?? false,
+            cookieIngestionEnabled: try container.decodeIfPresent(Bool.self, forKey: .cookieIngestionEnabled) ?? false,
+            shellToBlockchainBridgeEnabled: try container.decodeIfPresent(Bool.self, forKey: .shellToBlockchainBridgeEnabled) ?? false,
+            modelSelfApprovalEnabled: try container.decodeIfPresent(Bool.self, forKey: .modelSelfApprovalEnabled) ?? false,
+            mainnetWritesByDefault: try container.decodeIfPresent(Bool.self, forKey: .mainnetWritesByDefault) ?? false
+        )
+    }
+
     public static let defaultAgent = SwooshSafetyConfig()
 
     /// Development-only config. Some flags relaxed for testing.
     /// Still does NOT enable private key custody or seed phrase ingestion.
     public static let development = SwooshSafetyConfig(
+        humanPromptedTradingEnabled: true,
+        swapExecutionEnabled: true,
+        portfolioRecommendationsEnabled: true,
         mainnetWritesByDefault: false  // even in dev, mainnet stays locked
+    )
+
+    public static let trader = SwooshSafetyConfig(
+        humanPromptedTradingEnabled: true,
+        swapExecutionEnabled: true,
+        portfolioRecommendationsEnabled: true,
+        mainnetWritesByDefault: true
+    )
+
+    public static let autonomous = SwooshSafetyConfig(
+        autonomousTradingEnabled: true,
+        humanPromptedTradingEnabled: true,
+        swapExecutionEnabled: true,
+        portfolioRecommendationsEnabled: true,
+        privateKeyCustodyEnabled: true,
+        seedPhraseIngestionEnabled: true,
+        cookieIngestionEnabled: true,
+        shellToBlockchainBridgeEnabled: true,
+        modelSelfApprovalEnabled: true,
+        mainnetWritesByDefault: true
     )
 }
 
@@ -101,6 +159,7 @@ public enum SafetyViolation: Error, Sendable {
     case modelSelfApprovalDenied
     case shellBlockchainBridgeDenied
     case autonomousTradingDenied
+    case humanPromptedTradingDenied
     case swapExecutionDenied
 
     public var localizedDescription: String {
@@ -121,6 +180,8 @@ public enum SafetyViolation: Error, Sendable {
             return "Shell-to-blockchain bridge is disabled."
         case .autonomousTradingDenied:
             return "Autonomous trading is disabled."
+        case .humanPromptedTradingDenied:
+            return "Human-prompted trading is disabled."
         case .swapExecutionDenied:
             return "Swap execution is disabled."
         }
@@ -134,6 +195,10 @@ extension SwooshSafetyConfig {
 
     public func requireAutonomousTrading() throws {
         guard autonomousTradingEnabled else { throw SafetyViolation.autonomousTradingDenied }
+    }
+
+    public func requireHumanPromptedTrading() throws {
+        guard humanPromptedTradingEnabled else { throw SafetyViolation.humanPromptedTradingDenied }
     }
 
     public func requireSwapExecution() throws {

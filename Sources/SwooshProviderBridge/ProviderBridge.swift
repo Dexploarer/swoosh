@@ -113,7 +113,10 @@ private extension SwooshTools.JSONSchema {
 /// Used by CLI commands to bootstrap the inference pipeline.
 public struct ProviderFactory {
 
-    public static func buildRouter(secrets: any SecretStoring) async -> (ProviderRouter, ProviderRegistry) {
+    public static func buildRouter(
+        secrets: any SecretStoring,
+        preferredProviderID: String? = nil
+    ) async -> (ProviderRouter, ProviderRegistry) {
         let registry = ProviderRegistry()
 
         // Register all available providers
@@ -129,19 +132,21 @@ public struct ProviderFactory {
         let local = LocalOpenAICompatibleProvider()
         await registry.register(local, profile: .localOpenAI)
 
-        // Default routes (user can customize later)
-        // Priority: OpenAI > OpenRouter > Local
         await registry.addRoute(ProviderRoute(
             role: .primaryChat, providerID: ProviderID("openai"),
-            model: "gpt-4.1", priority: 100
+            model: "gpt-4.1", priority: priority(for: "openai", defaultPriority: 100, preferredProviderID: preferredProviderID)
         ))
         await registry.addRoute(ProviderRoute(
             role: .primaryChat, providerID: ProviderID("openrouter"),
-            model: "openai/gpt-4.1", priority: 90
+            model: "openai/gpt-4.1", priority: priority(for: "openrouter", defaultPriority: 90, preferredProviderID: preferredProviderID)
+        ))
+        await registry.addRoute(ProviderRoute(
+            role: .primaryChat, providerID: ProviderID("eliza-cloud"),
+            model: "auto", priority: priority(for: "eliza-cloud", defaultPriority: 70, preferredProviderID: preferredProviderID)
         ))
         await registry.addRoute(ProviderRoute(
             role: .primaryChat, providerID: ProviderID("local-openai"),
-            model: "llama3", priority: 60
+            model: "llama3", priority: priority(for: "local-openai", defaultPriority: 60, preferredProviderID: preferredProviderID)
         ))
 
         // Coding routes
@@ -165,24 +170,58 @@ public struct ProviderFactory {
     }
 
     /// Quick check: is any provider ready to use?
-    public static func detectActiveProvider(secrets: any SecretStoring) async -> (name: String, model: String)? {
-        // Check OpenAI
-        if let _ = try? await secrets.get(SecretRef("openai", "api_key")) {
-            return ("OpenAI", "gpt-4.1")
+    public static func detectActiveProvider(
+        secrets: any SecretStoring,
+        preferredProviderID: String? = nil
+    ) async -> (name: String, model: String)? {
+        if let preferredProviderID,
+           let preferred = await detectProvider(id: preferredProviderID, secrets: secrets) {
+            return preferred
         }
 
-        // Check OpenRouter
-        if let _ = try? await secrets.get(SecretRef("openrouter", "api_key")) {
-            return ("OpenRouter", "openai/gpt-4.1")
+        for id in ["openai", "openrouter", "eliza-cloud", "local-openai"] {
+            if let provider = await detectProvider(id: id, secrets: secrets) {
+                return provider
+            }
         }
 
-        // Check local
-        let discovery = LocalProviderDiscovery()
-        let found = await discovery.discover()
-        if let first = found.first, let model = first.models.first {
-            return (first.name, model)
-        }
+        return nil
+    }
 
+    private static func priority(
+        for providerID: String,
+        defaultPriority: Int,
+        preferredProviderID: String?
+    ) -> Int {
+        providerID == preferredProviderID ? defaultPriority + 1_000 : defaultPriority
+    }
+
+    private static func detectProvider(
+        id: String,
+        secrets: any SecretStoring
+    ) async -> (name: String, model: String)? {
+        switch id {
+        case "openai":
+            if let _ = try? await secrets.get(SecretRef("openai", "api_key")) {
+                return ("OpenAI", "gpt-4.1")
+            }
+        case "openrouter":
+            if let _ = try? await secrets.get(SecretRef("openrouter", "api_key")) {
+                return ("OpenRouter", "openai/gpt-4.1")
+            }
+        case "eliza-cloud":
+            if let _ = try? await secrets.get(SecretRef("eliza-cloud", "api_key")) {
+                return ("Eliza Cloud", "auto")
+            }
+        case "local-openai":
+            let discovery = LocalProviderDiscovery()
+            let found = await discovery.discover()
+            if let first = found.first, let model = first.models.first {
+                return (first.name, model)
+            }
+        default:
+            return nil
+        }
         return nil
     }
 }

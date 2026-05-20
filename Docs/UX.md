@@ -29,7 +29,7 @@ On launch, the shell shows:
   Mode:         interactive
   Memory:       4 approved, 0 pending
   Permissions:  safe
-  State plane:  SQLite
+  State plane:  ActantDB
   Session:      default
 
   Type /help for commands, or ask a question.

@@ -134,9 +134,9 @@ public actor ApprovalCenter: ApprovalRequesting {
     // MARK: - ApprovalRequesting conformance
 
     public func requireApproval(_ request: ToolApprovalRequest) async throws {
-        // Check if already approved for session
-        if await store.isApprovedForSession(toolName: request.toolName, sessionID: request.sessionID) {
-            return // Session-level approval exists, proceed
+        if request.approvalPolicy != .askEveryTime,
+           await store.isApprovedForSession(toolName: request.toolName, sessionID: request.sessionID) {
+            return
         }
 
         // Create a pending approval record
@@ -172,6 +172,7 @@ public actor ApprovalCenter: ApprovalRequesting {
                 toolName: record.toolName,
                 risk: record.risk,
                 permission: record.permission,
+                approvalPolicy: .askEveryTime,
                 inputPreview: record.inputPreview,
                 sessionID: record.sessionID,
                 createdAt: record.createdAt

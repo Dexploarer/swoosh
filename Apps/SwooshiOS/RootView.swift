@@ -1,7 +1,7 @@
 // Apps/SwooshiOS/RootView.swift — Tab shell + first-run pairing gate
 //
-// Two surfaces while the slice is small: Chat and Settings. Pairing state
-// lives in ClientSession, and Chat owns the unpaired pairing prompt.
+// Chat, daemon control, and pairing settings. Pairing state lives in
+// ClientSession, and each surface owns its unpaired prompt.
 
 import SwiftUI
 
@@ -15,6 +15,18 @@ struct RootView: View {
                     .navigationTitle("Swoosh")
             }
             .tabItem { Label("Chat", systemImage: "bubble.left.and.bubble.right") }
+
+            NavigationStack {
+                ControlCenterView()
+                    .navigationTitle("Control")
+            }
+            .tabItem { Label("Control", systemImage: "slider.horizontal.3") }
+
+            NavigationStack {
+                WalletView()
+                    .navigationTitle("Wallet")
+            }
+            .tabItem { Label("Wallet", systemImage: "wallet.pass") }
 
             NavigationStack {
                 SettingsView()

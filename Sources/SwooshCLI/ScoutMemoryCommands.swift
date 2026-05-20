@@ -256,12 +256,31 @@ struct PermissionsCommand: AsyncParsableCommand {
             print("Use `swoosh permissions --status` to view live ActantDB grants.")
             return
         }
+        printRuntimePolicyStatus()
         guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
         let center = ApprovalCenter(backend: backend)
         let summary = try await center.permissionSummary()
         print("─── Permissions ──────────────────────────────")
         print(summary)
     }
+}
+
+private func printRuntimePolicyStatus() {
+    let runtime = try? SwooshConfigStore().load(SwooshRuntimeConfig.self)
+    let preset = PermissionProfilePreset(rawValue: runtime?.permissionProfile ?? "") ?? .developer
+    let policy = runtime?.toolPolicy ?? preset.defaultToolPolicy
+    let safety = runtime?.safetyConfig ?? preset.defaultSafetyConfig
+    print("─── Runtime Policy ───────────────────────────")
+    print("Profile: \(runtime?.permissionProfile ?? preset.rawValue)")
+    print("Granted permissions: \(preset.grantedSwooshPermissions.count)")
+    print("Model tool calls: \(policy.allowModelToolCalls ? "enabled" : "disabled")")
+    print("Max tool calls: \(policy.maxToolCallsPerTurn)")
+    print("Max chain depth: \(policy.maxToolChainDepth)")
+    print("Human-only from model: \(policy.allowHumanOnlyFromModel ? "allowed" : "blocked")")
+    print("Critical tools from model: \(policy.allowCriticalToolsFromModel ? "allowed" : "blocked")")
+    print("Medium-risk approval: \(policy.requireApprovalForMediumRiskAndAbove ? "required" : "optional")")
+    print("Model self-approval: \(safety.modelSelfApprovalEnabled ? "enabled" : "disabled")")
+    print("Mainnet writes by default: \(safety.mainnetWritesByDefault ? "enabled" : "disabled")")
 }
 
 // MARK: - Sensitivity bridge

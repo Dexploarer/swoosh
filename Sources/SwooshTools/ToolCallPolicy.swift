@@ -5,7 +5,7 @@
 
 import Foundation
 
-public struct ToolCallPolicy: Codable, Sendable {
+public struct ToolCallPolicy: Codable, Sendable, Equatable {
     public let maxToolCallsPerTurn: Int
     public let maxToolChainDepth: Int
     public let allowModelToolCalls: Bool
@@ -60,4 +60,30 @@ public struct ToolCallPolicy: Codable, Sendable {
         allowCriticalToolsFromModel: false,
         requireApprovalForMediumRiskAndAbove: true
     )
+
+    public static let autonomous = ToolCallPolicy(
+        maxToolCallsPerTurn: 64,
+        maxToolChainDepth: 64,
+        allowModelToolCalls: true,
+        allowHumanOnlyFromModel: true,
+        allowCriticalToolsFromModel: true,
+        requireApprovalForMediumRiskAndAbove: false
+    )
+
+    public var effectiveToolLimit: Int {
+        min(maxToolCallsPerTurn, maxToolChainDepth)
+    }
+
+    public func modelInvocationDenial(for descriptor: ToolDescriptor) -> String? {
+        guard allowModelToolCalls else {
+            return "Model tool calls are disabled by policy"
+        }
+        if descriptor.approval == .humanOnly && !allowHumanOnlyFromModel {
+            return "\(descriptor.name) is human-only under the current tool policy"
+        }
+        if descriptor.risk == .critical && !allowCriticalToolsFromModel {
+            return "\(descriptor.name) is critical-risk and model invocation is disabled by policy"
+        }
+        return nil
+    }
 }

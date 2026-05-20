@@ -36,6 +36,7 @@ struct ChatCommand: AsyncParsableCommand {
         let secrets = KeychainSecretStore()
         var agentHandler: AgentHandler? = nil
         let toolRegistry = try await makeCLIToolRegistry()
+        let toolPolicy = loadCLIToolPolicy()
 
         if let active = await ProviderFactory.detectActiveProvider(secrets: secrets) {
             status.model = active.model
@@ -47,6 +48,7 @@ struct ChatCommand: AsyncParsableCommand {
             let swoosh = try await Swoosh.configure {
                 $0.modelProvider = bridge
                 $0.toolRegistry = toolRegistry
+                $0.toolPolicy = toolPolicy
             }
             agentHandler = { input, sessionID in
                 let response = try await swoosh.ask(input, sessionID: sessionID)
@@ -66,6 +68,7 @@ struct ChatCommand: AsyncParsableCommand {
             let swoosh = try await Swoosh.configure {
                 $0.modelProvider = modelProvider
                 $0.toolRegistry = toolRegistry
+                $0.toolPolicy = toolPolicy
             }
             agentHandler = { input, sessionID in
                 let response = try await swoosh.ask(input, sessionID: sessionID)
@@ -108,9 +111,11 @@ struct AskCommand: AsyncParsableCommand {
         }
 
         let toolRegistry = try await makeCLIToolRegistry()
+        let toolPolicy = loadCLIToolPolicy()
         let swoosh = try await Swoosh.configure {
             $0.modelProvider = modelProvider
             $0.toolRegistry = toolRegistry
+            $0.toolPolicy = toolPolicy
         }
         let response = try await swoosh.ask(question, sessionID: session)
 

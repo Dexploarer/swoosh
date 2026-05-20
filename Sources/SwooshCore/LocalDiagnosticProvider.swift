@@ -30,21 +30,26 @@ public struct LocalDiagnosticProvider: ModelProvider, Sendable {
         let userQuery = request.messages.last(where: { $0.role == .user })?.content ?? ""
 
         var responseLines: [String] = []
-        responseLines.append("Based on your approved context, here's what I can help with:")
+        responseLines.append("Swoosh is connected to the Mac daemon, but no model provider is configured yet.")
+        responseLines.append("This is the local diagnostic fallback, so I can only show what context would be sent to a real model.")
         responseLines.append("")
 
         if systemPrompt.contains("Approved Memories") {
+            responseLines.append("Approved context visible to the fallback:")
             let memLines = systemPrompt.components(separatedBy: "\n")
                 .filter { $0.hasPrefix("- [") }
             for memLine in memLines {
-                responseLines.append("  • I know: \(memLine.dropFirst(2))")
+                responseLines.append("- \(memLine.dropFirst(2))")
             }
         } else {
-            responseLines.append("  No approved memories available yet.")
+            responseLines.append("No approved memories available yet.")
         }
 
         responseLines.append("")
-        responseLines.append("Your question: \(userQuery)")
+        responseLines.append("Your message: \(userQuery)")
+        responseLines.append("")
+        responseLines.append("Configure a provider on the Mac to enable real chat:")
+        responseLines.append("swoosh provider auth openai --api-key <key>")
 
         return ModelCompletionResponse(
             content: responseLines.joined(separator: "\n"),

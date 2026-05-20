@@ -127,7 +127,7 @@ public struct SetupReport: Codable, Sendable {
 // ═══════════════════════════════════════════════════════════════════
 
 public enum PermissionProfile: String, Codable, Sendable, CaseIterable {
-    case safe, developer, automation, power, custom
+    case safe, developer, automation, power, autonomous, custom
 }
 
 public struct PermissionProfileSpec: Codable, Sendable {
@@ -161,6 +161,12 @@ public struct PermissionProfileSpec: Codable, Sendable {
     public static let power = PermissionProfileSpec(
         profile: .power, allowFileRead: true, allowFileWrite: true,
         allowShell: true, allowGitWrite: false, allowTriggers: true,
+        allowMCP: true, allowWorkers: true
+    )
+
+    public static let autonomous = PermissionProfileSpec(
+        profile: .autonomous, allowFileRead: true, allowFileWrite: true,
+        allowShell: true, allowGitWrite: true, allowTriggers: true,
         allowMCP: true, allowWorkers: true
     )
 

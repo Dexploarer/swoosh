@@ -63,6 +63,23 @@ public actor SwooshAPIClient {
         return try await execute(request, as: SwooshReadinessReport.self)
     }
 
+    public func runtimeConfig() async throws -> RuntimeConfigResponse {
+        let request = try makeRequest(method: "GET", path: "api/runtime/config", body: nil)
+        return try await execute(request, as: RuntimeConfigResponse.self)
+    }
+
+    public func updateRuntimeFlags(_ flags: [RuntimeFlagUpdate]) async throws -> RuntimeConfigMutationResponse {
+        let body = try encoder.encode(RuntimeFlagUpdateRequest(flags: flags))
+        let request = try makeRequest(method: "POST", path: "api/runtime/flags", body: body)
+        return try await execute(request, as: RuntimeConfigMutationResponse.self)
+    }
+
+    public func updateRuntimeProfile(_ permissionProfile: String) async throws -> RuntimeConfigMutationResponse {
+        let body = try encoder.encode(RuntimeProfileUpdateRequest(permissionProfile: permissionProfile))
+        let request = try makeRequest(method: "POST", path: "api/runtime/profile", body: body)
+        return try await execute(request, as: RuntimeConfigMutationResponse.self)
+    }
+
     public func providers() async throws -> ProvidersResponse {
         let request = try makeRequest(method: "GET", path: "api/providers", body: nil)
         return try await execute(request, as: ProvidersResponse.self)
@@ -71,6 +88,18 @@ public actor SwooshAPIClient {
     public func providerStatus() async throws -> ProviderStatusResponse {
         let request = try makeRequest(method: "GET", path: "api/providers/status", body: nil)
         return try await execute(request, as: ProviderStatusResponse.self)
+    }
+
+    public func saveProviderKey(providerID: String, apiKey: String) async throws -> ProviderMutationResponse {
+        let body = try encoder.encode(ProviderAuthRequest(providerID: providerID, apiKey: apiKey))
+        let request = try makeRequest(method: "POST", path: "api/providers/auth", body: body)
+        return try await execute(request, as: ProviderMutationResponse.self)
+    }
+
+    public func selectProvider(providerID: String) async throws -> ProviderMutationResponse {
+        let body = try encoder.encode(ProviderSelectionRequest(providerID: providerID))
+        let request = try makeRequest(method: "POST", path: "api/providers/select", body: body)
+        return try await execute(request, as: ProviderMutationResponse.self)
     }
 
     public func boardCards() async throws -> BoardCardsResponse {
@@ -96,6 +125,26 @@ public actor SwooshAPIClient {
     public func skills() async throws -> SkillsResponse {
         let request = try makeRequest(method: "GET", path: "api/skills", body: nil)
         return try await execute(request, as: SkillsResponse.self)
+    }
+
+    public func memories() async throws -> MemoriesResponse {
+        let request = try makeRequest(method: "GET", path: "api/memories", body: nil)
+        return try await execute(request, as: MemoriesResponse.self)
+    }
+
+    public func records() async throws -> RecordsResponse {
+        let request = try makeRequest(method: "GET", path: "api/records", body: nil)
+        return try await execute(request, as: RecordsResponse.self)
+    }
+
+    public func mediaGallery() async throws -> MediaGalleryResponse {
+        let request = try makeRequest(method: "GET", path: "api/media", body: nil)
+        return try await execute(request, as: MediaGalleryResponse.self)
+    }
+
+    public func walletDashboard() async throws -> WalletDashboardResponse {
+        let request = try makeRequest(method: "GET", path: "api/wallet", body: nil)
+        return try await execute(request, as: WalletDashboardResponse.self)
     }
 
     public func chatAdapters() async throws -> ChatAdaptersResponse {

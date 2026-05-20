@@ -10,8 +10,10 @@
 		10639EA0A47A2B8333A1706B /* ClientSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE58002BDA52BB34AE57C6DC /* ClientSession.swift */; };
 		198E92682DEFDB832902218A /* SwooshWidgets in Frameworks */ = {isa = PBXBuildFile; productRef = 5BC3F322969154F4A837D673 /* SwooshWidgets */; };
 		2464670AC1994C60F81BA6C6 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C730215AC74558E66C67FD /* ChatView.swift */; };
+		249800FA19E49F9D15071636 /* WalletView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1C09160E04453589C50140 /* WalletView.swift */; };
 		3F643D8B3F106C244C2CE5CD /* SwooshiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */; };
 		4E199906DE2655159475FDED /* SwooshWidgets in Frameworks */ = {isa = PBXBuildFile; productRef = 09308C14B898E4305F4304E9 /* SwooshWidgets */; };
+		58547F9D04BF020AB182B6B5 /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19BF823E0934C780BE79E565 /* ControlCenterView.swift */; };
 		588B3159F35DB867399DCAAB /* SwooshSecrets in Frameworks */ = {isa = PBXBuildFile; productRef = 2894B277640819D641FD9E94 /* SwooshSecrets */; };
 		6F397A9A6C2A0768496FC730 /* SwooshKit in Frameworks */ = {isa = PBXBuildFile; productRef = C81EAEFD269612149B9F94BF /* SwooshKit */; };
 		79C02F6D43ED99D7E9CD4EF8 /* SwooshWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B097B464DA3C0AE8A37082E /* SwooshWidgetBundle.swift */; };
@@ -27,6 +29,8 @@
 		02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshiOSApp.swift; sourceTree = "<group>"; };
 		09C730215AC74558E66C67FD /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		0BF0AA7C8A538C6F2E2312DF /* SwooshiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SwooshiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C1C09160E04453589C50140 /* WalletView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletView.swift; sourceTree = "<group>"; };
+		19BF823E0934C780BE79E565 /* ControlCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCenterView.swift; sourceTree = "<group>"; };
 		2BD9F5B5A8FC377E7DD9A238 /* Swoosh.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Swoosh.entitlements; sourceTree = "<group>"; };
 		334614E402A5C0CC7A5CBBDE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		343C5191FC71C48190B03979 /* Swoosh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swoosh.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,10 +102,12 @@
 			children = (
 				09C730215AC74558E66C67FD /* ChatView.swift */,
 				DE58002BDA52BB34AE57C6DC /* ClientSession.swift */,
+				19BF823E0934C780BE79E565 /* ControlCenterView.swift */,
 				E1C7AA2E2F507D88558C8D12 /* Info.plist */,
 				334614E402A5C0CC7A5CBBDE /* RootView.swift */,
 				FF9029BA9C0598477BAACBBE /* SettingsView.swift */,
 				02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */,
+				0C1C09160E04453589C50140 /* WalletView.swift */,
 			);
 			path = SwooshiOS;
 			sourceTree = "<group>";
@@ -268,9 +274,11 @@
 			files = (
 				2464670AC1994C60F81BA6C6 /* ChatView.swift in Sources */,
 				10639EA0A47A2B8333A1706B /* ClientSession.swift in Sources */,
+				58547F9D04BF020AB182B6B5 /* ControlCenterView.swift in Sources */,
 				EB84A11C241383BEE255E3F7 /* RootView.swift in Sources */,
 				8C4745B4EA929CF073544D47 /* SettingsView.swift in Sources */,
 				3F643D8B3F106C244C2CE5CD /* SwooshiOSApp.swift in Sources */,
+				249800FA19E49F9D15071636 /* WalletView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,7 +347,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = GY5597YK9P;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -399,7 +407,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = GY5597YK9P;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;

@@ -24,36 +24,39 @@ public struct BuildDiagnosticParser: Sendable {
 
     /// Parse a Swift test summary from output.
     public func parseTestSummary(_ output: String) -> (passed: Int, failed: Int, skipped: Int) {
-        var passed = 0, failed = 0, skipped = 0
+        var summaryTotal: Int?
+        var summaryFailures = 0
+        var individualPassed = 0
+        var individualFailed = 0
+        let skipped = 0
 
         let lines = output.components(separatedBy: .newlines)
         for line in lines {
-            // Swift Testing: "✔ Test run with 26 tests in 6 suites passed after 0.003 seconds."
             if line.contains("Test run with") && line.contains("passed") {
                 if let match = line.range(of: #"(\d+) tests?"#, options: .regularExpression) {
-                    passed = Int(line[match].filter(\.isNumber)) ?? 0
+                    summaryTotal = Int(line[match].filter(\.isNumber))
                 }
             }
-            // XCTest: "Executed 10 tests, with 2 failures (1 unexpected) in 0.5 (0.5) seconds"
             if line.contains("Executed") && line.contains("tests") {
                 let parts = line.components(separatedBy: " ")
                 for (i, part) in parts.enumerated() {
                     if part == "tests," || part == "test,", i > 0 {
-                        let total = Int(parts[i-1]) ?? 0
-                        passed = total
+                        summaryTotal = Int(parts[i-1]) ?? summaryTotal
                     }
                     if part == "failures" || part.hasPrefix("failure"), i > 0 {
-                        failed = Int(parts[i-1]) ?? 0
-                        passed = max(0, passed - failed)
+                        summaryFailures = Int(parts[i-1]) ?? summaryFailures
                     }
                 }
             }
-            // "Test … passed" / "Test … failed"
-            if line.hasPrefix("✔ Test \"") { passed += 1 }
-            if line.hasPrefix("✘ Test \"") { failed += 1 }
+            if line.hasPrefix("✔ Test \"") { individualPassed += 1 }
+            if line.hasPrefix("✘ Test \"") { individualFailed += 1 }
         }
 
-        return (passed, failed, skipped)
+        if let summaryTotal {
+            let failures = max(summaryFailures, individualFailed)
+            return (max(0, summaryTotal - failures), failures, skipped)
+        }
+        return (individualPassed, individualFailed, skipped)
     }
 
     // MARK: - Line parsing
