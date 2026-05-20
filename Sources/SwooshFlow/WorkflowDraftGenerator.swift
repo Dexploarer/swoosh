@@ -75,7 +75,7 @@ public struct DefaultWorkflowDraftGenerator: WorkflowDraftGenerating, Sendable {
         var variables: [WorkflowVariable] = []
         var seenRootIDs: Set<String> = []
 
-        for (_, toolTrace) in trace.toolCalls.prefix(options.maxSteps).enumerated() {
+        for toolTrace in trace.toolCalls.prefix(options.maxSteps) {
             let toolName = toolTrace.toolName
 
             // Skip never-executable tools entirely
