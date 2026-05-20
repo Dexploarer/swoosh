@@ -1,10 +1,8 @@
-// Apps/SwooshiOS/SettingsView.swift — Pairing form + daemon health probe
+// Apps/SwooshiOS/SettingsView.swift — Pairing form + authenticated daemon probe
 //
 // Single screen with two fields (host URL + bearer token), a Save button
-// that tries the `/health` endpoint, and an "Unpair" button. The token is
-// pasted, not generated here — the user copies it from swooshd's startup
-// log on their Mac. This is the same trust model as classic SSH key-paste:
-// crude, but explicit and auditable.
+// that tries an authenticated `/api/agent/status` request, and an "Unpair"
+// button. The token is pasted, not generated here.
 
 import SwiftUI
 import SwooshClient
@@ -76,7 +74,7 @@ struct SettingsView: View {
             }
 
             Section("Where do I find the token?") {
-                Text("Run `swooshd` on your Mac. It prints a line like `API token: <token>` once during startup. Paste that here.")
+                Text("Run `swooshd` on your Mac, then read `~/.swoosh/api_token`. Paste that token here.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -114,13 +112,16 @@ struct SettingsView: View {
         isProbing = true
         defer { isProbing = false }
 
-        // Probe /health with the supplied URL before persisting, so a bad
-        // pairing fails fast instead of greeting the user with "Network
-        // error" the next time they open Chat.
         let probe = SwooshAPIClient(baseURL: url, token: tokenText)
         let healthy = await probe.health()
         if !healthy {
             saveError = "Couldn't reach \(url.host ?? "host") at /health. Check that swooshd is running and reachable from this phone."
+            return
+        }
+        do {
+            _ = try await probe.agentStatus()
+        } catch {
+            saveError = "Reached swooshd, but the bearer token was rejected. Check ~/.swoosh/api_token on your Mac."
             return
         }
 

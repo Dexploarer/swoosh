@@ -1,7 +1,6 @@
 // SwooshTools/WorkflowToolTypes.swift — Workflow tool Input/Output types
 //
-// workflow.run is typed but disabled in 0.4A.
-// Execution waits for 0.5A.
+// workflow.run validates saved drafts and executes the supported manual path.
 
 import Foundation
 
@@ -41,11 +40,13 @@ public struct WorkflowStepPreview: Codable, Sendable {
     public let label: String
     public let toolName: String?
     public let actionKind: String
+    public let arguments: JSONValue?
 
-    public init(label: String, toolName: String? = nil, actionKind: String) {
+    public init(label: String, toolName: String? = nil, actionKind: String, arguments: JSONValue? = nil) {
         self.label = label
         self.toolName = toolName
         self.actionKind = actionKind
+        self.arguments = arguments
     }
 }
 
@@ -169,7 +170,7 @@ public struct WorkflowRunDryOutput: Codable, Sendable {
     }
 }
 
-// ── workflow.run (typed but disabled in 0.4A) ─────────────────────
+// ── workflow.run ─────────────────────────────────────────────────
 
 public struct WorkflowRunInput: Codable, Sendable {
     public let draftID: String

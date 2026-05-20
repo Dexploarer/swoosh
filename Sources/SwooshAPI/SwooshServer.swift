@@ -7,8 +7,8 @@
 //                       When the daemon was started without one, the entire
 //                       `/api/*` tree is shadow-mounted under DenyAllMiddleware
 //                       so binding to 0.0.0.0 still can't expose the agent.
-//   3. Agent          — `POST /api/agent/chat` calls `AgentKernel.run()` and
-//                       returns a `ChatResponse` JSON body.
+//   3. Agent          — `POST /api/agent/chat` calls the tool loop when it is
+//                       configured, otherwise the plain kernel.
 //
 // Streaming / WebSocket and the audit/approvals endpoints will land on top of
 // this once the iOS slice is proven; this file is intentionally the smallest
@@ -19,13 +19,16 @@ import Hummingbird
 import SwooshCore
 import SwooshClient
 import SwooshChatSDK
+import SwooshConfig
 
 // Server-side conformance so `ChatResponse` can be returned from a Hummingbird
 // route directly. `SwooshClient` itself doesn't import Hummingbird.
 extension ChatResponse: ResponseEncodable {}
+extension TranscriptResponse: ResponseEncodable {}
 extension APIErrorBody: ResponseEncodable {}
 extension APIVersion: ResponseEncodable {}
 extension AgentStatusResponse: ResponseEncodable {}
+extension SwooshReadinessReport: ResponseEncodable {}
 extension ProvidersResponse: ResponseEncodable {}
 extension ProviderStatusResponse: ResponseEncodable {}
 extension BoardCardsResponse: ResponseEncodable {}
@@ -54,6 +57,22 @@ public struct SwooshAPISnapshot: Sendable {
     }
 }
 
+public struct SwooshAPIRuntimeSources: Sendable {
+    public let providers: @Sendable () async -> ProvidersResponse?
+    public let skills: @Sendable () async -> SkillsResponse?
+    public let readiness: @Sendable () async -> SwooshReadinessReport?
+
+    public init(
+        providers: @escaping @Sendable () async -> ProvidersResponse? = { nil },
+        skills: @escaping @Sendable () async -> SkillsResponse? = { nil },
+        readiness: @escaping @Sendable () async -> SwooshReadinessReport? = { nil }
+    ) {
+        self.providers = providers
+        self.skills = skills
+        self.readiness = readiness
+    }
+}
+
 /// Swoosh HTTP API server. Wraps a Hummingbird application that calls
 /// the supplied `AgentKernel` for chat requests.
 public struct SwooshAPIServer: Sendable {
@@ -62,8 +81,9 @@ public struct SwooshAPIServer: Sendable {
     private let port: Int
     private let hostname: String
     private let token: String?
-    private let kernel: KernelHandle?
+    private let agent: AgentHandle?
     private let snapshot: SwooshAPISnapshot
+    private let runtimeSources: SwooshAPIRuntimeSources
 
     /// - Parameters:
     ///   - port: TCP port to listen on.
@@ -81,21 +101,30 @@ public struct SwooshAPIServer: Sendable {
         hostname: String = "127.0.0.1",
         token: String? = nil,
         kernel: AgentKernel? = nil,
-        snapshot: SwooshAPISnapshot = SwooshAPISnapshot()
+        toolLoop: AgentToolLoop? = nil,
+        snapshot: SwooshAPISnapshot = SwooshAPISnapshot(),
+        runtimeSources: SwooshAPIRuntimeSources = SwooshAPIRuntimeSources()
     ) {
         self.port = port
         self.hostname = hostname
         self.token = token
-        self.kernel = kernel.map(KernelHandle.init)
+        if let toolLoop {
+            self.agent = .toolLoop(ToolLoopHandle(toolLoop))
+        } else if let kernel {
+            self.agent = .kernel(KernelHandle(kernel))
+        } else {
+            self.agent = nil
+        }
         self.snapshot = snapshot
+        self.runtimeSources = runtimeSources
     }
 
     /// Build the Hummingbird application with all routes wired in.
     public func build() -> some ApplicationProtocol {
         let router = Router()
-        let kernel = self.kernel
+        let agent = self.agent
         let buildVersion = SwooshAPIServer.buildVersion
-        let runtime = APIRuntimeState(snapshot: snapshot)
+        let runtime = APIRuntimeState(snapshot: snapshot, sources: runtimeSources)
         let adapterCatalog = ChatAdapterCatalog()
         let adapterToggles = ChatAdapterToggleStore()
         let stateAdapterCatalog = ChatStateAdapterCatalog()
@@ -116,7 +145,7 @@ public struct SwooshAPIServer: Sendable {
         }
 
         apiGroup.post("/agent/chat") { request, context -> ChatResponse in
-            guard let kernel else {
+            guard let agent else {
                 throw HTTPError(.serviceUnavailable, message: "kernel not configured")
             }
             let chatRequest = try await request.decode(as: ChatRequest.self, context: context)
@@ -126,7 +155,7 @@ public struct SwooshAPIServer: Sendable {
             )
             let agentResponse: AgentResponse
             do {
-                agentResponse = try await kernel.kernel.run(agentRequest)
+                agentResponse = try await agent.run(agentRequest)
             } catch {
                 throw HTTPError(.internalServerError, message: error.localizedDescription)
             }
@@ -140,8 +169,28 @@ public struct SwooshAPIServer: Sendable {
             )
         }
 
+        apiGroup.get("/agent/transcript/:sessionID") { _, context -> TranscriptResponse in
+            guard let agent else {
+                throw HTTPError(.serviceUnavailable, message: "kernel not configured")
+            }
+            let sessionID = try context.parameters.require("sessionID", as: String.self)
+            do {
+                let transcript = try await agent.loadTranscript(sessionID: sessionID)
+                return TranscriptResponse(
+                    sessionID: sessionID,
+                    messages: transcript.map(transcriptMessage)
+                )
+            } catch {
+                throw HTTPError(.internalServerError, message: error.localizedDescription)
+            }
+        }
+
         apiGroup.get("/agent/status") { _, _ -> AgentStatusResponse in
-            await runtime.agentStatus(chatEnabled: kernel != nil)
+            await runtime.agentStatus(chatEnabled: agent != nil)
+        }
+
+        apiGroup.get("/runtime/readiness") { _, _ -> SwooshReadinessReport in
+            await runtime.readiness(chatEnabled: agent != nil)
         }
 
         apiGroup.get("/providers") { _, _ -> ProvidersResponse in
@@ -151,10 +200,10 @@ public struct SwooshAPIServer: Sendable {
             await runtime.providerStatus()
         }
         apiGroup.get("/board/cards") { _, _ -> BoardCardsResponse in
-            await runtime.boardCards(chatEnabled: kernel != nil)
+            await runtime.boardCards(chatEnabled: agent != nil)
         }
         apiGroup.get("/board/lanes") { _, _ -> BoardLanesResponse in
-            await runtime.boardLanes(chatEnabled: kernel != nil)
+            await runtime.boardLanes(chatEnabled: agent != nil)
         }
         apiGroup.get("/metrics") { _, _ -> MetricsResponse in
             await runtime.metrics()
@@ -216,14 +265,66 @@ private struct KernelHandle: Sendable {
     init(_ kernel: AgentKernel) { self.kernel = kernel }
 }
 
+private struct ToolLoopHandle: Sendable {
+    let loop: AgentToolLoop
+    init(_ loop: AgentToolLoop) { self.loop = loop }
+}
+
+private enum AgentHandle: Sendable {
+    case kernel(KernelHandle)
+    case toolLoop(ToolLoopHandle)
+
+    func run(_ request: AgentRequest) async throws -> AgentResponse {
+        switch self {
+        case .kernel(let handle):
+            return try await handle.kernel.run(request)
+        case .toolLoop(let handle):
+            return try await handle.loop.run(request).agentResponse
+        }
+    }
+
+    func loadTranscript(sessionID: String) async throws -> [SwooshCore.ChatMessage] {
+        switch self {
+        case .kernel(let handle):
+            return try await handle.kernel.loadTranscript(sessionID: sessionID)
+        case .toolLoop(let handle):
+            return try await handle.loop.loadTranscript(sessionID: sessionID)
+        }
+    }
+}
+
+private func transcriptMessage(_ message: SwooshCore.ChatMessage) -> TranscriptMessage {
+    TranscriptMessage(
+        id: message.id,
+        role: transcriptRole(message.role),
+        content: message.content,
+        createdAt: message.createdAt
+    )
+}
+
+private func transcriptRole(_ role: SwooshCore.ChatRole) -> TranscriptRole {
+    switch role {
+    case .system:
+        return .system
+    case .user:
+        return .user
+    case .assistant:
+        return .assistant
+    case .tool:
+        return .tool
+    }
+}
+
 private actor APIRuntimeState {
     private let snapshot: SwooshAPISnapshot
+    private let sources: SwooshAPIRuntimeSources
     private var chatTurns = 0
     private var approvedMemoryReferences = 0
     private var lastChatAt: Date?
 
-    init(snapshot: SwooshAPISnapshot) {
+    init(snapshot: SwooshAPISnapshot, sources: SwooshAPIRuntimeSources) {
         self.snapshot = snapshot
+        self.sources = sources
     }
 
     func recordChat(_ response: AgentResponse) {
@@ -232,8 +333,8 @@ private actor APIRuntimeState {
         lastChatAt = response.createdAt
     }
 
-    func agentStatus(chatEnabled: Bool) -> AgentStatusResponse {
-        let active = activeProvider()
+    func agentStatus(chatEnabled: Bool) async -> AgentStatusResponse {
+        let active = await activeProvider()
         return AgentStatusResponse(
             status: chatEnabled ? "ready" : "degraded",
             chat: chatEnabled,
@@ -245,16 +346,34 @@ private actor APIRuntimeState {
         )
     }
 
-    func providers() -> ProvidersResponse {
-        ProvidersResponse(providers: snapshot.providers, activeProviderID: snapshot.activeProviderID)
+    func providers() async -> ProvidersResponse {
+        await sources.providers() ?? ProvidersResponse(
+            providers: snapshot.providers,
+            activeProviderID: snapshot.activeProviderID
+        )
     }
 
-    func providerStatus() -> ProviderStatusResponse {
-        ProviderStatusResponse(providers: snapshot.providers)
+    func readiness(chatEnabled: Bool) async -> SwooshReadinessReport {
+        if let readiness = await sources.readiness() {
+            return readiness
+        }
+        let active = await activeProvider()
+        let skills = await skills()
+        return SwooshReadinessDetector().report(inputs: SwooshReadinessInputs(
+            daemonReachable: true,
+            chatEnabled: chatEnabled,
+            activeProviderName: active?.name,
+            activeModel: active?.model,
+            promptableSkillCount: skills.skills.count
+        ))
     }
 
-    func boardLanes(chatEnabled: Bool) -> BoardLanesResponse {
-        let cards = boardCards(chatEnabled: chatEnabled).cards
+    func providerStatus() async -> ProviderStatusResponse {
+        ProviderStatusResponse(providers: await providers().providers)
+    }
+
+    func boardLanes(chatEnabled: Bool) async -> BoardLanesResponse {
+        let cards = await boardCards(chatEnabled: chatEnabled).cards
         let lanes = [
             BoardLaneSummary(
                 id: "runtime",
@@ -270,9 +389,10 @@ private actor APIRuntimeState {
         return BoardLanesResponse(lanes: lanes)
     }
 
-    func boardCards(chatEnabled: Bool) -> BoardCardsResponse {
+    func boardCards(chatEnabled: Bool) async -> BoardCardsResponse {
         let now = Date()
-        let active = activeProvider()
+        let active = await activeProvider()
+        let skills = await skills()
         var cards = [
             BoardCardSummary(
                 id: "daemon",
@@ -293,7 +413,7 @@ private actor APIRuntimeState {
                 id: "skills",
                 laneID: "configuration",
                 title: "Skills",
-                detail: "\(snapshot.skills.count) reviewed or promoted skills loaded.",
+                detail: "\(skills.skills.count) reviewed or promoted skills loaded.",
                 updatedAt: now
             ),
         ]
@@ -309,12 +429,14 @@ private actor APIRuntimeState {
         return BoardCardsResponse(cards: cards)
     }
 
-    func metrics() -> MetricsResponse {
-        MetricsResponse(counters: [
+    func metrics() async -> MetricsResponse {
+        let providerCount = await providers().providers.count
+        let skillCount = await skills().skills.count
+        return MetricsResponse(counters: [
             MetricCounter(id: "chat_turns", value: chatTurns),
             MetricCounter(id: "approved_memory_references", value: approvedMemoryReferences),
-            MetricCounter(id: "providers", value: snapshot.providers.count),
-            MetricCounter(id: "skills", value: snapshot.skills.count),
+            MetricCounter(id: "providers", value: providerCount),
+            MetricCounter(id: "skills", value: skillCount),
         ])
     }
 
@@ -326,15 +448,16 @@ private actor APIRuntimeState {
         )
     }
 
-    func skills() -> SkillsResponse {
-        SkillsResponse(skills: snapshot.skills)
+    func skills() async -> SkillsResponse {
+        await sources.skills() ?? SkillsResponse(skills: snapshot.skills)
     }
 
-    private func activeProvider() -> ProviderSummary? {
-        if let activeProviderID = snapshot.activeProviderID {
-            return snapshot.providers.first { $0.id == activeProviderID }
+    private func activeProvider() async -> ProviderSummary? {
+        let current = await providers()
+        if let activeProviderID = current.activeProviderID {
+            return current.providers.first { $0.id == activeProviderID }
         }
-        return snapshot.providers.first(where: \.active)
+        return current.providers.first(where: \.active)
     }
 }
 

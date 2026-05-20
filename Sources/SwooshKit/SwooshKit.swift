@@ -9,6 +9,7 @@ import Foundation
 import ActantDB
 import ActantAgent
 import SwooshActantBackend
+import SwooshTools
 
 // MARK: - SwooshKit entry point
 
@@ -28,9 +29,11 @@ import SwooshActantBackend
 /// unit tests work without a server.
 public final class Swoosh: Sendable {
     public let kernel: AgentKernel
+    public let toolLoop: AgentToolLoop?
 
-    private init(kernel: AgentKernel) {
+    private init(kernel: AgentKernel, toolLoop: AgentToolLoop?) {
         self.kernel = kernel
+        self.toolLoop = toolLoop
     }
 
     /// Configure and build a Swoosh instance.
@@ -45,6 +48,9 @@ public final class Swoosh: Sendable {
     /// Run a one-shot agent task.
     public func ask(_ input: String, sessionID: String = "default") async throws -> AgentResponse {
         let request = AgentRequest(sessionID: sessionID, input: input)
+        if let toolLoop {
+            return try await toolLoop.run(request).agentResponse
+        }
         return try await kernel.run(request)
     }
 
@@ -67,15 +73,28 @@ public final class Swoosh: Sendable {
         let sessionStore   = config.sessionStore   ?? actantBackend.map { SwooshSessionStore(backend: $0) } ?? InMemorySessionStore()
         let auditLogger    = config.auditLogger    ?? actantBackend.map { SwooshResponseAuditor(backend: $0) } ?? InMemoryResponseAuditor()
 
+        let modelProvider = config.modelProvider ?? LocalDiagnosticProvider()
         let kernel = AgentKernel(
             memoryLoader: memoryLoader,
             reportLoader: reportLoader,
             permSummarizer: permSummarizer,
             sessionStore: sessionStore,
             auditLogger: auditLogger,
-            modelProvider: config.modelProvider ?? LocalDiagnosticProvider()
+            modelProvider: modelProvider
         )
-        return Swoosh(kernel: kernel)
+        let toolLoop = config.toolRegistry.map {
+            AgentToolLoop(
+                memoryLoader: memoryLoader,
+                reportLoader: reportLoader,
+                permSummarizer: permSummarizer,
+                sessionStore: sessionStore,
+                auditLogger: auditLogger,
+                modelProvider: modelProvider,
+                toolRegistry: $0,
+                policy: config.toolPolicy
+            )
+        }
+        return Swoosh(kernel: kernel, toolLoop: toolLoop)
     }
 }
 
@@ -88,6 +107,8 @@ public struct SwooshConfiguration: Sendable {
     public var permSummarizer: (any PermissionSummarizing)? = nil
     public var sessionStore: (any SessionStoring)? = nil
     public var auditLogger: (any ResponseAuditing)? = nil
+    public var toolRegistry: ToolRegistry? = nil
+    public var toolPolicy: ToolCallPolicy = .defaultAgent
 
     public init() {}
 }

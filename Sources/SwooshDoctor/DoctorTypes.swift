@@ -23,9 +23,9 @@ public struct DoctorContext: Sendable {
     public let statePath: String
     public let logPath: String
 
-    public init(configPath: String = "~/.swoosh/config.yaml",
-                statePath: String = "~/Library/Application Support/Swoosh/state",
-                logPath: String = "~/Library/Application Support/Swoosh/logs") {
+    public init(configPath: String = "~/.swoosh/config.json",
+                statePath: String = "~/.swoosh",
+                logPath: String = "~/.swoosh/logs") {
         self.configPath = configPath; self.statePath = statePath; self.logPath = logPath
     }
 }

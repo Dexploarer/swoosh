@@ -3,6 +3,8 @@
 // Each check: id, title, category, run() → DoctorCheckResult with fix command.
 
 import Foundation
+import SwooshClient
+import SwooshConfig
 import SwooshTools
 
 // ── Installation ──
@@ -55,9 +57,27 @@ struct SwooshDirCheck: DoctorCheck {
     let category = DoctorCategory.installation
 
     func run(context: DoctorContext) async throws -> DoctorCheckResult {
-        let swooshDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".swoosh")
+        let swooshDir = URL(
+            fileURLWithPath: NSString(string: context.statePath).expandingTildeInPath,
+            isDirectory: true
+        )
         let fm = FileManager.default
-        let dirs = ["config", "state", "logs", "skills", "checkpoints", "models"]
+        let dirs = [
+            "memories",
+            "skills",
+            "workflows",
+            "goals",
+            "manifesting",
+            "scout",
+            "cron",
+            "logs",
+            "artifacts",
+            "mcp",
+            "workers",
+            "setup-reports",
+            "models",
+            "checkpoints",
+        ]
         var missing: [String] = []
         for d in dirs {
             if !fm.fileExists(atPath: swooshDir.appendingPathComponent(d).path) { missing.append(d) }
@@ -104,6 +124,67 @@ struct MemoryCheck: DoctorCheck {
     }
 }
 
+struct RuntimeReadinessCheck: DoctorCheck {
+    let id = "runtime.readiness"
+    let title = "Runtime readiness"
+    let category = DoctorCategory.daemon
+
+    func run(context: DoctorContext) async throws -> DoctorCheckResult {
+        let config = SwooshConfigStore(configDirectory: stateURL(context))
+        let report = await readinessReport(config: config)
+        return DoctorCheckResult(
+            checkID: id,
+            title: title,
+            category: category,
+            status: doctorStatus(report.state),
+            message: report.summary,
+            fixCommand: report.components.first { $0.status == .blocked || $0.status == .warning }?.fixCommand
+        )
+    }
+
+    private func readinessReport(config: SwooshConfigStore) async -> SwooshReadinessReport {
+        guard let client = client(config: config) else {
+            return SwooshReadinessDetector(config: config).report(inputs: SwooshReadinessInputs(daemonReachable: false))
+        }
+        guard await client.health() else {
+            return SwooshReadinessDetector(config: config).report(inputs: SwooshReadinessInputs(daemonReachable: false))
+        }
+        do {
+            return try await client.readiness()
+        } catch {
+            return SwooshReadinessDetector(config: config).report(inputs: SwooshReadinessInputs(daemonReachable: true))
+        }
+    }
+
+    private func client(config: SwooshConfigStore) -> SwooshAPIClient? {
+        let runtime = try? config.load(SwooshRuntimeConfig.self)
+        let host = runtime?.daemonHost ?? "127.0.0.1"
+        let port = runtime?.daemonPort ?? 8787
+        guard let url = URL(string: "http://\(host):\(port)") else { return nil }
+        let token = (try? String(contentsOf: config.apiTokenFile, encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return SwooshAPIClient(baseURL: url, token: token)
+    }
+
+    private func stateURL(_ context: DoctorContext) -> URL {
+        URL(
+            fileURLWithPath: NSString(string: context.statePath).expandingTildeInPath,
+            isDirectory: true
+        )
+    }
+
+    private func doctorStatus(_ state: SwooshReadinessState) -> DoctorCheckStatus {
+        switch state {
+        case .ready:
+            return .pass
+        case .degraded:
+            return .warning
+        case .blocked:
+            return .fail
+        }
+    }
+}
+
 // ── Config ──
 
 struct ConfigFileCheck: DoctorCheck {
@@ -135,7 +216,11 @@ struct ModelConfigCheck: DoctorCheck {
             return DoctorCheckResult(checkID: id, title: title, category: category, status: .warning,
                 message: "No config — no default model set", fixCommand: "swoosh setup")
         }
-        if content.contains("model:") || content.contains("provider:") {
+        if (try? JSONDecoder().decode(SwooshRuntimeConfig.self, from: Data(content.utf8))) != nil
+            || content.contains("model:")
+            || content.contains("provider:")
+            || content.contains("\"modelPath\"")
+        {
             return DoctorCheckResult(checkID: id, title: title, category: category, status: .pass,
                 message: "Model configured")
         }
@@ -161,6 +246,11 @@ struct TokenBudgetCheck: DoctorCheck {
             return DoctorCheckResult(checkID: id, title: title, category: category, status: .pass,
                 message: "Budget policy configured")
         }
+        if let runtime = try? JSONDecoder().decode(SwooshRuntimeConfig.self, from: Data(content.utf8)),
+           runtime.localDiagnosticFallback {
+            return DoctorCheckResult(checkID: id, title: title, category: category, status: .pass,
+                message: "Local diagnostic provider has no remote token spend")
+        }
         return DoctorCheckResult(checkID: id, title: title, category: category, status: .warning,
             message: "No budget limits set", fixCommand: "swoosh config set budget.daily_limit 25")
     }
@@ -176,7 +266,7 @@ struct KeychainAccessCheck: DoctorCheck {
     func run(context: DoctorContext) async throws -> DoctorCheckResult {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "ai.swoosh.provider-keys",
+            kSecAttrService as String: "ai.swoosh.secrets",
             kSecMatchLimit as String: kSecMatchLimitAll,
             kSecReturnAttributes as String: true,
         ]
@@ -186,8 +276,8 @@ struct KeychainAccessCheck: DoctorCheck {
             return DoctorCheckResult(checkID: id, title: title, category: category, status: .pass,
                 message: "\(items.count) credential(s) in Keychain")
         } else if status == errSecItemNotFound {
-            return DoctorCheckResult(checkID: id, title: title, category: category, status: .warning,
-                message: "No credentials stored", fixCommand: "swoosh discover-credentials")
+            return DoctorCheckResult(checkID: id, title: title, category: category, status: .pass,
+                message: "Keychain reachable; no cloud credentials required")
         }
         return DoctorCheckResult(checkID: id, title: title, category: category, status: .fail,
             message: "Keychain access denied (status: \(status))")
@@ -204,6 +294,13 @@ struct ProviderKeyCheck: DoctorCheck {
                      "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "GROQ_API_KEY"]
         let found = keys.filter { ProcessInfo.processInfo.environment[$0] != nil }
         if found.isEmpty {
+            let configPath = NSString(string: context.configPath).expandingTildeInPath
+            if let content = try? String(contentsOfFile: configPath, encoding: .utf8),
+               let runtime = try? JSONDecoder().decode(SwooshRuntimeConfig.self, from: Data(content.utf8)),
+               runtime.localDiagnosticFallback {
+                return DoctorCheckResult(checkID: id, title: title, category: category, status: .pass,
+                    message: "Local diagnostic provider active; remote keys optional")
+            }
             return DoctorCheckResult(checkID: id, title: title, category: category, status: .warning,
                 message: "No provider keys in environment", fixCommand: "swoosh discover-credentials")
         }

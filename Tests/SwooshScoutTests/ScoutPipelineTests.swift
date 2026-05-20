@@ -85,6 +85,17 @@ struct ScoutPipelineTests {
         #expect(result.candidates[0].category == "workflow")
         #expect(result.candidates[0].text.contains("Xcode"))
     }
+
+    @Test("Operational source catalog does not expose empty entitlement scaffolds")
+    func operationalCatalogExcludesEmptyScaffolds() {
+        let ids = Set(ScoutSourceCatalog.operationalLocalSources().map(\.id))
+
+        #expect(ids.contains("device"))
+        #expect(ids.contains("installed_apps"))
+        #expect(ids.contains("shell_env"))
+        #expect(!ids.contains("music_history"))
+        #expect(!ids.contains("screen_time"))
+    }
 }
 
 private final class PermissionPromptSource: ScoutSource, @unchecked Sendable {

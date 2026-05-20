@@ -6,6 +6,7 @@
 import Testing
 import Foundation
 @testable import SwooshCore
+@testable import SwooshKit
 @testable import SwooshTools
 @testable import SwooshFirewall
 @testable import SwooshApprovals
@@ -54,6 +55,7 @@ actor SequenceModelProvider: ModelProvider {
     nonisolated let providerID = "test"
     nonisolated let modelName = "test-model"
     private var responses: [ModelCompletionResponse]
+    private var requests: [ModelCompletionRequest] = []
     private var index = 0
 
     init(responses: [ModelCompletionResponse]) {
@@ -61,12 +63,17 @@ actor SequenceModelProvider: ModelProvider {
     }
 
     func complete(_ request: ModelCompletionRequest) async throws -> ModelCompletionResponse {
+        requests.append(request)
         guard index < responses.count else {
             return ModelCompletionResponse(content: "No more responses", model: modelName)
         }
         let r = responses[index]
         index += 1
         return r
+    }
+
+    func capturedRequests() -> [ModelCompletionRequest] {
+        requests
     }
 }
 
@@ -429,6 +436,56 @@ struct AgentToolLoopTests {
         #expect(response.toolCallCount == 1)
         #expect(response.toolTracesUsed.count == 1)
         #expect(response.toolTracesUsed[0].status == .succeeded)
+    }
+
+    @Test("Agent sends available tool descriptors to provider")
+    func sendsAvailableToolDescriptorsToProvider() async throws {
+        let registry = await makeTestRegistry()
+        let provider = SequenceModelProvider(responses: [
+            ModelCompletionResponse(content: "Done.", model: "test-model")
+        ])
+        let loop = AgentToolLoop(
+            memoryLoader: MockMemoryLoader(),
+            reportLoader: MockReportLoader(),
+            permSummarizer: MockPermSummarizer(),
+            sessionStore: MockSessionStore(),
+            auditLogger: MockResponseAuditor(),
+            modelProvider: provider,
+            toolRegistry: registry
+        )
+
+        _ = try await loop.run(AgentRequest(input: "check tools"))
+        let requests = await provider.capturedRequests()
+        #expect(requests.count == 1)
+        #expect(requests[0].tools.contains { $0.name == "core.status" })
+        #expect(requests[0].tools.contains { $0.name == "evm.tx_build_native_transfer" })
+    }
+
+    @Test("Swoosh SDK uses tool loop when registry is configured")
+    func swooshSDKUsesToolLoopWhenRegistryConfigured() async throws {
+        let registry = await makeTestRegistry()
+        let provider = SequenceModelProvider(responses: [
+            ModelCompletionResponse(
+                content: "",
+                model: "test-model",
+                toolCalls: [NativeToolCall(name: "core.status", arguments: .object([:]))]
+            ),
+            ModelCompletionResponse(content: "System status is OK.", model: "test-model")
+        ])
+        let swoosh = try await Swoosh.configure {
+            $0.memoryLoader = MockMemoryLoader()
+            $0.reportLoader = MockReportLoader()
+            $0.permSummarizer = MockPermSummarizer()
+            $0.sessionStore = MockSessionStore()
+            $0.auditLogger = MockResponseAuditor()
+            $0.modelProvider = provider
+            $0.toolRegistry = registry
+        }
+
+        let response = try await swoosh.ask("status", sessionID: "sdk")
+        let requests = await provider.capturedRequests()
+        #expect(response.message == "System status is OK.")
+        #expect(requests.first?.tools.contains { $0.name == "core.status" } == true)
     }
 
     @Test("Agent stops at max tool calls")

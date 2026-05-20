@@ -6,6 +6,7 @@
 import ArgumentParser
 import SwooshKit
 import SwooshConfig
+import SwooshDoctor
 import SwooshProviders
 import SwooshSecrets
 import SwooshTools
@@ -50,16 +51,23 @@ struct DoctorCommand: AsyncParsableCommand {
     @Flag(name: .long, help: "Output as JSON.")
     var json = false
 
-    func run() async throws {
-        let hardware = HardwareDetector().detect()
-        let credentials = KeychainCredentialStore()
-        let config = SwooshConfigStore()
+    @Option(name: .customLong("config-dir"), help: "State directory to inspect instead of ~/.swoosh.")
+    var configDirectory: String?
 
-        let doctor = SwooshDoctor(config: config, credentials: credentials, hardware: hardware)
-        let result = await doctor.runAll()
+    func run() async throws {
+        let config = makeSwooshConfigStore(configDirectory: configDirectory)
+        if fix {
+            try config.ensureDirectories()
+        }
+        let runner = DoctorRunner()
+        let result = await runner.runAll(context: DoctorContext(
+            configPath: config.configFile.path,
+            statePath: config.configDirectory.path,
+            logPath: config.logsDir.path
+        ))
 
         if json {
-            print("{\"passed\": \(result.allPassed), \"checks\": \(result.checks.count), \"failures\": \(result.failures.count)}")
+            print("{\"passed\": \(result.isHealthy), \"checks\": \(result.checks.count), \"failures\": \(result.summary.failures)}")
             return
         }
 
@@ -67,28 +75,31 @@ struct DoctorCommand: AsyncParsableCommand {
 
         var currentCategory = ""
         for check in result.checks {
-            if check.category != currentCategory {
-                currentCategory = check.category
+            if check.category.rawValue != currentCategory {
+                currentCategory = check.category.rawValue
                 print("─── \(currentCategory) ───")
             }
 
             let icon: String
             let detail: String
             switch check.status {
-            case .passed(let d): icon = "✓"; detail = d
-            case .warning(let m): icon = "○"; detail = m
-            case .failed(let e): icon = "✗"; detail = e
+            case .pass: icon = "✓"; detail = check.message ?? "passed"
+            case .warning: icon = "○"; detail = check.message ?? "warning"
+            case .fail: icon = "✗"; detail = check.message ?? "failed"
+            case .skipped: icon = "-"; detail = check.message ?? "skipped"
             }
 
-            print("  \(icon) \(check.name): \(detail)")
-            if let f = check.fix, icon == "✗" { print("    Fix: \(f)") }
+            print("  \(icon) \(check.title): \(detail)")
+            if let f = check.fixCommand, icon == "✗" { print("    Fix: \(f)") }
         }
 
         print()
-        if result.allPassed {
+        if result.summary.failures == 0, result.summary.warnings == 0 {
             print("All checks passed. ✓")
+        } else if result.summary.failures == 0 {
+            print("\(result.summary.warnings) warning(s) found.")
         } else {
-            print("\(result.failures.count) issue(s) found.")
+            print("\(result.summary.failures) issue(s) found.")
             if !fix { print("Run `swoosh doctor --fix` to attempt repairs.") }
         }
     }

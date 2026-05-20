@@ -130,7 +130,7 @@ public final class SwooshShell: @unchecked Sendable {
     private func handleAgentRequest(_ input: String) async {
         guard let handler = agentHandler else {
             print("")
-            print("  \u{001B}[33m⟳\u{001B}[0m Agent kernel not yet connected.")
+            print("  \u{001B}[33m⟳\u{001B}[0m No agent handler configured for this shell.")
             print("  Run `swoosh setup quick` to configure a model,")
             print("  or use `/help` to explore available commands.")
             print("")

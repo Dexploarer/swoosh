@@ -86,6 +86,18 @@ public struct AgentToolResponse: Sendable {
         lines.append("────────────────────────────────────────")
         return lines.joined(separator: "\n")
     }
+
+    public var agentResponse: AgentResponse {
+        AgentResponse(
+            message: message,
+            sessionID: sessionID,
+            memoryIDsUsed: memoryIDsUsed,
+            setupReportUsed: setupReportUsed,
+            permissionSummaryUsed: permissionSummaryUsed,
+            modelUsed: modelUsed,
+            createdAt: createdAt
+        )
+    }
 }
 
 // MARK: - Agent tool loop
@@ -133,6 +145,10 @@ public actor AgentToolLoop {
         self.toolPromptBuilder = toolPromptBuilder
         self.promptBuilder = promptBuilder
         self.policy = policy
+    }
+
+    public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
+        try await sessionStore.loadTranscript(sessionID: sessionID)
     }
 
     // MARK: - Main entry point
@@ -201,7 +217,7 @@ public actor AgentToolLoop {
                 )
             }
             // Call model
-            let completionRequest = ModelCompletionRequest(messages: transcript)
+            let completionRequest = ModelCompletionRequest(messages: transcript, tools: availableTools)
             let completion = try await modelProvider.complete(completionRequest)
             lastModel = completion.model
 

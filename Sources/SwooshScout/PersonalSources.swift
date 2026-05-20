@@ -23,9 +23,6 @@ import Intents
 #if canImport(HealthKit)
 import HealthKit
 #endif
-#if canImport(MusicKit)
-import MusicKit
-#endif
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - App usage (macOS screen-time equivalent)
@@ -512,88 +509,6 @@ public struct HealthSleepSource: ScoutSource {
         return []
         #endif
     }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MARK: - MusicKit recent (iOS gated)
-// ═══════════════════════════════════════════════════════════════════
-
-/// MusicKit recently-played source. Requires MusicKit entitlement +
-/// Apple Music authorization. Until the iOS app picks up the
-/// entitlement this source returns no records.
-public struct MusicHistorySource: ScoutSource {
-    public let id = "music_history"
-    public let displayName = "Recently Played Music"
-    public let description = "Apple Music listening history. Genre / mood patterns only — track titles are not exported."
-    public let sensitivity = Sensitivity.high
-    public let requiredPermissions = ["music_library.read"]
-
-    public init() {}
-
-    public func checkPermission() async throws -> SourcePermissionStatus {
-        #if canImport(MusicKit)
-        switch MusicAuthorization.currentStatus {
-        case .authorized: return .granted
-        case .denied, .restricted: return .denied
-        case .notDetermined: return .notDetermined
-        @unknown default: return .notDetermined
-        }
-        #else
-        return .restricted
-        #endif
-    }
-
-    public func requestPermission() async throws -> SourcePermissionStatus {
-        #if canImport(MusicKit)
-        let status = await MusicAuthorization.request()
-        switch status {
-        case .authorized: return .granted
-        case .denied, .restricted: return .denied
-        case .notDetermined: return .notDetermined
-        @unknown default: return .notDetermined
-        }
-        #else
-        return .restricted
-        #endif
-    }
-
-    public func scan(progress: ScanProgress) async throws -> [ScoutRecord] {
-        // The aggregation logic (genre / time-of-day bucket) will land
-        // once the iOS app picks up the MusicKit capability. Until
-        // then the source returns no records — the propose/approve
-        // pipeline still treats it as a known-but-empty source.
-        []
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MARK: - Screen Time (iOS DeviceActivity gated)
-// ═══════════════════════════════════════════════════════════════════
-
-/// iOS Screen Time source. Real implementation requires `FamilyControls`
-/// + `DeviceActivity` entitlements (the same ones the Apple Screen Time
-/// app uses). The source ID and permission shape are stable; the data
-/// layer turns on once entitlements are present.
-public struct ScreenTimeSource: ScoutSource {
-    public let id = "screen_time"
-    public let displayName = "Screen Time"
-    public let description = "iOS DeviceActivity buckets. Requires the FamilyControls entitlement."
-    public let sensitivity = Sensitivity.high
-    public let requiredPermissions = ["screen_time.read"]
-
-    public init() {}
-
-    public func checkPermission() async throws -> SourcePermissionStatus {
-        // The FamilyControls authorization flow is gated behind an
-        // entitlement; without it `AuthorizationCenter.shared` won't
-        // surface and the platform check itself is meaningless. Return
-        // `.restricted` until the iOS app picks up the entitlement.
-        .restricted
-    }
-
-    public func requestPermission() async throws -> SourcePermissionStatus { .restricted }
-
-    public func scan(progress: ScanProgress) async throws -> [ScoutRecord] { [] }
 }
 
 // MARK: - Helpers

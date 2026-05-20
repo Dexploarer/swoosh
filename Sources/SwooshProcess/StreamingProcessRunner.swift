@@ -47,9 +47,9 @@ public struct StreamingProcessRunner: ProcessRunning, Sendable {
         // 2. Validate working directory is inside an approved root
         if let workDir = workingDirectory {
             let workPath = workDir.standardizedFileURL.path
-            let isInApprovedRoot = approvedRoots.isEmpty || approvedRoots.contains(where: { root in
-                workPath.hasPrefix(root) || workPath == root
-            })
+            let isInApprovedRoot = approvedRoots.isEmpty || approvedRoots.contains {
+                path(workPath, isInsideOrEqualTo: $0)
+            }
             guard isInApprovedRoot else {
                 throw ProcessError.workingDirectoryOutsideRoot
             }
@@ -93,9 +93,9 @@ public struct StreamingProcessRunner: ProcessRunning, Sendable {
 
         if let workDir = workingDirectory {
             let workPath = workDir.standardizedFileURL.path
-            let isInApprovedRoot = approvedRoots.isEmpty || approvedRoots.contains(where: { root in
-                workPath.hasPrefix(root) || workPath == root
-            })
+            let isInApprovedRoot = approvedRoots.isEmpty || approvedRoots.contains {
+                path(workPath, isInsideOrEqualTo: $0)
+            }
             guard isInApprovedRoot else {
                 throw ProcessError.workingDirectoryOutsideRoot
             }
@@ -134,6 +134,11 @@ public struct StreamingProcessRunner: ProcessRunning, Sendable {
                 }
             }
         }
+    }
+
+    private func path(_ candidate: String, isInsideOrEqualTo root: String) -> Bool {
+        let rootPath = URL(fileURLWithPath: root, isDirectory: true).standardizedFileURL.path
+        return candidate == rootPath || candidate.hasPrefix(rootPath + "/")
     }
 
     private func resolveExecutable(_ executable: String) -> String {

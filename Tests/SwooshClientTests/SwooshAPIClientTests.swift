@@ -105,6 +105,79 @@ struct SwooshAPIClientTests {
         }
     }
 
+    @Test("Transcript sends bearer token and decodes messages")
+    func transcriptSendsBearerAndDecodesMessages() async throws {
+        let response = TranscriptResponse(
+            sessionID: "ios-default",
+            messages: [
+                TranscriptMessage(
+                    id: "m1",
+                    role: .user,
+                    content: "hello",
+                    createdAt: Date(timeIntervalSince1970: 1_800_000_000)
+                ),
+                TranscriptMessage(
+                    id: "m2",
+                    role: .assistant,
+                    content: "hi from daemon",
+                    createdAt: Date(timeIntervalSince1970: 1_800_000_001)
+                ),
+            ]
+        )
+        let responseBody = try JSONEncoder.swooshDefault.encode(response)
+
+        try await MockURLProtocol.with({ request in
+            #expect(request.url?.path == "/api/agent/transcript/ios-default")
+            #expect(request.httpMethod == "GET")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer pair-token")
+            return (200, ["Content-Type": "application/json"], responseBody)
+        }) {
+            let client = SwooshAPIClient(
+                baseURL: baseURL(),
+                token: "pair-token",
+                session: MockURLProtocol.makeSession()
+            )
+            let decoded = try await client.transcript(sessionID: "ios-default")
+            #expect(decoded.sessionID == "ios-default")
+            #expect(decoded.messages.map(\.role) == [.user, .assistant])
+            #expect(decoded.messages.last?.content == "hi from daemon")
+        }
+    }
+
+    @Test("Readiness endpoint decodes shared report")
+    func readinessDecodesSharedReport() async throws {
+        let response = SwooshReadinessReport(
+            state: .ready,
+            summary: "Ready",
+            components: [
+                SwooshReadinessComponent(
+                    id: "daemon.chat",
+                    title: "Daemon chat",
+                    status: .ready,
+                    detail: "chat enabled"
+                ),
+            ],
+            generatedAt: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let responseBody = try JSONEncoder.swooshDefault.encode(response)
+
+        try await MockURLProtocol.with({ request in
+            #expect(request.url?.path == "/api/runtime/readiness")
+            #expect(request.httpMethod == "GET")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer pair-token")
+            return (200, ["Content-Type": "application/json"], responseBody)
+        }) {
+            let client = SwooshAPIClient(
+                baseURL: baseURL(),
+                token: "pair-token",
+                session: MockURLProtocol.makeSession()
+            )
+            let decoded = try await client.readiness()
+            #expect(decoded.state == .ready)
+            #expect(decoded.component(id: "daemon.chat")?.status == .ready)
+        }
+    }
+
     @Test("Server error decodes APIErrorBody")
     func serverErrorDecodesEnvelope() async throws {
         let body = try JSONEncoder.swooshDefault.encode(APIErrorBody(error: "missing or invalid bearer token", code: "unauthorized"))

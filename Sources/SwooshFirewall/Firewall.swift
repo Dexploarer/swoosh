@@ -101,9 +101,7 @@ public actor InMemoryApprovalRequester: ApprovalRequesting {
     public func requireApproval(_ request: ToolApprovalRequest) async throws {
         if autoApprove { return }
         pending.append(request)
-        // In real implementation, this would wait for user decision
-        // For now, it auto-denies pending requests that aren't auto-approved
-        throw ToolError.denied(request.toolName, "Approval required but not granted")
+        throw ToolError.pendingApproval(request.id)
     }
 
     public func listPending() async -> [ToolApprovalRequest] {

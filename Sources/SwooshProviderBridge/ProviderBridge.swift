@@ -43,7 +43,8 @@ public final class ProviderBridgeAdapter: SwooshCore.ModelProvider, @unchecked S
         // Build provider request
         let modelRequest = ModelRequest(
             model: request.model ?? modelName,
-            messages: toolsMessages
+            messages: toolsMessages,
+            tools: request.tools.map(Self.providerToolDescriptor)
         )
 
         // Route through real providers
@@ -78,6 +79,29 @@ public final class ProviderBridgeAdapter: SwooshCore.ModelProvider, @unchecked S
         case .assistant: return .assistant
         case .tool: return .tool
         }
+    }
+
+    private static func providerToolDescriptor(
+        _ descriptor: SwooshTools.ToolDescriptor
+    ) -> SwooshProviders.ToolDescriptor {
+        SwooshProviders.ToolDescriptor(
+            name: descriptor.name,
+            description: descriptor.description,
+            inputSchema: descriptor.inputSchema.asJSONValue()
+        )
+    }
+}
+
+private extension SwooshTools.JSONSchema {
+    func asJSONValue() -> SwooshTools.JSONValue {
+        let encoder = JSONEncoder()
+        guard
+            let data = try? encoder.encode(self),
+            let value = try? JSONDecoder().decode(SwooshTools.JSONValue.self, from: data)
+        else {
+            return .object(["type": .string("object")])
+        }
+        return value
     }
 }
 

@@ -12,10 +12,13 @@ import SwooshClient
 @MainActor
 @Observable
 final class ClientSession {
+    static let defaultSessionID = "ios-default"
+
     private(set) var host: URL?
     private(set) var hasToken: Bool = false
     private(set) var lastHealth: HealthState = .unknown
     private(set) var agentStatus: AgentStatusResponse?
+    private(set) var sessionID: String = ClientSession.defaultSessionID
 
     enum HealthState: Sendable, Equatable {
         case unknown
@@ -53,8 +56,18 @@ final class ClientSession {
             return
         }
         let healthy = await client.health()
-        lastHealth = healthy ? .ok : .unreachable
-        agentStatus = healthy ? try? await client.agentStatus() : nil
+        guard healthy else {
+            lastHealth = .unreachable
+            agentStatus = nil
+            return
+        }
+        do {
+            agentStatus = try await client.agentStatus()
+            lastHealth = .ok
+        } catch {
+            agentStatus = nil
+            lastHealth = .unreachable
+        }
     }
 
     /// Persist a new pairing and re-probe.

@@ -81,9 +81,8 @@ swoosh ask "What should we build next?"
 Shows:
 
 ```
-Context: 4 approved memories available.
-Agent kernel not yet connected.
-→ Milestone 0.3A: Personalized Agent Kernel.
+Context: approved memories and setup summary are loaded.
+Assistant: <provider response, or local diagnostic response when no provider is configured>
 ```
 
 ### 8. Check the audit trail

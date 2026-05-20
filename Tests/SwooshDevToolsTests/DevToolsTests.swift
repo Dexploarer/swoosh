@@ -355,6 +355,26 @@ struct StreamingProcessRunnerTests {
         )
         #expect(result.exitCode == 0)
     }
+
+    @Test("Working directory with sibling prefix is rejected")
+    func workDirSiblingPrefixRejected() async {
+        let runner = StreamingProcessRunner(
+            policy: .defaultDev,
+            approvedRoots: ["/tmp/swoosh-root"]
+        )
+        do {
+            _ = try await runner.run(
+                executable: "git",
+                arguments: ["--version"],
+                workingDirectory: URL(fileURLWithPath: "/tmp/swoosh-root-sibling"),
+                environment: nil
+            )
+            Issue.record("Should have thrown")
+        } catch is ProcessError {
+        } catch {
+            Issue.record("Wrong error type: \(error)")
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -452,7 +472,7 @@ struct SafeFileAccessorIntegrationTests {
         }
     }
 
-    @Test("deleteFile is disabled in 0.4C")
+    @Test("deleteFile is disabled by policy")
     func deleteFileDisabled() async {
         let store = InMemoryRootStore()
         let accessor = SafeFileAccessor(rootStore: store)

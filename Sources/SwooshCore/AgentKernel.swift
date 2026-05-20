@@ -12,6 +12,7 @@
 // - Every response creates an audit event
 
 import Foundation
+import SwooshTools
 
 // MARK: - Agent request / response
 
@@ -165,10 +166,16 @@ public struct ResponseAuditRecord: Sendable, Codable {
 public struct ModelCompletionRequest: Sendable {
     public let messages: [ChatMessage]
     public let model: String?
+    public let tools: [SwooshTools.ToolDescriptor]
 
-    public init(messages: [ChatMessage], model: String? = nil) {
+    public init(
+        messages: [ChatMessage],
+        model: String? = nil,
+        tools: [SwooshTools.ToolDescriptor] = []
+    ) {
         self.messages = messages
         self.model = model
+        self.tools = tools
     }
 }
 
@@ -354,6 +361,10 @@ public actor AgentKernel {
         self.auditLogger = auditLogger
         self.modelProvider = modelProvider
         self.promptBuilder = promptBuilder
+    }
+
+    public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
+        try await sessionStore.loadTranscript(sessionID: sessionID)
     }
 
     /// Run an agent request and return a response with full audit metadata.

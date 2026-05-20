@@ -35,6 +35,7 @@ struct ChatCommand: AsyncParsableCommand {
         let hw = HardwareDetector().detect()
         let secrets = KeychainSecretStore()
         var agentHandler: AgentHandler? = nil
+        let toolRegistry = try await makeCLIToolRegistry()
 
         if let active = await ProviderFactory.detectActiveProvider(secrets: secrets) {
             status.model = active.model
@@ -45,15 +46,30 @@ struct ChatCommand: AsyncParsableCommand {
 
             let swoosh = try await Swoosh.configure {
                 $0.modelProvider = bridge
+                $0.toolRegistry = toolRegistry
             }
             agentHandler = { input, sessionID in
                 let response = try await swoosh.ask(input, sessionID: sessionID)
                 return (response: response.message, model: response.modelUsed)
             }
-        } else if hw.hasAppleSilicon {
-            let recs = hw.recommendedLocalModels.filter { $0.fits == .recommended || $0.fits == .feasible }
-            if !recs.isEmpty {
-                status.model = "not configured (MLX-capable: \(recs.map(\.sizeLabel).joined(separator: ", ")))"
+        } else {
+            let modelProvider = LocalDiagnosticProvider()
+            status.providerStatus = "local diagnostic"
+            if hw.hasAppleSilicon {
+                let recs = hw.recommendedLocalModels.filter { $0.fits == .recommended || $0.fits == .feasible }
+                if !recs.isEmpty {
+                    status.model = "local diagnostic (MLX-capable: \(recs.map(\.sizeLabel).joined(separator: ", ")))"
+                }
+            } else {
+                status.model = modelProvider.modelName
+            }
+            let swoosh = try await Swoosh.configure {
+                $0.modelProvider = modelProvider
+                $0.toolRegistry = toolRegistry
+            }
+            agentHandler = { input, sessionID in
+                let response = try await swoosh.ask(input, sessionID: sessionID)
+                return (response: response.message, model: response.modelUsed)
             }
         }
 
@@ -91,8 +107,10 @@ struct AskCommand: AsyncParsableCommand {
             modelProvider = LocalDiagnosticProvider()
         }
 
+        let toolRegistry = try await makeCLIToolRegistry()
         let swoosh = try await Swoosh.configure {
             $0.modelProvider = modelProvider
+            $0.toolRegistry = toolRegistry
         }
         let response = try await swoosh.ask(question, sessionID: session)
 
