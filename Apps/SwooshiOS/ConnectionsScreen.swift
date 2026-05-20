@@ -36,6 +36,7 @@ struct ConnectionsScreen: View {
     private var paired: some View {
         List {
             modelsSection
+            channelsSection
             knowledgeSection
             stateSection
             mediaSection
@@ -48,6 +49,26 @@ struct ConnectionsScreen: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    private var channelsSection: some View {
+        Section("Channels") {
+            NavigationLink {
+                ChannelsScreen()
+            } label: {
+                IconRow(
+                    tile: IconTile(systemName: "bubble.left.and.text.bubble.right.fill", tint: .blue),
+                    title: "Chat adapters",
+                    detail: channelsCaption
+                )
+            }
+        }
+    }
+
+    private var channelsCaption: String {
+        let total = ChannelCatalog.entries.count
+        let official = ChannelCatalog.entries.filter { $0.distribution == .official }.count
+        return "\(total) catalogued · \(official) official"
     }
 
     private var unpaired: some View {
