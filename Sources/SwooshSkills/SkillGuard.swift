@@ -57,6 +57,10 @@ public struct SkillGuard: Sendable {
         }
 
         // Check for suspicious patterns in instructions
+        if containsSuspiciousPattern(skill.body) {
+            violations.append(.suspiciousInstruction(stepOrder: 0,
+                                                      reason: "Contains potentially dangerous command pattern"))
+        }
         for step in skill.steps {
             if containsSuspiciousPattern(step.instruction) {
                 violations.append(.suspiciousInstruction(stepOrder: step.order,
@@ -79,6 +83,8 @@ public struct SkillGuard: Sendable {
             "chmod 777",
             "curl | bash",
             "curl | sh",
+            "wget | sh",
+            "wget | bash",
             "eval(",
             "exec(",
             "> /dev/sda",
@@ -114,6 +120,17 @@ public enum SkillViolation: Sendable, CustomStringConvertible {
             return "Imported skills are not allowed by policy"
         case .suspiciousInstruction(let order, let reason):
             return "Step \(order): \(reason)"
+        }
+    }
+}
+
+extension SkillViolation {
+    var blocksSkillInstall: Bool {
+        switch self {
+        case .suspiciousInstruction:
+            return true
+        case .tooManySteps, .disallowedTool, .disallowedToolInStep, .importedSkillNotAllowed:
+            return false
         }
     }
 }

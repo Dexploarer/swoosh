@@ -232,8 +232,8 @@ struct UniswapPoolToolTests {
         #expect(output.feeTier == .fee10000)
     }
 
-    @Test("Pool address output is a non-empty hex string")
-    func poolAddressNonEmpty() async throws {
+    @Test("Pool address matches canonical Uniswap V3 CREATE2 output")
+    func poolAddressMatchesKnownMainnetPool() async throws {
         let tool = UniswapPoolTool(dependencies: deps())
         let input = UniswapPoolInput(
             tokenA: EVMAddress("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
@@ -241,8 +241,7 @@ struct UniswapPoolToolTests {
             feeTier: .fee500
         )
         let output = try await tool.call(input, context: ctx())
-        #expect(!output.poolAddress.hex.isEmpty)
-        #expect(output.poolAddress.hex.hasPrefix("0x"))
+        #expect(output.poolAddress.hex == "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640")
     }
 }
 
@@ -294,7 +293,7 @@ struct SecretResolvingTests {
 
     @Test("NullSecretResolver is the default in ToolDependencies")
     func defaultResolver() async {
-        // If no secrets param provided, NullSecretResolver is used
+        // If no secrets param provided, NullSecretResolver is used.
         let d = ToolDependencies(
             firewall: MockFirewall(granted: []),
             audit: MockAudit(),

@@ -1,5 +1,5 @@
 {
-  "originHash" : "86052b5e525406068d81c80d25db3f4df04e8b9b836bbcabb634cef6fe6ab2a0",
+  "originHash" : "fdb0b1122f16a1e902ce592f70481675352764d8d6614cd045957a81feee0456",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -53,15 +53,6 @@
       "state" : {
         "revision" : "277e5db5b6d348270088e6ee8e8fa2539bae603d",
         "version" : "2.23.0"
-      }
-    },
-    {
-      "identity" : "hyperliquid-swift-sdk",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tranhoangpich/hyperliquid-swift-sdk.git",
-      "state" : {
-        "revision" : "87fcc5296c37a4a414ab9eb4bad9979f79fb5136",
-        "version" : "1.6.1"
       }
     },
     {
@@ -323,6 +314,24 @@
       "state" : {
         "revision" : "7c6ad0fc39d0763e0b699210e4124afd5041c5df",
         "version" : "1.6.4"
+      }
+    },
+    {
+      "identity" : "swift-tokenizers",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DePasqualeOrg/swift-tokenizers.git",
+      "state" : {
+        "revision" : "9cb02e836c1d8782a36ea02e7c437697ceff2ab8",
+        "version" : "0.5.0"
+      }
+    },
+    {
+      "identity" : "swift-tokenizers-mlx",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DePasqualeOrg/swift-tokenizers-mlx",
+      "state" : {
+        "revision" : "6fb48051a8b7e36707725d3ef2f876d6ed860250",
+        "version" : "0.3.0"
       }
     }
   ],

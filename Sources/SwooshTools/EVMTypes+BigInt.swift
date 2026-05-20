@@ -1,6 +1,6 @@
 // SwooshTools/EVMTypes+BigInt.swift
 // EVM quantity types backed by BigInt for arbitrary-precision arithmetic.
-// Replaces the previous EVMQuantity string stub.
+// Replaces the previous EVMQuantity string local diagnostic.
 
 import Foundation
 import BigInt

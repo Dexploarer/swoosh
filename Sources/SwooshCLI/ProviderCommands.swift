@@ -8,6 +8,7 @@
 
 import ArgumentParser
 import SwooshProviders
+import SwooshProviderBridge
 import SwooshSecrets
 import SwooshTools
 import Foundation
@@ -147,66 +148,69 @@ struct ProviderTestCommand: AsyncParsableCommand {
     var provider: String?
 
     func run() async throws {
-        let secrets = KeychainSecretStore()
-        print("\n─── Provider Test ─────────────────────────────\n")
-
-        let providersToTest: [(String, SecretRef)] = {
-            if let p = provider {
-                return [(p, SecretRef(p, "api_key"))]
-            }
-            return [
-                ("openai", SecretRef("openai", "api_key")),
-                ("openrouter", SecretRef("openrouter", "api_key")),
-                ("eliza-cloud", SecretRef("eliza-cloud", "api_key")),
-            ]
-        }()
-
-        for (name, ref) in providersToTest {
-            let hasKey = (try? await secrets.exists(ref)) ?? false
-            if !hasKey {
-                print("  \u{001B}[33m○\u{001B}[0m \(name): no API key configured")
-                continue
-            }
-
-            print("  \u{001B}[36m⟳\u{001B}[0m \(name): testing...", terminator: "")
-            fflush(stdout)
-
-            let start = Date()
-            do {
-                let testMessages: [ChatMessage] = [
-                    ChatMessage(role: .user, content: "Say 'ok' and nothing else.")
-                ]
-                let testRequest = ModelRequest(
-                    model: name == "openrouter" ? "openai/gpt-4.1-mini" : "gpt-4.1-mini",
-                    messages: testMessages
-                )
-
-                let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
-                let response = try await router.completeWith(providerID: ProviderID(name), request: testRequest)
-
-                let latency = Int(Date().timeIntervalSince(start) * 1000)
-                let preview = response.text.prefix(40).replacingOccurrences(of: "\n", with: " ")
-                print("\r  \u{001B}[32m✓\u{001B}[0m \(name): healthy (\(latency)ms) — \"\(preview)\"")
-            } catch {
-                let errMsg = "\(error)".prefix(60)
-                print("\r  \u{001B}[31m✗\u{001B}[0m \(name): \(errMsg)")
-            }
-        }
-
-        // Test local
-        print("")
-        let discovery = LocalProviderDiscovery()
-        let found = await discovery.discover()
-        if found.isEmpty {
-            print("  \u{001B}[33m○\u{001B}[0m local: no server detected at common ports")
-        } else {
-            for local in found {
-                print("  \u{001B}[32m✓\u{001B}[0m \(local.name): \(local.models.count) model(s) available")
-            }
-        }
-
-        print("")
+        try await runProviderTests(provider: provider)
     }
+}
+
+func runProviderTests(provider: String?) async throws {
+    let secrets = KeychainSecretStore()
+    print("\n─── Provider Test ─────────────────────────────\n")
+
+    let providersToTest: [(String, SecretRef)] = {
+        if let provider {
+            return [(provider, SecretRef(provider, "api_key"))]
+        }
+        return [
+            ("openai", SecretRef("openai", "api_key")),
+            ("openrouter", SecretRef("openrouter", "api_key")),
+            ("eliza-cloud", SecretRef("eliza-cloud", "api_key")),
+        ]
+    }()
+
+    for (name, ref) in providersToTest {
+        let hasKey = (try? await secrets.exists(ref)) ?? false
+        if !hasKey {
+            print("  \u{001B}[33m○\u{001B}[0m \(name): no API key configured")
+            continue
+        }
+
+        print("  \u{001B}[36m⟳\u{001B}[0m \(name): testing...", terminator: "")
+        fflush(stdout)
+
+        let start = Date()
+        do {
+            let testMessages: [ChatMessage] = [
+                ChatMessage(role: .user, content: "Say 'ok' and nothing else.")
+            ]
+            let testRequest = ModelRequest(
+                model: name == "openrouter" ? "openai/gpt-4.1-mini" : "gpt-4.1-mini",
+                messages: testMessages
+            )
+
+            let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
+            let response = try await router.completeWith(providerID: ProviderID(name), request: testRequest)
+
+            let latency = Int(Date().timeIntervalSince(start) * 1000)
+            let preview = response.text.prefix(40).replacingOccurrences(of: "\n", with: " ")
+            print("\r  \u{001B}[32m✓\u{001B}[0m \(name): healthy (\(latency)ms) — \"\(preview)\"")
+        } catch {
+            let errMsg = "\(error)".prefix(60)
+            print("\r  \u{001B}[31m✗\u{001B}[0m \(name): \(errMsg)")
+        }
+    }
+
+    print("")
+    let discovery = LocalProviderDiscovery()
+    let found = await discovery.discover()
+    if found.isEmpty {
+        print("  \u{001B}[33m○\u{001B}[0m local: no server detected at common ports")
+    } else {
+        for local in found {
+            print("  \u{001B}[32m✓\u{001B}[0m \(local.name): \(local.models.count) model(s) available")
+        }
+    }
+
+    print("")
 }
 
 // ═══════════════════════════════════════════════════════════════════

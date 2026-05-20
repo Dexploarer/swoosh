@@ -29,11 +29,19 @@ let package = Package(
         .library(name: "SwooshMLX",       targets: ["SwooshMLX"]),
         .library(name: "SwooshFoundation",targets: ["SwooshFoundation"]),
         .library(name: "SwooshBridge",    targets: ["SwooshBridge"]),
+        .library(name: "SwooshSecrets",   targets: ["SwooshSecrets"]),
         .library(name: "SwooshUI",        targets: ["SwooshUI"]),
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
         .library(name: "SwooshWidgets",  targets: ["SwooshWidgets"]),
         .library(name: "SwooshActantBackend", targets: ["SwooshActantBackend"]),
         .library(name: "SwooshGenerativeUI", targets: ["SwooshGenerativeUI"]),
+        .library(name: "SwooshClient",       targets: ["SwooshClient"]),
+        .library(name: "SwooshDaemonSupport", targets: ["SwooshDaemonSupport"]),
+        .library(name: "SwooshGoals",        targets: ["SwooshGoals"]),
+        .library(name: "SwooshManifesting",  targets: ["SwooshManifesting"]),
+        .library(name: "SwooshProviderBridge", targets: ["SwooshProviderBridge"]),
+        .library(name: "SwooshCron", targets: ["SwooshCron"]),
+        .library(name: "SwooshChatSDK", targets: ["SwooshChatSDK"]),
     ],
     dependencies: [
         // CLI
@@ -41,6 +49,8 @@ let package = Package(
         // Local inference
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.0"),
         .package(url: "https://github.com/ml-explore/mlx-swift-lm", from: "3.0.0"),
+        .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers-mlx", exact: "0.3.0"),
+        .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers.git", exact: "0.5.0"),
         // Database
         .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
         // HTTP server
@@ -54,7 +64,7 @@ let package = Package(
         // BigInt — arbitrary-precision integers for EVM/Solana quantities
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
         // Hyperliquid — perp/spot DEX (macOS .v12+, secp256k1 + CryptoSwift)
-        .package(url: "https://github.com/tranhoangpich/hyperliquid-swift-sdk.git", from: "1.6.0"),
+        .package(path: "Vendor/hyperliquid-swift-sdk"),
         // ActantDB — event-sourced agent backend (sibling repo, local path)
         .package(path: "../actantDB/sdks/swift"),
     ],
@@ -70,6 +80,11 @@ let package = Package(
                 "SwooshScout",
                 "SwooshTUI",
                 "SwooshProviders",
+                "SwooshProviderBridge",
+                "SwooshCron",
+                "SwooshSkills",
+                "SwooshToolsets",
+                "SwooshChatSDK",
                 "SwooshSecrets",
                 "SwooshActantBackend",
                 .product(name: "ActantAgent", package: "swift"),
@@ -85,8 +100,21 @@ let package = Package(
                 "SwooshAPI",
                 "SwooshGateway",
                 "SwooshTriggers",
+                "SwooshScout",
+                "SwooshSkills",
+                "SwooshGoals",
+                "SwooshManifesting",
+                "SwooshCron",
+                "SwooshProviderBridge",
+                "SwooshSecrets",
+                "SwooshProviders",
+                "SwooshDaemonSupport",
                 .product(name: "ActantAgent", package: "swift"),
             ]
+        ),
+        .target(
+            name: "SwooshDaemonSupport",
+            dependencies: []
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -97,6 +125,7 @@ let package = Package(
             dependencies: [
                 "SwooshCore",
                 "SwooshActantBackend",
+                "SwooshClient",
                 .product(name: "ActantAgent", package: "swift"),
                 .product(name: "ActantDB",    package: "swift"),
             ]
@@ -115,7 +144,7 @@ let package = Package(
         ),
         .target(
             name: "SwooshMacros",
-            dependencies: ["SwooshMacroPlugin"]
+            dependencies: ["SwooshMacroPlugin", "SwooshTools"]
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -132,7 +161,7 @@ let package = Package(
         // MARK: - Config, credentials, setup, diagnostics
         // ══════════════════════════════════════════════════════════════
         .target(name: "SwooshConfig", dependencies: []),
-        .target(name: "SwooshTUI", dependencies: []),
+        .target(name: "SwooshTUI", dependencies: ["SwooshTools"]),
         .target(
             name: "SwooshObservability",
             dependencies: [.product(name: "Logging", package: "swift-log")]
@@ -157,11 +186,17 @@ let package = Package(
                 .product(name: "MLXLLM",        package: "mlx-swift-lm"),
                 .product(name: "MLXVLM",        package: "mlx-swift-lm"),
                 .product(name: "MLXLMCommon",   package: "mlx-swift-lm"),
+                .product(name: "MLXLMTokenizers", package: "swift-tokenizers-mlx"),
+                .product(name: "Tokenizers", package: "swift-tokenizers"),
             ]
         ),
         .target(name: "SwooshFoundation", dependencies: []),   // Apple Foundation Models adapter
         .target(name: "SwooshSecrets",    dependencies: []),   // Keychain + SecretRef
         .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets"]),
+        .target(
+            name: "SwooshProviderBridge",
+            dependencies: ["SwooshCore", "SwooshProviders", "SwooshSecrets", "SwooshTools"]
+        ),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Tools
@@ -171,6 +206,10 @@ let package = Package(
         ]),
         .target(name: "SwooshToolsets", dependencies: [
             "SwooshTools",
+            "SwooshSkills",
+            "SwooshGoals",
+            "SwooshManifesting",
+            "SwooshCron",
             .product(name: "JupSwift", package: "JupSwift"),
             .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
         ]),
@@ -190,7 +229,11 @@ let package = Package(
             .product(name: "SQLite", package: "SQLite.swift"),
         ]),
         .target(name: "SwooshFlow",     dependencies: ["SwooshTools", "SwooshFirewall"]),
-        .target(name: "SwooshSkills",   dependencies: []),
+        .target(name: "SwooshSkills",       dependencies: ["SwooshTools"]),
+        .target(name: "SwooshGoals",        dependencies: ["SwooshTools"]),
+        .target(name: "SwooshManifesting",  dependencies: ["SwooshTools"]),
+        .target(name: "SwooshCron", dependencies: ["SwooshTools"]),
+        .target(name: "SwooshChatSDK", dependencies: ["SwooshClient"]),
         .target(
             name: "SwooshBoard",
             dependencies: [
@@ -236,12 +279,23 @@ let package = Package(
         .target(name: "SwooshBench",    dependencies: ["SwooshTools"]),
 
         // ══════════════════════════════════════════════════════════════
-        // MARK: - API server
+        // MARK: - API server + transport-agnostic client
         // ══════════════════════════════════════════════════════════════
+        // SwooshClient holds the wire format (Codable types) plus a
+        // URLSession-based client. It is intentionally free of Hummingbird,
+        // SwooshCore, or anything that touches `Process`, so the iOS app
+        // can import it without pulling in the kernel or the actantdb
+        // supervisor.
+        .target(
+            name: "SwooshClient",
+            dependencies: []
+        ),
         .target(
             name: "SwooshAPI",
             dependencies: [
                 "SwooshCore",
+                "SwooshClient",
+                "SwooshChatSDK",
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
@@ -334,6 +388,10 @@ let package = Package(
             dependencies: ["SwooshCore"]
         ),
         .testTarget(
+            name: "SwooshScoutTests",
+            dependencies: ["SwooshScout"]
+        ),
+        .testTarget(
             name: "SwooshToolsTests",
             dependencies: ["SwooshTools", "SwooshFirewall", "SwooshToolsets"]
         ),
@@ -376,6 +434,33 @@ let package = Package(
         .testTarget(
             name: "SwooshGenerativeUITests",
             dependencies: ["SwooshGenerativeUI"]
+        ),
+        .testTarget(
+            name: "SwooshAPITests",
+            dependencies: [
+                "SwooshAPI",
+                .product(name: "HummingbirdTesting", package: "hummingbird"),
+            ]
+        ),
+        .testTarget(
+            name: "SwooshClientTests",
+            dependencies: ["SwooshClient", "SwooshChatSDK"]
+        ),
+        .testTarget(
+            name: "SwooshCronTests",
+            dependencies: ["SwooshCron", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshSkillsTests",
+            dependencies: ["SwooshSkills"]
+        ),
+        .testTarget(
+            name: "SwooshChatSDKTests",
+            dependencies: ["SwooshChatSDK", "SwooshClient"]
+        ),
+        .testTarget(
+            name: "SwooshDaemonTests",
+            dependencies: ["SwooshDaemonSupport"]
         ),
     ]
 )

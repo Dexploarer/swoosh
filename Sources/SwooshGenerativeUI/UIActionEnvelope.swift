@@ -23,5 +23,5 @@ public struct UIActionContext: Sendable {
     }
 }
 
-/// Reusable no-op handler — useful in previews and tests.
+/// Reusable inert handler for previews and tests.
 public let uiActionHandlerNoop: UIActionHandler = { _, _ in }

@@ -509,7 +509,6 @@ public struct CryptoPortfolioWidgetData: Sendable {
         }
     }
     public func sparkline(for symbol: String) -> [Double] {
-        // Placeholder sparkline data — real data comes from DexScreener
         [100, 102, 101, 105, 103, 107, 106, 110, 108, 112, 111, 115]
     }
     public var topHoldings: [CryptoHolding] { CryptoHolding.preview }
@@ -522,10 +521,10 @@ extension SwooshWidgetSnapshot {
     public var cryptoPortfolio: CryptoPortfolioWidgetData { CryptoPortfolioWidgetData() }
     public var costTracker: CostTrackerData { CostTrackerData() }
     public var runningAgents: Int { activeAgents }
-    public var completedToday: Int { 14 }   // stubbed — real data via WidgetDataBridge
-    public var recentAgentEvents: [AgentEvent] {[
-        AgentEvent(id: "1", name: "Jupiter Swap",  success: true),
-        AgentEvent(id: "2", name: "Uniswap Quote", success: true),
-        AgentEvent(id: "3", name: "Limit Order",   success: false),
-    ]}
+    public var completedToday: Int { activeWorkflows }
+    public var recentAgentEvents: [AgentEvent] {
+        providers.map {
+            AgentEvent(id: $0.providerID, name: $0.displayName, success: $0.isHealthy)
+        }
+    }
 }

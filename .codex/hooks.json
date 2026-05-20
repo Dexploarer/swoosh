@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PATH=\"/Users/home/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; command -v xh >/dev/null 2>&1 && xh _memory-hook prompt-submit --agent codex || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".codex/scripts/pre-tool-use.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

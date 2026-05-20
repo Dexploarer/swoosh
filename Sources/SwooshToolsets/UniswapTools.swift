@@ -218,7 +218,7 @@ public struct UniswapPoolTool: SwooshTool {
             ? (input.tokenA, input.tokenB)
             : (input.tokenB, input.tokenA)
 
-        let poolAddr = computeV3PoolAddress(
+        let poolAddr = try computeV3PoolAddress(
             factory: factoryAddress(chainID: input.chainID),
             token0: token0, token1: token1, fee: input.feeTier.rawValue
         )
@@ -303,21 +303,165 @@ private func decodeQuoteResult(_ hex: String) -> (BigInt, BigInt, Int, BigInt) {
 }
 
 /// Compute Uniswap V3 pool CREATE2 address (off-chain, no RPC needed)
-private func computeV3PoolAddress(factory: String, token0: EVMAddress, token1: EVMAddress, fee: Int) -> String {
-    // CREATE2 = keccak256(0xff ++ factory ++ salt ++ keccak256(initcode))[12:]
-    // Pool init code hash: 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54
-    // salt = keccak256(abi.encode(token0, token1, fee))
-    // Full implementation requires keccak256 — return computed placeholder for now,
-    // real address lookup should use the EVM client's eth_call to factory.getPool()
-    let factoryHex = factory.replacingOccurrences(of: "0x", with: "").lowercased()
-    let t0 = token0.hex.replacingOccurrences(of: "0x", with: "").lowercased()
-    let t1 = token1.hex.replacingOccurrences(of: "0x", with: "").lowercased()
-    let feeHex = String(format: "%06x", fee)
-    // Return the factory.getPool() calldata hint — real usage should RPC-call this
-    return "0x\(factoryHex.prefix(8))\(t0.prefix(8))\(t1.prefix(8))\(feeHex)00000000000000000000"
+private func computeV3PoolAddress(factory: String, token0: EVMAddress, token1: EVMAddress, fee: Int) throws -> String {
+    let factoryBytes = try addressBytes(factory)
+    let token0Bytes = try addressBytes(token0.hex)
+    let token1Bytes = try addressBytes(token1.hex)
+    guard (0...0xFF_FFFF).contains(fee) else {
+        throw ToolError.executionFailed("Invalid Uniswap V3 fee tier \(fee)")
+    }
+
+    let saltInput = addressWord(token0Bytes) + addressWord(token1Bytes) + uint24Word(fee)
+    let salt = keccak256(saltInput)
+    let initCodeHash = try hexBytes("e34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54")
+    let create2Input = [UInt8(0xff)] + factoryBytes + salt + initCodeHash
+    let hash = keccak256(create2Input)
+    return "0x" + hexString(Array(hash.suffix(20)))
 }
 
 private func padLeft(_ s: String, _ n: Int) -> String {
     let clean = s.hasPrefix("0x") ? String(s.dropFirst(2)) : s
     return String(repeating: "0", count: max(0, n - clean.count)) + clean
+}
+
+private func addressBytes(_ hex: String) throws -> [UInt8] {
+    let bytes = try hexBytes(hex)
+    guard bytes.count == 20 else {
+        throw ToolError.executionFailed("Invalid EVM address length for \(hex)")
+    }
+    return bytes
+}
+
+private func hexBytes(_ hex: String) throws -> [UInt8] {
+    let clean = hex.hasPrefix("0x") ? String(hex.dropFirst(2)) : hex
+    guard clean.count.isMultiple(of: 2) else {
+        throw ToolError.executionFailed("Invalid hex length")
+    }
+    var bytes: [UInt8] = []
+    var index = clean.startIndex
+    while index < clean.endIndex {
+        let next = clean.index(index, offsetBy: 2)
+        guard let byte = UInt8(clean[index..<next], radix: 16) else {
+            throw ToolError.executionFailed("Invalid hex byte")
+        }
+        bytes.append(byte)
+        index = next
+    }
+    return bytes
+}
+
+private func addressWord(_ bytes: [UInt8]) -> [UInt8] {
+    Array(repeating: 0, count: 12) + bytes
+}
+
+private func uint24Word(_ value: Int) -> [UInt8] {
+    var word = Array(repeating: UInt8(0), count: 32)
+    word[29] = UInt8((value >> 16) & 0xff)
+    word[30] = UInt8((value >> 8) & 0xff)
+    word[31] = UInt8(value & 0xff)
+    return word
+}
+
+private func hexString(_ bytes: [UInt8]) -> String {
+    bytes.map { String(format: "%02x", $0) }.joined()
+}
+
+private func keccak256(_ input: [UInt8]) -> [UInt8] {
+    let rate = 136
+    var state = [UInt64](repeating: 0, count: 25)
+    var offset = 0
+
+    while input.count - offset >= rate {
+        absorbKeccakBlock(Array(input[offset..<(offset + rate)]), into: &state)
+        keccakF1600(&state)
+        offset += rate
+    }
+
+    var block = Array(repeating: UInt8(0), count: rate)
+    let remaining = input.count - offset
+    if remaining > 0 {
+        for i in 0..<remaining {
+            block[i] = input[offset + i]
+        }
+    }
+    block[remaining] ^= 0x01
+    block[rate - 1] ^= 0x80
+    absorbKeccakBlock(block, into: &state)
+    keccakF1600(&state)
+
+    var output: [UInt8] = []
+    output.reserveCapacity(32)
+    for lane in state.prefix(4) {
+        for shift in stride(from: 0, to: 64, by: 8) {
+            output.append(UInt8((lane >> UInt64(shift)) & 0xff))
+        }
+    }
+    return Array(output.prefix(32))
+}
+
+private func absorbKeccakBlock(_ block: [UInt8], into state: inout [UInt64]) {
+    for laneIndex in 0..<(block.count / 8) {
+        var lane = UInt64(0)
+        for byteIndex in 0..<8 {
+            lane |= UInt64(block[laneIndex * 8 + byteIndex]) << UInt64(byteIndex * 8)
+        }
+        state[laneIndex] ^= lane
+    }
+}
+
+private func keccakF1600(_ state: inout [UInt64]) {
+    let roundConstants: [UInt64] = [
+        0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
+        0x8000000080008000, 0x000000000000808b, 0x0000000080000001,
+        0x8000000080008081, 0x8000000000008009, 0x000000000000008a,
+        0x0000000000000088, 0x0000000080008009, 0x000000008000000a,
+        0x000000008000808b, 0x800000000000008b, 0x8000000000008089,
+        0x8000000000008003, 0x8000000000008002, 0x8000000000000080,
+        0x000000000000800a, 0x800000008000000a, 0x8000000080008081,
+        0x8000000000008080, 0x0000000080000001, 0x8000000080008008,
+    ]
+    let rotations = [
+        0, 1, 62, 28, 27,
+        36, 44, 6, 55, 20,
+        3, 10, 43, 25, 39,
+        41, 45, 15, 21, 8,
+        18, 2, 61, 56, 14,
+    ]
+
+    for roundConstant in roundConstants {
+        var c = [UInt64](repeating: 0, count: 5)
+        for x in 0..<5 {
+            c[x] = state[x] ^ state[x + 5] ^ state[x + 10] ^ state[x + 15] ^ state[x + 20]
+        }
+
+        var d = [UInt64](repeating: 0, count: 5)
+        for x in 0..<5 {
+            d[x] = c[(x + 4) % 5] ^ rotateLeft(c[(x + 1) % 5], by: 1)
+        }
+        for x in 0..<5 {
+            for y in 0..<5 {
+                state[x + 5 * y] ^= d[x]
+            }
+        }
+
+        var b = [UInt64](repeating: 0, count: 25)
+        for x in 0..<5 {
+            for y in 0..<5 {
+                b[y + 5 * ((2 * x + 3 * y) % 5)] = rotateLeft(state[x + 5 * y], by: rotations[x + 5 * y])
+            }
+        }
+
+        for x in 0..<5 {
+            for y in 0..<5 {
+                state[x + 5 * y] = b[x + 5 * y] ^ ((~b[((x + 1) % 5) + 5 * y]) & b[((x + 2) % 5) + 5 * y])
+            }
+        }
+
+        state[0] ^= roundConstant
+    }
+}
+
+private func rotateLeft(_ value: UInt64, by offset: Int) -> UInt64 {
+    guard offset != 0 else { return value }
+    return (value << UInt64(offset)) | (value >> UInt64(64 - offset))
 }

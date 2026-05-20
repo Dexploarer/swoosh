@@ -3,9 +3,39 @@
 // Registers all 0.4A tools into the ToolRegistry.
 // P0: core, memory, permissions, scout, audit, files, git, swiftDev, workflow, evm, solana
 // P1: web, browser, apple, xcode, mcp (deferred)
+// Self-improvement pillars: skills, goals, manifesting
 
 import Foundation
 import SwooshTools
+import SwooshSkills
+import SwooshGoals
+import SwooshManifesting
+import SwooshCron
+
+// ═══════════════════════════════════════════════════════════════════
+// MARK: - Self-improvement pillar dependencies
+// ═══════════════════════════════════════════════════════════════════
+
+/// Optional bundle of dependencies for the self-improvement pillars.
+/// Passing `nil` for any field skips registering that pillar's tools.
+public struct SelfImprovementDependencies: Sendable {
+    public let skills: SkillToolDependencies?
+    public let goals: GoalToolDependencies?
+    public let manifest: ManifestToolDependencies?
+    public let cron: CronToolDependencies?
+
+    public init(
+        skills: SkillToolDependencies? = nil,
+        goals: GoalToolDependencies? = nil,
+        manifest: ManifestToolDependencies? = nil,
+        cron: CronToolDependencies? = nil
+    ) {
+        self.skills = skills
+        self.goals = goals
+        self.manifest = manifest
+        self.cron = cron
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Default tool registrar
@@ -14,19 +44,60 @@ import SwooshTools
 public enum DefaultToolRegistrar {
     public static func registerAll(
         into registry: ToolRegistry,
-        dependencies: ToolDependencies
+        dependencies: ToolDependencies,
+        selfImprovement: SelfImprovementDependencies = SelfImprovementDependencies()
     ) async {
         await registerCore(into: registry, dependencies: dependencies)
         await registerMemory(into: registry, dependencies: dependencies)
         await registerPermissions(into: registry, dependencies: dependencies)
         await registerScout(into: registry, dependencies: dependencies)
         await registerAudit(into: registry, dependencies: dependencies)
+        await registerTerminal(into: registry, dependencies: dependencies)
         await registerFiles(into: registry, dependencies: dependencies)
         await registerGit(into: registry, dependencies: dependencies)
         await registerSwiftDev(into: registry, dependencies: dependencies)
         await registerWorkflow(into: registry, dependencies: dependencies)
         await registerEVM(into: registry, dependencies: dependencies)
         await registerSolana(into: registry, dependencies: dependencies)
+        if let skills = selfImprovement.skills {
+            await registerSkills(into: registry, dependencies: skills)
+        }
+        if let goals = selfImprovement.goals {
+            await registerGoals(into: registry, dependencies: goals)
+        }
+        if let manifest = selfImprovement.manifest {
+            await registerManifesting(into: registry, dependencies: manifest)
+        }
+        if let cron = selfImprovement.cron {
+            await registerCron(into: registry, dependencies: cron)
+        }
+    }
+
+    // ── Self-improvement pillars ──────────────────────────────────
+    static func registerSkills(into registry: ToolRegistry, dependencies: SkillToolDependencies) async {
+        await registry.register(TypeErasedTool(SkillListTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(SkillGetTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(SkillSearchTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(SkillProposeTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(SkillInstallTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(SkillManageTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(SkillApproveTool(dependencies: dependencies)))
+    }
+
+    static func registerGoals(into registry: ToolRegistry, dependencies: GoalToolDependencies) async {
+        await registry.register(TypeErasedTool(GoalSetTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(GoalStatusTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(GoalAbandonTool(dependencies: dependencies)))
+    }
+
+    static func registerManifesting(into registry: ToolRegistry, dependencies: ManifestToolDependencies) async {
+        await registry.register(TypeErasedTool(ManifestNowTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(ManifestHistoryTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(ManifestGetTool(dependencies: dependencies)))
+    }
+
+    static func registerCron(into registry: ToolRegistry, dependencies: CronToolDependencies) async {
+        await registry.register(TypeErasedTool(CronJobTool(dependencies: dependencies)))
     }
 
     // ── Core ──────────────────────────────────────────────────────
@@ -34,8 +105,8 @@ public enum DefaultToolRegistrar {
         await registry.register(TypeErasedTool(CoreStatusTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(ExplainContextTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(ListToolsetsTool(dependencies: dependencies)))
-        await registry.register(TypeErasedTool(ListToolsTool(dependencies: dependencies)))
-        await registry.register(TypeErasedTool(GetToolSchemaTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(ListToolsTool(dependencies: dependencies, registry: registry)))
+        await registry.register(TypeErasedTool(GetToolSchemaTool(dependencies: dependencies, registry: registry)))
     }
 
     // ── Memory / Vault ────────────────────────────────────────────
@@ -73,6 +144,13 @@ public enum DefaultToolRegistrar {
         await registry.register(TypeErasedTool(AuditTailTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(AuditSearchTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(AuditGetEventTool(dependencies: dependencies)))
+    }
+
+    // ── Terminal ──────────────────────────────────────────────────
+    static func registerTerminal(into registry: ToolRegistry, dependencies: ToolDependencies) async {
+        await registry.register(TypeErasedTool(TerminalBackendsTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(TerminalConfigureTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(TerminalRunTool(dependencies: dependencies)))
     }
 
     // ── Files ─────────────────────────────────────────────────────

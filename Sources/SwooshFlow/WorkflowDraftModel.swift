@@ -60,19 +60,19 @@ public enum WorkflowDraftStatus: String, Codable, Sendable {
 
 public enum WorkflowTrigger05A: Codable, Sendable, Equatable {
     case manual
-    case placeholder(WorkflowTriggerPlaceholder)
+    case deferred(WorkflowTriggerDeferred)
 }
 
-public struct WorkflowTriggerPlaceholder: Codable, Sendable, Equatable {
-    public let kind: WorkflowTriggerPlaceholderKind
+public struct WorkflowTriggerDeferred: Codable, Sendable, Equatable {
+    public let kind: WorkflowTriggerDeferredKind
     public let humanDescription: String
 
-    public init(kind: WorkflowTriggerPlaceholderKind, humanDescription: String) {
+    public init(kind: WorkflowTriggerDeferredKind, humanDescription: String) {
         self.kind = kind; self.humanDescription = humanDescription
     }
 }
 
-public enum WorkflowTriggerPlaceholderKind: String, Codable, Sendable {
+public enum WorkflowTriggerDeferredKind: String, Codable, Sendable {
     case schedule, fileChanged, appEvent, webhook, calendarEvent
 }
 

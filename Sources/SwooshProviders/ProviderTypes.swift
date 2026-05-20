@@ -1,7 +1,7 @@
 // SwooshProviders/ProviderTypes.swift — 0.9P Core Provider Contracts
 //
-// Real model provider protocols. Streaming. Tool calls. Embeddings.
-// Router. Health. Usage. No more stubs.
+// Model provider protocols. Streaming. Tool calls. Embeddings.
+// Router. Health. Usage.
 //
 // Reuses ProviderID, ChatRole, ChatMessage, ToolCall, JSONValue from SwooshTools.
 

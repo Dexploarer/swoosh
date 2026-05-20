@@ -220,7 +220,7 @@ struct SafetyConfigTests {
 
     @Test("Default safety config locks everything")
     func testDefaultsLocked() throws {
-        let config = SwooshSafetyConfig.v04A
+        let config = SwooshSafetyConfig.defaultAgent
         #expect(!config.autonomousTradingEnabled)
         #expect(!config.swapExecutionEnabled)
         #expect(!config.privateKeyCustodyEnabled)
@@ -233,7 +233,7 @@ struct SafetyConfigTests {
 
     @Test("Safety violations throw")
     func testSafetyViolations() throws {
-        let config = SwooshSafetyConfig.v04A
+        let config = SwooshSafetyConfig.defaultAgent
         #expect(throws: SafetyViolation.self) { try config.requireAutonomousTrading() }
         #expect(throws: SafetyViolation.self) { try config.requirePrivateKeyCustody() }
         #expect(throws: SafetyViolation.self) { try config.requireSeedPhraseIngestion() }
@@ -242,7 +242,7 @@ struct SafetyConfigTests {
 
     @Test("Custom config can unlock features")
     func testCustomConfig() throws {
-        var config = SwooshSafetyConfig.v04A
+        var config = SwooshSafetyConfig.defaultAgent
         config.autonomousTradingEnabled = true
         try config.requireAutonomousTrading() // should not throw
     }

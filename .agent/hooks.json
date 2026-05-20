@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "grep_search",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -f graphify-out/graph.json ] && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"graphify: knowledge graph at graphify-out/. For focused questions, run `graphify query \\\"<question>\\\"` instead of scanning raw files.\"}}' || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "replace_file_content|write_to_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('TargetFile',''))\" 2>/dev/null || true); case \"$FILE\" in *project.yml) echo 'project.yml changed. Run xcodegen generate before Xcode verification.' ;; *Sources/SwooshTools/SwooshPermission.swift) echo 'Permission model changed. Update Docs/PermissionModel.md in the same change.' ;; esac",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

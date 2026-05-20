@@ -34,8 +34,8 @@ public struct WorkflowExporter: Sendable {
         lines.append("trigger:")
         switch draft.trigger {
         case .manual: lines.append("  type: manual")
-        case .placeholder(let p):
-            lines.append("  type: placeholder")
+        case .deferred(let p):
+            lines.append("  type: deferred")
             lines.append("  kind: \(p.kind.rawValue)")
             lines.append("  description: \(p.humanDescription)")
         }
@@ -111,7 +111,7 @@ public struct WorkflowExporter: Sendable {
     private func triggerDescription(_ trigger: WorkflowTrigger05A) -> String {
         switch trigger {
         case .manual: return "Manual only"
-        case .placeholder(let p): return "\(p.humanDescription) (placeholder — manual only until 0.6A)"
+        case .deferred(let p): return "\(p.humanDescription) (deferred — manual only until 0.6A)"
         }
     }
 }

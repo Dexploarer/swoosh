@@ -99,6 +99,18 @@ public enum RecordKind: String, Codable, Sendable {
     case xcodeProject
     case mcpConfig
     case hermesImport
+
+    // ── Personal-data sources ─────────────────────────────────────
+    case focusMode             // What focus profile the user typically inhabits
+    case appUsage              // Per-app focus time aggregated over a window
+    case calendarEvent         // One calendar event (anonymized by the source)
+    case reminderItem          // Pending/recently-completed reminder
+    case healthSleep           // Sleep duration summary, not raw heart-rate data
+    case healthActivity        // Step / move ring summary
+    case musicHistory          // Recently-played music aggregate
+    case recentDocument        // Recent doc per-app via Apple's sharedfilelist
+    case screenTime            // iOS DeviceActivity bucket
+    case personalizationSignal // Passive Swoosh runtime signal aggregate
 }
 
 // MARK: - Memory candidate
@@ -201,4 +213,3 @@ public struct SecretRedactor: Sendable {
         return regex.stringByReplacingMatches(in: text, range: range, withTemplate: replacement)
     }
 }
-

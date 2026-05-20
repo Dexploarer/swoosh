@@ -126,7 +126,7 @@ struct SwooshImagePlaygroundSheetModifier: ViewModifier {
 // MARK: - Genmoji entry point
 
 /// Encourage the user to tap-hold the keyboard to insert a Genmoji.
-/// macOS surfaces these through the system character viewer; this stub is
+/// macOS surfaces these through the system character viewer; this local diagnostic is
 /// here so call sites have a single label they can render alongside
 /// composer affordances.
 public struct SwooshGenmojiHintView: View {

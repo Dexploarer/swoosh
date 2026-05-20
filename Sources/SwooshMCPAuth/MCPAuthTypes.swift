@@ -4,6 +4,7 @@
 // No raw tokens in config, database, logs, or audit.
 
 import Foundation
+import CryptoKit
 import SwooshTools
 
 // ═══════════════════════════════════════════════════════════════════
@@ -108,13 +109,27 @@ public struct MCPPKCEPair: Sendable {
         self.codeVerifier = codeVerifier; self.codeChallenge = codeChallenge; self.method = method
     }
 
-    /// Generate a PKCE pair (deterministic for testing, real impl uses SecRandom)
+    /// Generate a PKCE pair.
     public static func generate(verifier: String? = nil) -> MCPPKCEPair {
-        let v = verifier ?? UUID().uuidString + UUID().uuidString
-        // In production, codeChallenge = BASE64URL(SHA256(v))
-        // For now, use a placeholder that proves the structure
-        let challenge = "S256_\(v.prefix(16))"
+        let v = verifier ?? randomVerifier()
+        let digest = SHA256.hash(data: Data(v.utf8))
+        let challenge = Data(digest).base64URLEncodedString()
         return MCPPKCEPair(codeVerifier: v, codeChallenge: challenge)
+    }
+
+    private static func randomVerifier(byteCount: Int = 32) -> String {
+        var bytes = [UInt8](repeating: 0, count: byteCount)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        return Data(bytes).base64URLEncodedString()
+    }
+}
+
+private extension Data {
+    func base64URLEncodedString() -> String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "="))
     }
 }
 

@@ -25,8 +25,31 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case screenCapture
     case shellRead
     case shellRun
+    case memoryRead
     case memoryWrite
     case networkAccess
+
+    // ── Self-improvement pillars (skills / goals / manifesting) ────
+    case skillsRead
+    case skillsWrite
+    case goalsRead
+    case goalsWrite
+    case manifestRead
+    case manifestRun
+
+    // ── Personal-data Scout sources ────────────────────────────────
+    // These power Scout's deep personalization layer. Every one of
+    // them grants raw access to *very* personal data; the trust
+    // contract is that records never enter prompts directly — only
+    // user-approved memory candidates derived from them do.
+    case focusModeRead
+    case appUsageRead          // macOS NSWorkspace frontmost-app history
+    case screenTimeRead        // iOS DeviceActivity / FamilyControls
+    case healthSleepRead
+    case healthActivityRead
+    case musicLibraryRead
+    case photosRead
+    case recentDocumentsRead
 
     // ── Tool / runtime ────────────────────────────────────────────
     case toolRead
@@ -62,6 +85,9 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case workflowRead
     case workflowWrite
     case workflowRun
+    case scheduleRead
+    case scheduleWrite
+    case scheduleRun
 
     // ── EVM ───────────────────────────────────────────────────────
     case evmRead

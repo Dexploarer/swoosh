@@ -145,7 +145,7 @@ public actor ApprovalCenter: ApprovalRequesting {
             sessionID: request.sessionID,
             toolName: request.toolName,
             risk: request.risk,
-            permission: .deviceProfileRead, // placeholder; real permission comes from descriptor
+            permission: request.permission,
             inputPreview: request.inputPreview,
             origin: .model,
             status: .pending
@@ -171,6 +171,7 @@ public actor ApprovalCenter: ApprovalRequesting {
                 id: record.id,
                 toolName: record.toolName,
                 risk: record.risk,
+                permission: record.permission,
                 inputPreview: record.inputPreview,
                 sessionID: record.sessionID,
                 createdAt: record.createdAt

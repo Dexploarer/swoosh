@@ -104,7 +104,7 @@ struct PKCETests {
     func specificVerifier() {
         let pair = MCPPKCEPair.generate(verifier: "test-verifier-value")
         #expect(pair.codeVerifier == "test-verifier-value")
-        #expect(pair.codeChallenge.hasPrefix("S256_"))
+        #expect(pair.codeChallenge == "R-yFp3ykg184xTSr9BXHiHtbqWZXIG_H4B3K5EWSDzM")
     }
 }
 

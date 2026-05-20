@@ -81,8 +81,7 @@ public struct SwooshSafetyConfig: Codable, Sendable {
         self.mainnetWritesByDefault = mainnetWritesByDefault
     }
 
-    /// Safe defaults for 0.4A. Everything locked down.
-    public static let v04A = SwooshSafetyConfig()
+    public static let defaultAgent = SwooshSafetyConfig()
 
     /// Development-only config. Some flags relaxed for testing.
     /// Still does NOT enable private key custody or seed phrase ingestion.

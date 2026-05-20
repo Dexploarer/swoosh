@@ -277,12 +277,24 @@ struct ProviderRouterTests {
     func recordsAudit() async throws {
         let registry = ProviderRegistry()
         let router = ProviderRouter(registry: registry)
+        await registry.register(FailingProvider(id: "audit-fail"), profile: ProviderProfile(
+            id: ProviderID("audit-fail"),
+            kind: .openAI,
+            displayName: "Audit Failure",
+            enabled: true
+        ))
+        await registry.addRoute(ProviderRoute(
+            role: .primaryChat,
+            providerID: ProviderID("audit-fail"),
+            model: "audit-test",
+            priority: 100
+        ))
         _ = try? await router.complete(
             role: .primaryChat,
             request: ModelRequest(model: "x", messages: [ChatMessage(role: .user, content: "hi")])
         )
         let log = await router.getAuditLog()
-        #expect(log.count >= 0) // At least attempted
+        #expect(!log.isEmpty)
     }
 }
 
@@ -466,10 +478,8 @@ struct LocalProviderDiscoveryTests {
     @Test("Discovery returns empty if nothing running")
     func discoveryEmpty() async {
         let discovery = LocalProviderDiscovery()
-        // This test is environment-dependent; in CI nothing is running
         let found = await discovery.discover()
-        // Don't assert count — just verify it doesn't crash
-        #expect(found.count >= 0)
+        #expect(found.allSatisfy { !$0.name.isEmpty && !$0.baseURL.isEmpty })
     }
 }
 

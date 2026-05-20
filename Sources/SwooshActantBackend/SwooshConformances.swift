@@ -38,16 +38,32 @@ extension ActantAgent.ApprovalCenter: SwooshCore.PermissionSummarizing {
 // MARK: - Per-call adapters (sessionID arrives in the SwooshCore call,
 //        ActantAgent fixes it at construction — re-build Session per call).
 
-public struct SwooshSessionStore: SwooshCore.SessionStoring, Sendable {
+public actor SwooshSessionStore: SwooshCore.SessionStoring {
     public let backend: AgentBackend
+    private var initializedSessionIDs: Set<String> = []
+
     public init(backend: AgentBackend) { self.backend = backend }
 
     public func appendMessage(sessionID: String, message: ChatMessage) async throws {
+        try await ensureSession(sessionID: sessionID)
         try await session(for: sessionID).appendMessage(message)
     }
 
     public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
         try await session(for: sessionID).loadTranscript()
+    }
+
+    private func ensureSession(sessionID: String) async throws {
+        if initializedSessionIDs.contains(sessionID) { return }
+        let client = await backend.client
+        let workspaceID = await backend.workspaceID
+        let actorID = await backend.actorID
+        _ = try await client.createSession(
+            workspaceID: workspaceID,
+            actorID: actorID,
+            sessionID: sessionID
+        )
+        initializedSessionIDs.insert(sessionID)
     }
 
     private func session(for sessionID: String) -> ActantAgent.Session<ChatMessage> {

@@ -31,13 +31,18 @@ public enum ToolsetID: String, Codable, Sendable, CaseIterable {
     case xcode
     case web
     case browser
+    case terminal
     case apple
     case workflow
+    case cron
     case evm
     case solana
     case hyperliquid
     case uniswap
     case mcp
+    case skills
+    case goals
+    case manifesting
 }
 
 // MARK: - SwooshTool protocol (typed)
@@ -56,10 +61,20 @@ public protocol SwooshTool: Sendable {
     static var approval: ApprovalPolicy { get }
     static var toolset: ToolsetID { get }
 
+    /// Platforms on which this tool may be registered. Defaults to the
+    /// owning toolset's `defaultPlatforms`. Override only when a single
+    /// tool diverges from its toolset (e.g., a memory tool that needs
+    /// macOS-only Keychain access).
+    static var platforms: Set<ToolPlatform> { get }
+
     func call(
         _ input: Input,
         context: ToolContext
     ) async throws -> Output
+}
+
+extension SwooshTool {
+    public static var platforms: Set<ToolPlatform> { Self.toolset.defaultPlatforms }
 }
 
 // MARK: - Type-erased wrapper
@@ -93,7 +108,8 @@ public struct TypeErasedTool<T: SwooshTool>: AnySwooshTool {
             permission: T.permission,
             risk: T.risk,
             approval: T.approval,
-            toolset: T.toolset
+            toolset: T.toolset,
+            platforms: T.platforms
         )
     }
 
@@ -122,6 +138,7 @@ public struct ToolDescriptor: Codable, Sendable, Identifiable {
     public let risk: ToolRisk
     public let approval: ApprovalPolicy
     public let toolset: ToolsetID
+    public let platforms: Set<ToolPlatform>
 
     public init(
         id: String,
@@ -133,7 +150,8 @@ public struct ToolDescriptor: Codable, Sendable, Identifiable {
         permission: SwooshPermission,
         risk: ToolRisk,
         approval: ApprovalPolicy,
-        toolset: ToolsetID
+        toolset: ToolsetID,
+        platforms: Set<ToolPlatform> = [.macOS, .iOS, .linux]
     ) {
         self.id = id
         self.name = name
@@ -145,6 +163,31 @@ public struct ToolDescriptor: Codable, Sendable, Identifiable {
         self.risk = risk
         self.approval = approval
         self.toolset = toolset
+        self.platforms = platforms
+    }
+
+    // Backward-compat decoding: descriptors persisted before the
+    // `platforms` field existed should still load, defaulting to "runs
+    // anywhere".
+    private enum CodingKeys: String, CodingKey {
+        case id, name, displayName, description, inputSchema, outputSchema
+        case permission, risk, approval, toolset, platforms
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decode(String.self, forKey: .name)
+        self.displayName = try c.decode(String.self, forKey: .displayName)
+        self.description = try c.decode(String.self, forKey: .description)
+        self.inputSchema = try c.decode(JSONSchema.self, forKey: .inputSchema)
+        self.outputSchema = try c.decode(JSONSchema.self, forKey: .outputSchema)
+        self.permission = try c.decode(SwooshPermission.self, forKey: .permission)
+        self.risk = try c.decode(ToolRisk.self, forKey: .risk)
+        self.approval = try c.decode(ApprovalPolicy.self, forKey: .approval)
+        self.toolset = try c.decode(ToolsetID.self, forKey: .toolset)
+        self.platforms = (try? c.decode(Set<ToolPlatform>.self, forKey: .platforms))
+            ?? [.macOS, .iOS, .linux]
     }
 }
 
@@ -158,7 +201,7 @@ public struct ToolContext: Sendable {
 
     public init(
         sessionID: String,
-        safetyConfig: SwooshSafetyConfig = .v04A,
+        safetyConfig: SwooshSafetyConfig = .defaultAgent,
         isModelInvocation: Bool = true,
         callerIdentity: String = "agent"
     ) {
@@ -267,4 +310,3 @@ extension JSONValue {
         return text
     }
 }
-

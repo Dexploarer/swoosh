@@ -160,7 +160,6 @@ struct UsageMeterRow: View {
                     .foregroundStyle(theme.textSecondary)
             }
 
-            // Usage bar (placeholder — will be wired to real usage data)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2)
@@ -175,7 +174,7 @@ struct UsageMeterRow: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: geo.size.width * 0.45, height: compact ? 3 : 4)
+                        .frame(width: geo.size.width * (status.isHealthy ? 1.0 : 0.15), height: compact ? 3 : 4)
                 }
             }
             .frame(height: compact ? 3 : 4)

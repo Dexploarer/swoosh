@@ -232,7 +232,8 @@ public struct PromptBuilder: Sendable {
     public func buildSystemPrompt(
         approvedMemories: [(id: String, text: String, category: String)],
         setupReport: String?,
-        permissionSummary: String?
+        permissionSummary: String?,
+        skillCatalog: [(id: String, title: String, description: String)] = []
     ) -> (prompt: String, memoryIDs: [String]) {
 
         var sections: [String] = []
@@ -247,10 +248,11 @@ public struct PromptBuilder: Sendable {
         """)
 
         // Approved memories
-        if !approvedMemories.isEmpty {
+        let uniqueMemories = deduplicated(approvedMemories)
+        if !uniqueMemories.isEmpty {
             var memBlock = "## Approved Memories\n"
             memBlock += "The following facts were approved by the user:\n\n"
-            for mem in approvedMemories {
+            for mem in uniqueMemories {
                 memBlock += "- [\(mem.category)] \(mem.text)\n"
                 usedMemoryIDs.append(mem.id)
             }
@@ -267,6 +269,20 @@ public struct PromptBuilder: Sendable {
             sections.append("## Permission Profile\n\(perms)")
         }
 
+        // Skill catalog (Level-0 progressive disclosure)
+        // Only the (title, description) pair is injected. The model
+        // pulls the full body via `skill_get` when it decides a skill
+        // applies. Draft / rejected skills never reach this list — the
+        // catalog loader enforces the SkillTrust.promptable filter.
+        if !skillCatalog.isEmpty {
+            var skillBlock = "## Available Skills\n"
+            skillBlock += "Reusable procedures the user has approved. Use `skill_get` to load a body.\n\n"
+            for skill in skillCatalog {
+                skillBlock += "- **\(skill.title)** (\(skill.id)) — \(skill.description)\n"
+            }
+            sections.append(skillBlock)
+        }
+
         // Exclusion statement (for auditability)
         sections.append("""
         ## Data Exclusions
@@ -278,10 +294,33 @@ public struct PromptBuilder: Sendable {
         - Contacts, mail, messages
         - SSH keys, API keys, secrets
         - Files outside approved folders
+        - Draft / rejected skill candidates
         """)
 
         let prompt = sections.joined(separator: "\n\n")
         return (prompt, usedMemoryIDs)
+    }
+
+    private func deduplicated(
+        _ memories: [(id: String, text: String, category: String)]
+    ) -> [(id: String, text: String, category: String)] {
+        var seen = Set<String>()
+        var result: [(id: String, text: String, category: String)] = []
+        for memory in memories {
+            let key = "\(normalize(memory.category))\u{1F}\(normalize(memory.text))"
+            if seen.insert(key).inserted {
+                result.append(memory)
+            }
+        }
+        return result
+    }
+
+    private func normalize(_ value: String) -> String {
+        value
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 }
 
@@ -332,12 +371,14 @@ public actor AgentKernel {
         )
 
         // 3. Load existing transcript for session continuation
-        var transcript = try await sessionStore.loadTranscript(sessionID: request.sessionID)
+        let storedTranscript = try await sessionStore.loadTranscript(sessionID: request.sessionID)
+        let priorSystemPrompt = storedTranscript.first(where: { $0.role == .system })?.content
+        var transcript = storedTranscript.filter { $0.role != .system }
 
-        // 4. Prepend system prompt if transcript is empty
-        if transcript.isEmpty || transcript.first?.role != .system {
-            let systemMsg = ChatMessage(role: .system, content: systemPrompt)
-            transcript.insert(systemMsg, at: 0)
+        // 4. Prepend the current system prompt
+        let systemMsg = ChatMessage(role: .system, content: systemPrompt)
+        transcript.insert(systemMsg, at: 0)
+        if priorSystemPrompt != systemPrompt {
             try await sessionStore.appendMessage(sessionID: request.sessionID, message: systemMsg)
         }
 

@@ -15,7 +15,7 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
         aliases: ["h", "?"],
         summary: "Show available commands.",
         category: .general
-    ) { ctx in
+    ) { _ in
         .success("""
 
           ─── Swoosh Commands ──────────────────────────────

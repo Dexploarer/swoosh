@@ -73,10 +73,17 @@ public struct ListToolsTool: SwooshTool {
     public static let approval = ApprovalPolicy.never
     public static let toolset = ToolsetID.core
     let dependencies: ToolDependencies
-    public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
+    let registry: ToolRegistry?
+    public init(dependencies: ToolDependencies, registry: ToolRegistry? = nil) {
+        self.dependencies = dependencies
+        self.registry = registry
+    }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        // This would query the registry; stub for now
-        ListToolsOutput(tools: [])
+        let tools = await registry?.listAvailable(context: context) ?? []
+        let filtered = input.toolset.map { toolset in
+            tools.filter { $0.toolset.rawValue == toolset }
+        } ?? tools
+        return ListToolsOutput(tools: filtered)
     }
 }
 
@@ -92,8 +99,12 @@ public struct GetToolSchemaTool: SwooshTool {
     public static let approval = ApprovalPolicy.never
     public static let toolset = ToolsetID.core
     let dependencies: ToolDependencies
-    public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
+    let registry: ToolRegistry?
+    public init(dependencies: ToolDependencies, registry: ToolRegistry? = nil) {
+        self.dependencies = dependencies
+        self.registry = registry
+    }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        GetToolSchemaOutput(descriptor: nil)
+        GetToolSchemaOutput(descriptor: await registry?.getToolSchema(name: ToolName(input.toolName)))
     }
 }

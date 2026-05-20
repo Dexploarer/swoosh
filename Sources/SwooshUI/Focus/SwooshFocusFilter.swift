@@ -57,22 +57,22 @@ public struct SwooshSetFocusPresetIntent: SetFocusFilterIntent {
     public var toolbar: ToolbarPresetChoice?
 
     @Parameter(title: "Mute notifications")
-    public var muteNotifications: Bool
+    public var muteNotifications: Bool?
 
     @Parameter(title: "Hide usage meters")
-    public var hideUsageMeters: Bool
+    public var hideUsageMeters: Bool?
 
     public init() {
-        self.muteNotifications = false
-        self.hideUsageMeters = false
+        self.muteNotifications = nil
+        self.hideUsageMeters = nil
     }
 
     public var displayRepresentation: DisplayRepresentation {
         var parts: [String] = []
         if let m = menuBar?.rawValue   { parts.append("menu bar = \(m)") }
         if let t = toolbar?.rawValue   { parts.append("toolbar = \(t)") }
-        if muteNotifications           { parts.append("muted") }
-        if hideUsageMeters             { parts.append("meters hidden") }
+        if muteNotifications == true   { parts.append("muted") }
+        if hideUsageMeters == true     { parts.append("meters hidden") }
         let subtitle = parts.isEmpty ? "no overrides" : parts.joined(separator: ", ")
         return DisplayRepresentation(
             title: "Swoosh Focus Preset",
@@ -84,8 +84,8 @@ public struct SwooshSetFocusPresetIntent: SetFocusFilterIntent {
         let preset = SwooshFocusPreset(
             menuBarPresetID: menuBar?.rawValue,
             toolbarPresetID: toolbar?.rawValue,
-            disableNotifications: muteNotifications,
-            hideUsageMeters: hideUsageMeters
+            disableNotifications: muteNotifications == true,
+            hideUsageMeters: hideUsageMeters == true
         )
         await MainActor.run {
             NotificationCenter.default.post(

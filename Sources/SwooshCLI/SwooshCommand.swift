@@ -9,6 +9,7 @@ import SwooshConfig
 import SwooshProviders
 import SwooshSecrets
 import SwooshTools
+import SwooshChatSDK
 import Foundation
 
 @main
@@ -29,6 +30,10 @@ struct SwooshCommand: AsyncParsableCommand {
             SelfTestCommand.self,
             PermissionsCommand.self,
             ProviderCommand.self,
+            SkillsCommand.self,
+            CronCommand.self,
+            TerminalCommand.self,
+            ChatAdaptersCommand.self,
         ],
         defaultSubcommand: ChatCommand.self
     )
@@ -99,7 +104,7 @@ struct ModelCommand: AsyncParsableCommand {
 
     func run() async throws {
         if test {
-            print("Testing model configuration...\nNot yet implemented.")
+            try await runProviderTests(provider: nil)
             return
         }
 
@@ -116,7 +121,8 @@ struct ModelCommand: AsyncParsableCommand {
             let localModels = hardware.recommendedLocalModels.filter { $0.fits == .recommended || $0.fits == .feasible }
             print("  ✓ Apple Silicon — can run: \(localModels.map(\.sizeLabel).joined(separator: ", "))")
         }
-        print("\nNot yet implemented. Use `swoosh setup quick` for basic configuration.")
+        print("")
+        try await ProviderListCommand().run()
     }
 }
 

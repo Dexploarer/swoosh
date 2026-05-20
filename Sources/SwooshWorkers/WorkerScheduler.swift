@@ -226,8 +226,8 @@ public actor WorkerScheduler {
             lines.append("Worker cannot approve gates or resolve approvals.")
             lines.append("Worker cannot expand permissions or spawn other workers.")
         }
-        if let result = run.resultID.flatMap({ id in nil as WorkerResult? }) {
-            // Result fetched separately
+        if let resultID = run.resultID {
+            lines.append("Result: \(resultID)")
         } else {
             let escalations = try await store.listEscalations(runID: runID)
             if let esc = escalations.first {

@@ -211,7 +211,7 @@ struct ProcessPolicyTests {
 
     @Test("Default policy allows git, swift, xcrun")
     func defaultPolicyAllowsDevTools() {
-        let policy = ProcessPolicy.v04C
+        let policy = ProcessPolicy.defaultDev
         #expect(policy.allowedExecutables.contains("git"))
         #expect(policy.allowedExecutables.contains("swift"))
         #expect(policy.allowedExecutables.contains("xcrun"))
@@ -237,7 +237,7 @@ struct StreamingProcessRunnerTests {
 
     @Test("Allowed executable runs successfully")
     func allowedExecutableRuns() async throws {
-        let runner = StreamingProcessRunner(policy: .v04C)
+        let runner = StreamingProcessRunner(policy: .defaultDev)
         let result = try await runner.run(
             executable: "git",
             arguments: ["--version"],
@@ -250,7 +250,7 @@ struct StreamingProcessRunnerTests {
 
     @Test("Blocked executable is rejected")
     func blockedExecutableRejected() async {
-        let runner = StreamingProcessRunner(policy: .v04C)
+        let runner = StreamingProcessRunner(policy: .defaultDev)
         do {
             _ = try await runner.run(
                 executable: "bash",
@@ -268,7 +268,7 @@ struct StreamingProcessRunnerTests {
 
     @Test("Non-allowlisted executable is rejected")
     func nonAllowlistedRejected() async {
-        let runner = StreamingProcessRunner(policy: .v04C)
+        let runner = StreamingProcessRunner(policy: .defaultDev)
         do {
             _ = try await runner.run(
                 executable: "python3",
@@ -286,7 +286,7 @@ struct StreamingProcessRunnerTests {
 
     @Test("Shell injection in arguments is rejected")
     func shellInjectionRejected() async {
-        let runner = StreamingProcessRunner(policy: .v04C)
+        let runner = StreamingProcessRunner(policy: .defaultDev)
         do {
             _ = try await runner.run(
                 executable: "git",
@@ -304,7 +304,7 @@ struct StreamingProcessRunnerTests {
 
     @Test("Pipe injection in arguments is rejected")
     func pipeInjectionRejected() async {
-        let runner = StreamingProcessRunner(policy: .v04C)
+        let runner = StreamingProcessRunner(policy: .defaultDev)
         do {
             _ = try await runner.run(
                 executable: "git",
@@ -323,7 +323,7 @@ struct StreamingProcessRunnerTests {
     @Test("Working directory outside approved root is rejected")
     func workDirOutsideRootRejected() async {
         let runner = StreamingProcessRunner(
-            policy: .v04C,
+            policy: .defaultDev,
             approvedRoots: ["/Users/test/Project"]
         )
         do {
@@ -344,7 +344,7 @@ struct StreamingProcessRunnerTests {
     @Test("Working directory inside approved root is allowed")
     func workDirInsideRootAllowed() async throws {
         let runner = StreamingProcessRunner(
-            policy: .v04C,
+            policy: .defaultDev,
             approvedRoots: ["/tmp"]
         )
         let result = try await runner.run(
