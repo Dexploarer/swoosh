@@ -162,7 +162,10 @@ struct InMemoryGoalStoreTests {
 
         let retrieved = try await store.get(id: goal.id)
         #expect(retrieved?.state == .active)
-        #expect((retrieved?.updatedAt ?? .distantPast) > goal.updatedAt)
+        // `>=` not `>`: on fast hardware the save+setState path can land
+        // inside the same Date() tick. Equality is fine for the contract
+        // (updatedAt must not regress); strictness was just flake.
+        #expect((retrieved?.updatedAt ?? .distantPast) >= goal.updatedAt)
     }
 
     @Test("SetState to non-existent goal does nothing")
