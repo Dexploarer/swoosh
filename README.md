@@ -27,7 +27,7 @@ SwooshFlow         →  testable, replayable workflow engine
 SwooshBoard        →  executable multi-agent task graph with replay
 SwooshTriggers     →  native event-driven scheduler
 SwooshBench        →  practical agent reliability benchmarks
-SwooshBridge       →  Python/Node/MCP interop bridge
+SwooshMCP          →  Model Context Protocol client (stdio transport, wired into ToolRegistry)
 ```
 
 ## Module map
@@ -47,10 +47,9 @@ SwooshBridge       →  Python/Node/MCP interop bridge
 | `SwooshMLX` | MLX Swift on-device inference — selectable via `SWOOSH_MLX_MODEL` |
 | `SwooshFoundation` | Apple Foundation Models adapter — selectable via `SWOOSH_FOUNDATION_MODEL` |
 | `SwooshProviders` | OpenAI, OpenRouter, Eliza Cloud, and local OpenAI-compatible (Ollama / LM Studio) adapters |
-| `SwooshBridge` | Python/Node/MCP interop bridge (experimental — transport not yet wired) |
 | `SwooshBench` | Reliability benchmarks (tool validity, memory precision, replay determinism) |
 | `SwooshUI` | SwiftUI components, Liquid Glass, JSON theme engine |
-| `SwooshMCP` | MCP server registry, auth, and policy (client transport experimental) |
+| `SwooshMCP` | Model Context Protocol — stdio client, JSON-RPC transport, server registry, agent-facing `mcp.list_servers` / `mcp.list_tools` / `mcp.call` tools |
 | `SwooshLSP` | sourcekit-lsp integration |
 | `SwooshAPI` | Hummingbird HTTP API server |
 | `SwooshActantBackend` | <100-LoC conformance shim that wires `ActantAgent` into `SwooshCore`'s five protocols |

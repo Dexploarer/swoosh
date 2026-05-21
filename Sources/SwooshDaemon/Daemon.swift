@@ -43,6 +43,7 @@ import SwooshProviderBridge
 import SwooshProviders
 import SwooshMLX
 import SwooshFoundation
+import SwooshMCP
 import SwooshCore
 import SwooshSecrets
 import SwooshDaemonSupport
@@ -265,6 +266,40 @@ struct SwooshDaemon {
 
         let cronStore = FileCronJobStore(root: swooshDir.appendingPathComponent("cron", isDirectory: true))
         let cronScheduler = CronScheduler(store: cronStore, processRunner: CronProcessRunner())
+
+        // ── MCP servers (loaded from ~/.swoosh/mcp/servers.json) ──
+        // The registry stays empty when the file is absent; the CLI is
+        // responsible for adding servers and the user is responsible for
+        // enabling them. Loaded profiles default to `.untrusted` per
+        // MCPServerProfile.init so even after enabling, mcp.call's
+        // static `.high` risk + askEveryTime approval still gates each
+        // invocation through the firewall.
+        let mcpRegistry = MCPServerRegistry()
+        let mcpServersFile = swooshDir.appendingPathComponent("mcp/servers.json")
+        if FileManager.default.fileExists(atPath: mcpServersFile.path) {
+            do {
+                let data = try Data(contentsOf: mcpServersFile)
+                let profiles = try JSONDecoder().decode([MCPServerProfile].self, from: data)
+                for profile in profiles {
+                    try await mcpRegistry.addServer(profile)
+                }
+                log("MCP: loaded \(profiles.count) server profile(s) from \(mcpServersFile.path).")
+            } catch {
+                log("MCP: failed to load \(mcpServersFile.path): \(error.localizedDescription). Continuing with no MCP servers.")
+            }
+        } else {
+            log("MCP: no servers configured (\(mcpServersFile.path) absent).")
+        }
+        // Reuse the same secret-ref grammar the crypto tools use:
+        // `"namespace.key"` or `"key"` (with `"mcp"` as the default
+        // namespace). MCP server profiles only reference Keychain refs,
+        // never raw secret values.
+        let mcpSecretResolver = KeychainSecretResolver(store: secrets, defaultNamespace: "mcp")
+        let mcpConnector = MCPConnector(secretResolver: { @Sendable ref in
+            try? await mcpSecretResolver.resolve(ref: ref)
+        })
+        let mcpDeps = MCPDependencies(registry: mcpRegistry, connector: mcpConnector)
+
         await DefaultToolRegistrar.registerAll(
             into: toolRuntime.registry,
             dependencies: toolRuntime.dependencies,
@@ -273,7 +308,8 @@ struct SwooshDaemon {
                 goals: GoalToolDependencies(store: goalStore),
                 manifest: ManifestToolDependencies(store: manifestStore, manifester: manifester),
                 cron: CronToolDependencies(store: cronStore, scheduler: cronScheduler)
-            )
+            ),
+            mcp: mcpDeps
         )
 
         // Real judge for the goal runner.

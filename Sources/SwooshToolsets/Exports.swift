@@ -11,6 +11,7 @@ import SwooshSkills
 import SwooshGoals
 import SwooshManifesting
 import SwooshCron
+import SwooshMCP
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Self-improvement pillar dependencies
@@ -45,7 +46,8 @@ public enum DefaultToolRegistrar {
     public static func registerAll(
         into registry: ToolRegistry,
         dependencies: ToolDependencies,
-        selfImprovement: SelfImprovementDependencies = SelfImprovementDependencies()
+        selfImprovement: SelfImprovementDependencies = SelfImprovementDependencies(),
+        mcp: MCPDependencies? = nil
     ) async {
         await registerCore(into: registry, dependencies: dependencies)
         await registerMemory(into: registry, dependencies: dependencies)
@@ -74,6 +76,24 @@ public enum DefaultToolRegistrar {
         if let cron = selfImprovement.cron {
             await registerCron(into: registry, dependencies: cron)
         }
+        if let mcp = mcp {
+            await registerMCP(into: registry, dependencies: dependencies, mcp: mcp)
+        }
+    }
+
+    // ── MCP ───────────────────────────────────────────────────────
+    // Three agent-facing tools — list_servers, list_tools, call.
+    // Trust mutations (addServer/enableServer/disableServer/removeServer/
+    // allowTool/denyTool) are intentionally not registered as tools;
+    // those flows belong to the CLI, not the agent.
+    static func registerMCP(
+        into registry: ToolRegistry,
+        dependencies: ToolDependencies,
+        mcp: MCPDependencies
+    ) async {
+        await registry.register(TypeErasedTool(MCPListServersTool(mcp: mcp)))
+        await registry.register(TypeErasedTool(MCPListToolsTool(mcp: mcp)))
+        await registry.register(TypeErasedTool(MCPCallTool(mcp: mcp, audit: dependencies.audit)))
     }
 
     // ── Self-improvement pillars ──────────────────────────────────

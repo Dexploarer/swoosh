@@ -28,7 +28,6 @@ let package = Package(
         .library(name: "SwooshTriggers",  targets: ["SwooshTriggers"]),
         .library(name: "SwooshMLX",       targets: ["SwooshMLX"]),
         .library(name: "SwooshFoundation",targets: ["SwooshFoundation"]),
-        .library(name: "SwooshBridge",    targets: ["SwooshBridge"]),
         .library(name: "SwooshSecrets",   targets: ["SwooshSecrets"]),
         .library(name: "SwooshUI",        targets: ["SwooshUI"]),
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
@@ -234,6 +233,7 @@ let package = Package(
             "SwooshGoals",
             "SwooshManifesting",
             "SwooshCron",
+            "SwooshMCP",
             .product(name: "JupSwift", package: "JupSwift"),
             .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
         ]),
@@ -299,7 +299,6 @@ let package = Package(
         .target(name: "SwooshDoctor",        dependencies: ["SwooshTools", "SwooshConfig", "SwooshClient"]),
         .target(name: "SwooshInstaller",     dependencies: ["SwooshTools"]),
         .target(name: "SwooshLSP",      dependencies: []),
-        .target(name: "SwooshBridge",   dependencies: ["SwooshTools"]),
         .target(name: "SwooshBench",    dependencies: ["SwooshTools"]),
 
         // ══════════════════════════════════════════════════════════════
@@ -554,10 +553,6 @@ let package = Package(
         .testTarget(
             name: "SwooshTriggersTests",
             dependencies: ["SwooshTriggers"]
-        ),
-        .testTarget(
-            name: "SwooshBridgeTests",
-            dependencies: ["SwooshBridge", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshGatewayTests",

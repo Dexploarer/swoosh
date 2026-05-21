@@ -107,6 +107,12 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case networkRead              // generic authenticated read (no key)
     case hyperliquidTrade         // place/cancel orders, update leverage
     case hyperliquidTransfer      // USD/spot transfers, bridge withdraw (high-risk)
+
+    // ── MCP ───────────────────────────────────────────────────────
+    // Agent-facing MCP access. Trust mutations (add/enable/disable/remove
+    // server) stay CLI-only — they are never wired as agent tools.
+    case mcpRead                  // list configured servers + their discovered tools
+    case mcpExecute               // call a discovered MCP tool (untrusted by default; high-risk gated)
 }
 
 // MARK: - Permission state
