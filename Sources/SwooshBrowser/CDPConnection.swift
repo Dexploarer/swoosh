@@ -95,8 +95,26 @@ public enum AnyCodableValue: Codable, Sendable {
 // MARK: - CDP connection
 // ═══════════════════════════════════════════════════════════════════
 
+/// The CDP transport surface a `CDPBrowserSession` depends on.
+///
+/// Extracted so sessions can be tested against a mock transport without
+/// subclassing the `actor`-based `CDPConnection` (actors cannot be subclassed).
+public protocol CDPConnecting: Sendable {
+    /// Send a CDP command and wait for the response.
+    func send(method: String, params: [String: AnyCodableValue]?) async throws -> CDPResponse
+    /// Disconnect the underlying transport.
+    func disconnect() async
+}
+
+extension CDPConnecting {
+    /// Send a parameterless CDP command.
+    public func send(method: String) async throws -> CDPResponse {
+        try await send(method: method, params: nil)
+    }
+}
+
 /// WebSocket connection to a Chrome DevTools Protocol endpoint.
-public actor CDPConnection {
+public actor CDPConnection: CDPConnecting {
     private let wsURL: URL
     private var webSocket: URLSessionWebSocketTask?
     private let session = URLSession(configuration: .default)
@@ -159,7 +177,7 @@ public actor CDPConnection {
     }
 
     /// Disconnect.
-    public func disconnect() {
+    public func disconnect() async {
         webSocket?.cancel(with: .goingAway, reason: nil)
         webSocket = nil
         isConnected = false

@@ -28,11 +28,27 @@ struct ChatScreen: View {
     @State private var messages: [ChatBubble] = []
     @State private var isLoadingTranscript: Bool = false
     @State private var isSending: Bool = false
-    @State private var errorText: String?
+    /// The failed operation, if any — drives the retry affordance.
+    @State private var failure: ChatFailure?
     @State private var loadedTranscriptKey: String?
+    /// Last user input — kept so a failed send can be retried verbatim.
+    @State private var lastSentText: String?
+    @State private var sendFeedback: Int = 0
+    @State private var errorFeedback: Int = 0
     @FocusState private var inputFocused: Bool
 
     let onOpenDrawer: () -> Void
+
+    /// What failed, so the Retry button knows what to re-run.
+    private enum ChatFailure: Equatable {
+        case load(String)
+        case send(String)
+        var message: String {
+            switch self {
+            case .load(let m), .send(let m): return m
+            }
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,6 +67,8 @@ struct ChatScreen: View {
         }
         .background(.background)
         .task(id: transcriptKey) { await loadTranscript() }
+        .sensoryFeedback(.impact(weight: .light), trigger: sendFeedback)
+        .sensoryFeedback(.error, trigger: errorFeedback)
     }
 
     // MARK: - States
@@ -59,22 +77,30 @@ struct ChatScreen: View {
     private var conversationBody: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                if messages.isEmpty, !isLoadingTranscript {
+                if messages.isEmpty, isLoadingTranscript {
+                    LoadingState("Loading conversation…")
+                        .padding(.top, 80)
+                } else if messages.isEmpty, case .load(let message)? = failure {
+                    transcriptErrorState(message)
+                        .padding(.top, 60)
+                } else if messages.isEmpty {
                     emptyState
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
                 } else {
                     LazyVStack(alignment: .leading, spacing: 18) {
                         if isLoadingTranscript {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                Text("Loading conversation…")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal)
+                            LoadingRow("Loading conversation…")
+                                .padding(.horizontal)
                         }
                         ForEach(messages) { message in
                             ChatBubbleRow(message: message).id(message.id)
+                        }
+                        // A refresh that fails while the thread is still
+                        // on screen — inline so the existing turns stay.
+                        if case .load(let message)? = failure {
+                            ErrorBanner(message: message) { await loadTranscript(force: true) }
+                                .transition(.opacity)
                         }
                         if isSending {
                             ThinkingIndicator()
@@ -83,6 +109,7 @@ struct ChatScreen: View {
                     .padding(.vertical, 18)
                 }
             }
+            .refreshable { await loadTranscript(force: true) }
             .onChange(of: messages.count) {
                 if let last = messages.last {
                     withAnimation(.easeOut(duration: 0.18)) {
@@ -92,12 +119,12 @@ struct ChatScreen: View {
             }
         }
 
-        if let errorText {
-            Text(errorText)
-                .font(.footnote)
-                .foregroundStyle(.red)
-                .padding(.horizontal)
+        // A failed send shows a banner with Retry directly above the
+        // composer; a failed transcript load takes over the body above.
+        if case .send(let message)? = failure {
+            ErrorBanner(message: message) { await retrySend() }
                 .padding(.bottom, 4)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
         }
 
         ChatComposer(
@@ -107,6 +134,21 @@ struct ChatScreen: View {
             disabled: isLoadingTranscript,
             onSend: send
         )
+    }
+
+    /// Full-bleed transcript-load failure with a Retry CTA — shown when
+    /// the conversation couldn't be fetched at all.
+    private func transcriptErrorState(_ message: String) -> some View {
+        ContentUnavailableView {
+            Label("Couldn't load conversation", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Retry") {
+                Task { await loadTranscript(force: true) }
+            }
+            .buttonStyle(.borderedProminent)
+        }
     }
 
     private var unpairedBody: some View {
@@ -182,22 +224,29 @@ struct ChatScreen: View {
         session.host.map { "\($0.absoluteString)#\(session.sessionID)" }
     }
 
-    private func loadTranscript() async {
+    /// Load the transcript. `force` bypasses the already-loaded guard so
+    /// pull-to-refresh and the Retry button always re-fetch.
+    private func loadTranscript(force: Bool = false) async {
         guard session.isPaired, let client = session.client(), let transcriptKey else {
             messages = []
             loadedTranscriptKey = nil
             return
         }
-        guard loadedTranscriptKey != transcriptKey else { return }
-        isLoadingTranscript = true
-        errorText = nil
-        defer { isLoadingTranscript = false }
+        guard force || loadedTranscriptKey != transcriptKey else { return }
+        withAnimation(.easeOut(duration: 0.22)) {
+            isLoadingTranscript = true
+            failure = nil
+        }
+        defer { withAnimation(.easeOut(duration: 0.22)) { isLoadingTranscript = false } }
         do {
             let transcript = try await client.transcript(sessionID: session.sessionID)
-            messages = transcript.messages.compactMap(ChatBubble.init)
+            withAnimation(.easeOut(duration: 0.22)) {
+                messages = transcript.messages.compactMap(ChatBubble.init)
+            }
             loadedTranscriptKey = transcriptKey
         } catch {
-            errorText = error.localizedDescription
+            failure = .load(error.localizedDescription)
+            errorFeedback &+= 1
         }
     }
 
@@ -206,32 +255,59 @@ struct ChatScreen: View {
     private func send() {
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isSending, !isLoadingTranscript else { return }
+        draft = ""
+        Task { await deliver(trimmed) }
+    }
+
+    /// Re-run the last failed send without making the user retype.
+    private func retrySend() async {
+        guard let text = lastSentText, !isSending else { return }
+        await deliver(text, isRetry: true)
+    }
+
+    /// Append the user turn (unless retrying — the bubble is already
+    /// there) and round-trip to the daemon.
+    private func deliver(_ text: String, isRetry: Bool = false) async {
         guard let executor = session.executor() else {
-            errorText = "Not paired with a daemon."
+            failure = .send("Not paired with a daemon.")
+            errorFeedback &+= 1
             return
         }
-        let userMessage = ChatBubble(role: .user, text: trimmed)
-        messages.append(userMessage)
-        draft = ""
-        isSending = true
-        errorText = nil
-
-        Task {
-            defer { isSending = false }
-            do {
-                let response = try await executor.run(
-                    ChatRequest(sessionID: session.sessionID, input: trimmed)
-                )
-                messages.append(ChatBubble(role: .agent, text: response.message))
-            } catch {
-                errorText = error.localizedDescription
+        lastSentText = text
+        if !isRetry {
+            withAnimation(.easeOut(duration: 0.22)) {
+                messages.append(ChatBubble(role: .user, text: text))
             }
+            sendFeedback &+= 1   // haptic: message sent
+        }
+        withAnimation(.easeOut(duration: 0.22)) {
+            isSending = true
+            failure = nil
+        }
+        defer { withAnimation(.easeOut(duration: 0.22)) { isSending = false } }
+        do {
+            let response = try await executor.run(
+                ChatRequest(sessionID: session.sessionID, input: text)
+            )
+            withAnimation(.easeOut(duration: 0.22)) {
+                messages.append(ChatBubble(role: .agent, text: response.message))
+            }
+            lastSentText = nil
+        } catch {
+            withAnimation(.easeOut(duration: 0.22)) {
+                failure = .send(error.localizedDescription)
+            }
+            errorFeedback &+= 1   // haptic: send failed
         }
     }
 
     private func newChat() {
-        messages = []
+        withAnimation(.easeOut(duration: 0.22)) {
+            messages = []
+            failure = nil
+        }
         loadedTranscriptKey = nil
+        lastSentText = nil
         draft = ""
         inputFocused = true
     }

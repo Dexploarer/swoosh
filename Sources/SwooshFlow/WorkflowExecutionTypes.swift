@@ -240,7 +240,19 @@ public protocol WorkflowExecutionGateStoring: Sendable {
     func saveGate(_ gate: WorkflowExecutionGate) async throws
     func getGate(id: String) async throws -> WorkflowExecutionGate?
     func listPendingGates(runID: String?) async throws -> [WorkflowExecutionGate]
+    /// All gates for a run regardless of status — needed so `resume()` can
+    /// find the human-approved gate to execute.
+    func listGates(runID: String?) async throws -> [WorkflowExecutionGate]
     func resolveGate(id: String, status: WorkflowExecutionGateStatus, by: ToolCallOrigin, reason: String?) async throws
+}
+
+public extension WorkflowExecutionGateStoring {
+    /// Default keeps any external/legacy conformer compiling. It degrades
+    /// to the pending-only view (the pre-fix `resume()` behaviour) — real
+    /// stores override it to return resolved gates too.
+    func listGates(runID: String?) async throws -> [WorkflowExecutionGate] {
+        try await listPendingGates(runID: runID)
+    }
 }
 
 public actor InMemoryGateStore: WorkflowExecutionGateStoring {
@@ -251,6 +263,10 @@ public actor InMemoryGateStore: WorkflowExecutionGateStoring {
     public func getGate(id: String) -> WorkflowExecutionGate? { gates[id] }
     public func listPendingGates(runID: String?) -> [WorkflowExecutionGate] {
         gates.values.filter { $0.status == .pending && (runID == nil || $0.runID == runID) }
+            .sorted { $0.stepIndex < $1.stepIndex }
+    }
+    public func listGates(runID: String?) -> [WorkflowExecutionGate] {
+        gates.values.filter { runID == nil || $0.runID == runID }
             .sorted { $0.stepIndex < $1.stepIndex }
     }
     public func resolveGate(id: String, status: WorkflowExecutionGateStatus, by origin: ToolCallOrigin, reason: String?) throws {

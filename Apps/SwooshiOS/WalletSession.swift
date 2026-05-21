@@ -16,12 +16,22 @@ final class WalletSession {
     private(set) var balances: [UUID: WalletBalance] = [:]
     private(set) var refreshing: Set<UUID> = []
     private(set) var error: String?
+    /// True while the account list is being loaded from the Keychain.
+    private(set) var loadingAccounts: Bool = false
+    /// True once `reload()` has resolved at least once — lets the UI tell
+    /// "still loading" apart from "genuinely empty".
+    private(set) var hasLoadedAccounts: Bool = false
 
     init(store: WalletStore = WalletStore()) {
         self.store = store
     }
 
     func reload() async {
+        loadingAccounts = true
+        defer {
+            loadingAccounts = false
+            hasLoadedAccounts = true
+        }
         accounts = await store.accounts()
     }
 
@@ -47,7 +57,12 @@ final class WalletSession {
         }
     }
 
+    func clearError() {
+        error = nil
+    }
+
     func refreshAllBalances() async {
+        error = nil
         for account in accounts {
             await refreshBalance(for: account)
         }

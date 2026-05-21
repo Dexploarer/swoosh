@@ -71,6 +71,9 @@ public struct SolanaAccountInfoOutput: Codable, Sendable {
     public let owner: String
     public let data: String
     public let executable: Bool
+    public init(lamports: UInt64, owner: String, data: String, executable: Bool) {
+        self.lamports = lamports; self.owner = owner; self.data = data; self.executable = executable
+    }
 }
 
 // MARK: - Token account balance
@@ -140,7 +143,12 @@ public struct SolanaGetTransactionInput: Codable, Sendable {
 public struct SolanaGetTransactionOutput: Codable, Sendable {
     public let slot: UInt64
     public let meta: SolanaTransactionMeta?
-    public struct SolanaTransactionMeta: Codable, Sendable { public let fee: UInt64; public let err: String? }
+    public struct SolanaTransactionMeta: Codable, Sendable {
+        public let fee: UInt64
+        public let err: String?
+        public init(fee: UInt64, err: String?) { self.fee = fee; self.err = err }
+    }
+    public init(slot: UInt64, meta: SolanaTransactionMeta?) { self.slot = slot; self.meta = meta }
 }
 
 // MARK: - Signature statuses
@@ -172,6 +180,9 @@ public struct SolanaGetLatestBlockhashInput: Codable, Sendable {
 public struct SolanaGetLatestBlockhashOutput: Codable, Sendable {
     public let blockhash: String
     public let lastValidBlockHeight: UInt64
+    public init(blockhash: String, lastValidBlockHeight: UInt64) {
+        self.blockhash = blockhash; self.lastValidBlockHeight = lastValidBlockHeight
+    }
 }
 
 // MARK: - Simulate transaction
@@ -189,6 +200,9 @@ public struct SolanaTxSimulateOutput: Codable, Sendable {
     public let err: String?
     public let logs: [String]
     public let unitsConsumed: UInt64?
+    public init(err: String?, logs: [String], unitsConsumed: UInt64?) {
+        self.err = err; self.logs = logs; self.unitsConsumed = unitsConsumed
+    }
 }
 
 // MARK: - Build SOL transfer

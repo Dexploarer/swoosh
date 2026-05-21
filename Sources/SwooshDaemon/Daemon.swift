@@ -23,6 +23,7 @@ import Intents
 #endif
 import ActantDB
 import ActantAgent
+import SwooshActantBackend
 import SwooshAPI
 import SwooshClient
 import SwooshConfig
@@ -40,6 +41,8 @@ import SwooshFiles
 import SwooshProcess
 import SwooshProviderBridge
 import SwooshProviders
+import SwooshMLX
+import SwooshFoundation
 import SwooshCore
 import SwooshSecrets
 import SwooshDaemonSupport
@@ -48,6 +51,17 @@ import SwooshDaemonSupport
 struct SwooshDaemon {
     static func main() async throws {
         let version = "0.9P"
+
+        let cliArgs = Array(CommandLine.arguments.dropFirst())
+        if cliArgs.contains("--help") || cliArgs.contains("-h") {
+            printDaemonHelp(version: version)
+            return
+        }
+        if cliArgs.contains("--version") {
+            print("swooshd \(version)")
+            return
+        }
+
         printBanner(version: version)
 
         let env = ProcessInfo.processInfo.environment
@@ -68,8 +82,9 @@ struct SwooshDaemon {
         )
 
         // ── ActantDB subprocess ──────────────────────────────────────
+        let searchPaths = actantDBSearchPaths()
         let supervisor = ActantDBSupervisor(
-            extraSearchPaths: actantDBSearchPaths(),
+            extraSearchPaths: searchPaths,
             logOutputTo: swooshDir.appendingPathComponent("logs/actantdb.log")
         )
         let baseURL: URL
@@ -78,7 +93,20 @@ struct SwooshDaemon {
                 dbPath: swooshDir.appendingPathComponent("actant.db")
             )
         } catch {
-            log("FATAL: \(error)")
+            log("FATAL: could not start ActantDB: \(error)")
+            log("")
+            log("swooshd needs the `actantdb` binary on PATH or in one of these search paths:")
+            for path in searchPaths { log("  • \(path.path)") }
+            log("")
+            log("Fix one of three ways:")
+            log("  1. Build it from the sibling repo:")
+            log("       cd ../actantDB && cargo build           (debug, lands in ~/.cache/cargo-actantdb/debug)")
+            log("       cd ../actantDB && cargo build --release (release, lands in ../actantDB/target/release)")
+            log("  2. Point swooshd at an existing binary:")
+            log("       SWOOSH_ACTANTDB_PATH=/path/to/actantdb swift run swooshd")
+            log("  3. Install it on PATH so `which actantdb` resolves.")
+            log("")
+            log("See Docs/GettingStarted.md §11 for more.")
             exit(1)
         }
         log("ActantDB ready at \(baseURL)")
@@ -122,15 +150,29 @@ struct SwooshDaemon {
             preferredProviderID: runtimeConfig?.preferredProviderID
         )
         let modelProvider: any SwooshCore.ModelProvider
-        if let info = providerInfo {
+        let hasMetaModel: Bool
+        if let mlxModel = env["SWOOSH_MLX_MODEL"], !mlxModel.trimmingCharacters(in: .whitespaces).isEmpty {
+            // On-device inference via MLX — no cloud key, no network. The
+            // model directory must exist under ~/.swoosh/models.
+            modelProvider = MLXModelProvider(modelID: mlxModel.trimmingCharacters(in: .whitespaces))
+            hasMetaModel = true
+            log("Provider: MLX local (\(mlxModel)) — on-device inference.")
+        } else if env["SWOOSH_FOUNDATION_MODEL"] == "1" {
+            // Apple's on-device Foundation model — opt-in, no cloud key.
+            modelProvider = FoundationModelProvider()
+            hasMetaModel = true
+            log("Provider: Apple Foundation Models — on-device inference.")
+        } else if let info = providerInfo {
             let (router, _) = await ProviderFactory.buildRouter(
                 secrets: secrets,
                 preferredProviderID: runtimeConfig?.preferredProviderID
             )
             modelProvider = ProviderBridgeAdapter(router: router, role: .primaryChat, modelName: info.model)
+            hasMetaModel = true
             log("Provider: \(info.name) (\(info.model))")
         } else {
             modelProvider = LocalDiagnosticProvider()
+            hasMetaModel = false
             log("Provider: local diagnostic (no API key configured — run `swoosh provider auth`).")
         }
 
@@ -138,10 +180,11 @@ struct SwooshDaemon {
         // goal judge) so they don't compete with chat for the same model
         // routing decisions. Uses a distinct role so the user can route
         // reflective passes through a cheaper / faster provider.
-        let metaProvider: (any SwooshCore.ModelProvider)? = {
-            guard providerInfo != nil else { return nil }
-            return modelProvider
-        }()
+        // metaProvider drives the goal judge + manifester miner. Use the
+        // configured model whenever we have any real one — MLX/Foundation/
+        // cloud — and only fall back to the deterministic path when the
+        // diagnostic placeholder is in use.
+        let metaProvider: (any SwooshCore.ModelProvider)? = hasMetaModel ? modelProvider : nil
 
         let toolRuntime = try await makeDaemonToolRuntime(
             swooshDir: swooshDir,
@@ -154,12 +197,26 @@ struct SwooshDaemon {
         // ACTANT_BASE_URL is set; SwooshKit.configure picks it up and wires
         // the kernel through SwooshActantBackend so the iPhone's chat turns
         // ride the same ledger as the Mac's.
+        //
+        // The skill store is created here — ahead of the other
+        // self-improvement stores — so the kernel can inject the Level-0
+        // skill catalog (id, title, description per promotable skill) into
+        // every system prompt.
+        let skillStore = FileSkillStore(
+            directory: swooshDir.appendingPathComponent("skills", isDirectory: true)
+        )
         let swoosh: Swoosh
         do {
             swoosh = try await Swoosh.configure { config in
                 config.modelProvider = modelProvider
                 config.toolRegistry = toolRuntime.registry
                 config.toolPolicy = toolPolicy
+                config.skillCatalogProvider = {
+                    let all = (try? await skillStore.listAll()) ?? []
+                    return all
+                        .filter { SkillTrust.promptable.contains($0.trust) }
+                        .map { (id: $0.id, title: $0.title, description: $0.description) }
+                }
             }
         } catch {
             log("FATAL: failed to build agent kernel: \(error)")
@@ -172,9 +229,6 @@ struct SwooshDaemon {
         // still owns sessions/memories/audit; these JSON stores keep goals
         // and manifestation passes alive across daemon restarts without
         // waiting on cloud sync.
-        let skillStore = FileSkillStore(
-            directory: swooshDir.appendingPathComponent("skills", isDirectory: true)
-        )
         let bundledLoader = BundledSkillLoader(
             store: skillStore,
             directory: URL(fileURLWithPath: "Skills/Bundled", isDirectory: true,
@@ -193,7 +247,14 @@ struct SwooshDaemon {
         // Pattern miner: uses a model when configured, otherwise falls
         // back to deterministic audit-window observations.
         let miner: Manifester.PatternMiner = makeMiner(metaProvider: metaProvider)
-        let manifester = Manifester(store: manifestStore, miner: miner)
+        // Real audit source: the manifester mines the durable tool-audit
+        // log instead of the empty default, so scheduled passes see real
+        // activity rather than short-circuiting to `.skipped`.
+        let manifester = Manifester(
+            store: manifestStore,
+            auditSource: AuditLogManifestationSource(audit: toolRuntime.dependencies.audit),
+            miner: miner
+        )
         let manifestPolicy = ManifestationPolicy()
         let scheduler = ManifestationScheduler(
             manifester: manifester,
@@ -285,6 +346,34 @@ struct SwooshDaemon {
                 try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
             }
         }
+        // ── Goal autopilot ──────────────────────────────────────────
+        // Advances pending / active goals to a terminal state via the
+        // GoalRunner. Without this, `goal_set` creates goals no loop ever
+        // pursues. Opt out with SWOOSH_GOAL_AUTOPILOT_DISABLED=1.
+        let goalAutopilotTask: Task<Void, Never>
+        if env["SWOOSH_GOAL_AUTOPILOT_DISABLED"] == "1" {
+            goalAutopilotTask = Task {}
+            log("Goal autopilot disabled (SWOOSH_GOAL_AUTOPILOT_DISABLED=1).")
+        } else {
+            let interval = UInt64(max(60, Int(env["SWOOSH_GOAL_AUTOPILOT_INTERVAL_SECONDS"] ?? "300") ?? 300))
+            goalAutopilotTask = Task.detached(priority: .background) {
+                try? await Task.sleep(nanoseconds: 25 * 1_000_000_000)
+                while !Task.isCancelled {
+                    let goals = (try? await goalStore.listAll()) ?? []
+                    for goal in goals where goal.state == .pending || goal.state == .active {
+                        do {
+                            let final = try await goalRunner.run(goalID: goal.id)
+                            SwooshDaemon.log("Goal \(goal.id) advanced to \(final.state.rawValue).")
+                        } catch {
+                            SwooshDaemon.log("Goal runner error for \(goal.id): \(error.localizedDescription)")
+                        }
+                    }
+                    try? await Task.sleep(nanoseconds: interval * 1_000_000_000)
+                }
+            }
+            log("Goal autopilot started (advances pending/active goals).")
+        }
+
         let runtime = DaemonRuntime(
             skillStore: skillStore,
             goalStore: goalStore,
@@ -295,6 +384,7 @@ struct SwooshDaemon {
             personalizationSignals: personalizationSignals,
             scoutAutopilotTask: scoutAutopilotTask,
             manifestationTask: schedulerTask,
+            goalAutopilotTask: goalAutopilotTask,
             cronStore: cronStore,
             cronScheduler: cronScheduler,
             cronTask: cronTask
@@ -429,6 +519,30 @@ struct SwooshDaemon {
         │  swooshd v\(version) — Swoosh Daemon     │
         │  Press Ctrl-C to stop                │
         └──────────────────────────────────────┘
+        """)
+    }
+
+    static func printDaemonHelp(version: String) {
+        print("""
+        swooshd \(version) — Swoosh local daemon
+
+        Runs the Swoosh agent kernel, spawns ActantDB, and serves the
+        bearer-gated HTTP API that the Swoosh CLI and iPhone app talk to.
+
+        USAGE:
+            swooshd [--help] [--version]
+
+        swooshd takes no subcommands — it runs until stopped with Ctrl-C.
+        Configuration is by environment variable:
+
+            SWOOSH_HOST          Bind address (default 127.0.0.1; 0.0.0.0 for LAN)
+            SWOOSH_PORT          TCP port (default 8787)
+            SWOOSH_API_TOKEN     Bearer token (default: persisted/generated)
+            SWOOSH_CONFIG_DIR    State directory (default ~/.swoosh)
+            SWOOSH_ACTANTDB_PATH Explicit path to the actantdb binary
+
+        The resolved API token is written to ~/.swoosh/api_token — paste it
+        into the Swoosh iOS app to pair an iPhone.
         """)
     }
 
@@ -1126,9 +1240,12 @@ private func makeDaemonToolRuntime(
     grantedPermissions: Set<SwooshPermission>,
     safetyConfig: SwooshSafetyConfig
 ) async throws -> DaemonToolRuntime {
-    let audit = SwooshAuditLog()
+    // Durable tool audit + approvals — both ride the ActantDB ledger so the
+    // audit trail and the pending-approval queue survive daemon restarts.
+    let audit: any AuditLogging = ActantAuditLog(backend: backend)
     let firewall = SwooshFirewallActor(granted: grantedPermissions)
-    let approvalCenter = SwooshApprovals.ApprovalCenter(store: InMemoryApprovalStore(), audit: audit)
+    let approvalCenter = SwooshApprovals.ApprovalCenter(
+        store: ActantApprovalStore(backend: backend), audit: audit)
     let rootStore = InMemoryRootStore()
     let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
         .standardizedFileURL
@@ -1153,6 +1270,15 @@ private func makeDaemonToolRuntime(
         approvals: approvalCenter,
         safetyConfig: safetyConfig
     )
+    // Secret resolver — backs RPC-endpoint refs and the Hyperliquid
+    // trade tools' Keychain-stored private keys. Tools never receive
+    // the raw secret value through their input types.
+    let secretResolver = KeychainSecretResolver(store: KeychainSecretStore())
+    // Concrete JSON-RPC clients. The endpoint URL is resolved per call
+    // from the chain/cluster (Keychain ref → env override → public
+    // fallback); these clients are read/broadcast only — no private keys.
+    let evmClient = URLSessionEVMRPCClient(secrets: secretResolver)
+    let solanaClient = URLSessionSolanaRPCClient(secrets: secretResolver)
     let dependencies = ToolDependencies(
         firewall: firewall,
         audit: audit,
@@ -1160,10 +1286,13 @@ private func makeDaemonToolRuntime(
         safetyConfig: safetyConfig,
         fileAccess: SafeFileAccessor(rootStore: rootStore),
         processRunner: StreamingProcessRunner(approvedRoots: [cwd.path, swooshDir.path]),
+        evmClient: evmClient,
+        solanaClient: solanaClient,
         memoryStore: MemoryStore(backend: backend),
         scoutStore: FileScoutToolStore(url: swooshDir.appendingPathComponent("scout/tool-state.json")),
         workflowStore: FileWorkflowToolStore(url: swooshDir.appendingPathComponent("workflows/tool-drafts.json")),
-        workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry)
+        workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry),
+        secrets: secretResolver
     )
     await DefaultToolRegistrar.registerAll(into: registry, dependencies: dependencies)
     return DaemonToolRuntime(registry: registry, dependencies: dependencies)

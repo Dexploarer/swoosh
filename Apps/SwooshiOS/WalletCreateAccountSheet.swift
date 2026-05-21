@@ -14,6 +14,8 @@ struct WalletCreateAccountSheet: View {
     @State private var chain: WalletChain = .solana
     @State private var label: String = ""
     @State private var working: Bool = false
+    @State private var createdFeedback = 0
+    @State private var errorFeedback = 0
 
     var body: some View {
         NavigationStack {
@@ -38,25 +40,52 @@ struct WalletCreateAccountSheet: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                if let error = wallet.error {
+                    Section {
+                        ErrorRow(message: error) {
+                            await create()
+                        }
+                    }
+                }
             }
             .navigationTitle("New wallet")
             .navigationBarTitleDisplayMode(.inline)
+            .sensoryFeedback(.success, trigger: createdFeedback)
+            .sensoryFeedback(.error, trigger: errorFeedback)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .disabled(working)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(working ? "Creating…" : "Create") {
-                        Task {
-                            working = true
-                            await wallet.create(chain: chain, label: finalLabel)
-                            working = false
-                            dismiss()
+                    Button {
+                        Task { await create() }
+                    } label: {
+                        if working {
+                            ProgressView()
+                        } else {
+                            Text("Create")
                         }
                     }
                     .disabled(working)
                 }
             }
+        }
+    }
+
+    /// Generate the keypair, then dismiss on success. On failure the sheet
+    /// stays open so the in-sheet `ErrorRow` can offer a retry.
+    private func create() async {
+        working = true
+        wallet.clearError()
+        await wallet.create(chain: chain, label: finalLabel)
+        working = false
+        if wallet.error == nil {
+            createdFeedback &+= 1   // haptic: account created
+            dismiss()
+        } else {
+            errorFeedback &+= 1     // haptic: creation failed
         }
     }
 

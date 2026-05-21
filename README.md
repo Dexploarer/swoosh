@@ -37,20 +37,20 @@ SwooshBridge       →  Python/Node/MCP interop bridge
 | `SwooshKit` | Public SDK — embed agents in any Swift app |
 | `SwooshCore` | AgentKernel actor, agent loop, runtime context |
 | `SwooshTools` | Typed `Tool` protocol, `Permission` enum, `ToolRegistry` actor |
-| `SwooshMacros` | `@SwooshTool` compile-time macro for tool generation |
+| `SwooshMacros` | `@SwooshTool` macro infrastructure (experimental — tools currently hand-write conformance) |
 | `SwooshFirewall` | Agent Firewall — approval engine, audit log, risk classification |
 | `SwooshVault` | Memory Vault — transparent, editable, auditable, confidence-scored |
 | `SwooshFlow` | Workflow compiler, "Make this repeatable", test fixtures, failure rules |
 | `SwooshBoard` | Executable task graph with typed tasks and replay |
-| `SwooshTriggers` | Native triggers: time, file, app, calendar, focus, git, webhook, Shortcuts |
-| `SwooshModels` | Model router (Foundation → MLX → remote) |
-| `SwooshMLX` | MLX Swift local inference (MLXLLM, MLXVLM) |
-| `SwooshFoundation` | Apple Foundation Models adapter (@Generable, Tool protocol) |
-| `SwooshProviders` | OpenAI / Anthropic / OpenRouter / Ollama adapters |
-| `SwooshBridge` | Python/Node workers, MCP import/export, Swift wrapper generation |
+| `SwooshTriggers` | Trigger + action schema and in-memory registry (firing engine experimental) |
+| `SwooshModels` | Model catalog + Hugging Face discovery |
+| `SwooshMLX` | MLX Swift on-device inference — selectable via `SWOOSH_MLX_MODEL` |
+| `SwooshFoundation` | Apple Foundation Models adapter — selectable via `SWOOSH_FOUNDATION_MODEL` |
+| `SwooshProviders` | OpenAI, OpenRouter, Eliza Cloud, and local OpenAI-compatible (Ollama / LM Studio) adapters |
+| `SwooshBridge` | Python/Node/MCP interop bridge (experimental — transport not yet wired) |
 | `SwooshBench` | Reliability benchmarks (tool validity, memory precision, replay determinism) |
-| `SwooshUI` | SwiftUI components, Liquid Glass, exhaustive JSON theme engine |
-| `SwooshMCP` | MCP client/server bridge |
+| `SwooshUI` | SwiftUI components, Liquid Glass, JSON theme engine |
+| `SwooshMCP` | MCP server registry, auth, and policy (client transport experimental) |
 | `SwooshLSP` | sourcekit-lsp integration |
 | `SwooshAPI` | Hummingbird HTTP API server |
 | `SwooshActantBackend` | <100-LoC conformance shim that wires `ActantAgent` into `SwooshCore`'s five protocols |
@@ -65,17 +65,26 @@ URL through `ACTANT_BASE_URL`. The Swift SDK has two layers: low-level
 (`MemoryStore` / `Session<Message>` / `Auditor<Record>` / `ApprovalCenter` /
 `ReplayClient`).
 
+**Implementation status.** The core spine — kernel, providers, firewall,
+daemon, ActantDB persistence — is wired and tested. Modules marked
+*experimental* above are present but not yet fully wired. See
+`Docs/Audit.md` for a current, file-cited readiness assessment (and §9
+for remediation progress).
+
 ## Quick start
 
 ```swift
 import SwooshKit
 
-let swoosh = try await Swoosh.configure {
-    $0.approvalMode = .smart
-    $0.tools = [FileReadTool(), ShellTool(), GitStatusTool()]
+// With no model provider configured, the local diagnostic fallback
+// answers — enough to confirm wiring. Plug in a real provider and a
+// tool registry to get the full tool-calling agent loop.
+let swoosh = try await Swoosh.configure { config in
+    // config.modelProvider = myProvider
+    // config.toolRegistry  = myRegistry
 }
 
-let response = try await swoosh.run("Audit this repo and list issues.")
+let response = try await swoosh.ask("Audit this repo and list issues.")
 print(response.message)
 ```
 

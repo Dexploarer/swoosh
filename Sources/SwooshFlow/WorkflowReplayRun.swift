@@ -141,7 +141,16 @@ public actor InMemoryWorkflowRunStore: WorkflowRunStoring {
         return all.sorted { $0.startedAt > $1.startedAt }
     }
     public func saveStepRun(_ stepRun: WorkflowStepRun) {
-        stepRuns[stepRun.runID, default: []].append(stepRun)
+        // Upsert by step index: resuming a paused run re-executes the gated
+        // step, which must replace its `.skipped` placeholder rather than
+        // leave a duplicate row at the same index.
+        var bucket = stepRuns[stepRun.runID, default: []]
+        if let existing = bucket.firstIndex(where: { $0.index == stepRun.index }) {
+            bucket[existing] = stepRun
+        } else {
+            bucket.append(stepRun)
+        }
+        stepRuns[stepRun.runID] = bucket
     }
     public func getStepRuns(runID: String) -> [WorkflowStepRun] {
         (stepRuns[runID] ?? []).sorted { $0.index < $1.index }

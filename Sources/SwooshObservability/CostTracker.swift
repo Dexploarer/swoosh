@@ -105,7 +105,12 @@ public actor CostTracker {
     public func allEntries() -> [CostEntry] { entries }
 
     /// Prune old entries.
+    ///
+    /// A future cutoff is treated as a no-op: pruning never removes entries
+    /// that are newer than "now", so an accidental future date can't wipe
+    /// live cost history.
     public func prune(before date: Date) {
+        guard date <= Date() else { return }
         entries.removeAll { $0.timestamp < date }
     }
 

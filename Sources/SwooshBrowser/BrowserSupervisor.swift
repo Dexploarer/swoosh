@@ -6,6 +6,8 @@ public actor BrowserSupervisor {
     private var process: Process?
     private var debugPort: Int
     private var chromePath: String?
+    private var streamingEnabled: Bool = false
+    private var streamingPort: Int?
 
     public init(debugPort: Int = 9222) {
         self.debugPort = debugPort

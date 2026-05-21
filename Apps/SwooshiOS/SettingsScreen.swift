@@ -7,9 +7,15 @@
 
 import SwiftUI
 import SwooshClient
+import Vision
+#if os(iOS)
+import UIKit
+import AVFoundation
+#endif
 
 struct SettingsScreen: View {
     @Environment(ClientSession.self) private var session
+    @State private var isRefreshing = false
 
     var body: some View {
         List {
@@ -69,6 +75,15 @@ struct SettingsScreen: View {
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Settings")
+        .task { await refreshStatus() }
+        .refreshable { await refreshStatus() }
+    }
+
+    private func refreshStatus() async {
+        guard session.isPaired else { return }
+        withAnimation(.easeOut(duration: 0.22)) { isRefreshing = true }
+        await session.refresh()
+        withAnimation(.easeOut(duration: 0.22)) { isRefreshing = false }
     }
 
     @ViewBuilder
@@ -90,6 +105,9 @@ struct SettingsScreen: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if isRefreshing {
+                    ProgressView().controlSize(.small)
+                }
             }
             .padding(.vertical, 4)
         }
@@ -148,6 +166,11 @@ struct PairingDetailScreen: View {
     @State private var tokenText: String = ""
     @State private var saveError: String?
     @State private var isProbing: Bool = false
+    @State private var isScanning: Bool = false
+    @State private var scanError: String?
+    @State private var showScanner: Bool = false
+    @State private var pairedFeedback: Int = 0
+    @State private var errorFeedback: Int = 0
 
     var body: some View {
         Form {
@@ -176,12 +199,36 @@ struct PairingDetailScreen: View {
                 SecureField("Bearer token", text: $tokenText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+
+                Button {
+                    startQRScan()
+                } label: {
+                    HStack {
+                        Image(systemName: "qrcode.viewfinder")
+                        Text("Scan QR Code")
+                        Spacer()
+                        if isScanning { ProgressView() }
+                    }
+                }
+                .disabled(isScanning)
+                .sheet(isPresented: $showScanner) {
+                    QRScannerView { result in
+                        processQRCode(result)
+                        showScanner = false
+                    }
+                }
             }
 
             if let saveError {
                 Section {
-                    Label(saveError, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
+                    ErrorRow(message: saveError) { await save() }
+                }
+            }
+
+            if let scanError {
+                Section {
+                    Label(scanError, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
                         .font(.footnote)
                 }
             }
@@ -213,6 +260,8 @@ struct PairingDetailScreen: View {
         }
         .navigationTitle("Pairing")
         .navigationBarTitleDisplayMode(.inline)
+        .sensoryFeedback(.success, trigger: pairedFeedback)
+        .sensoryFeedback(.error, trigger: errorFeedback)
         .onAppear {
             if hostText.isEmpty, let host = session.host {
                 hostText = host.absoluteString
@@ -229,9 +278,21 @@ struct PairingDetailScreen: View {
     }
 
     private func save() async {
-        saveError = nil
+        withAnimation(.easeOut(duration: 0.22)) { saveError = nil }
         guard let url = URL(string: hostText), url.scheme != nil else {
-            saveError = "Host URL must include scheme (http:// or https://)."
+            withAnimation(.easeOut(duration: 0.22)) {
+                saveError = "Host URL must include scheme (http:// or https://)."
+            }
+            errorFeedback &+= 1
+            return
+        }
+        // Guard against an empty token sneaking past the disabled button
+        // when this is invoked from the Retry affordance.
+        guard !tokenText.isEmpty else {
+            withAnimation(.easeOut(duration: 0.22)) {
+                saveError = "Paste the bearer token from ~/.swoosh/api_token before pairing."
+            }
+            errorFeedback &+= 1
             return
         }
         isProbing = true
@@ -240,23 +301,135 @@ struct PairingDetailScreen: View {
         let probe = SwooshAPIClient(baseURL: url, token: tokenText)
         let healthy = await probe.health()
         if !healthy {
-            saveError = "Couldn't reach \(url.host ?? "host"). Check that swooshd is running and reachable from this phone."
+            withAnimation(.easeOut(duration: 0.22)) {
+                saveError = "Couldn't reach \(url.host ?? "host"). Check that swooshd is running and reachable from this phone."
+            }
+            errorFeedback &+= 1
             return
         }
         do {
             _ = try await probe.agentStatus()
         } catch {
-            saveError = "Reached swooshd, but the bearer token was rejected. Check ~/.swoosh/api_token on your Mac."
+            withAnimation(.easeOut(duration: 0.22)) {
+                saveError = "Reached swooshd, but the bearer token was rejected. Check ~/.swoosh/api_token on your Mac."
+            }
+            errorFeedback &+= 1
             return
         }
         do {
             try await session.pair(host: url, token: tokenText)
             tokenText = ""
+            pairedFeedback &+= 1   // haptic: pairing succeeded
         } catch {
-            saveError = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.22)) {
+                saveError = error.localizedDescription
+            }
+            errorFeedback &+= 1
         }
     }
+
+    private func startQRScan() {
+        scanError = nil
+        isScanning = true
+
+        #if os(iOS)
+        // Request camera permission
+        AVCaptureDevice.requestAccess(for: .video) { granted in
+            DispatchQueue.main.async {
+                if granted {
+                    self.isScanning = false
+                    self.showScanner = true
+                } else {
+                    self.scanError = "Camera permission denied"
+                    self.isScanning = false
+                }
+            }
+        }
+        #else
+        scanError = "QR scanning requires iOS"
+        isScanning = false
+        #endif
+    }
+
+    private func processQRCode(_ result: String) {
+        guard let data = result.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let host = json["host"] as? String,
+              let token = json["token"] as? String else {
+            scanError = "Invalid QR code format. Expected JSON with host and token."
+            return
+        }
+
+        hostText = host
+        tokenText = token
+        scanError = nil
+    }
 }
+
+#if os(iOS)
+class QRScannerDelegate: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    let completion: (String) -> Void
+
+    init(completion: @escaping (String) -> Void) {
+        self.completion = completion
+    }
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        picker.dismiss(animated: true)
+
+        guard let image = info[.originalImage] as? UIImage,
+              let cgImage = image.cgImage else {
+            self.completion("")
+            return
+        }
+
+        // Vision's request completion runs on a private queue. Hop back to
+        // main before invoking `completion`, which updates SwiftUI state.
+        let request = VNDetectBarcodesRequest { request, error in
+            let fire: (String) -> Void = { result in
+                DispatchQueue.main.async { self.completion(result) }
+            }
+            if let error = error {
+                print("QR detection error: \(error)")
+                fire("")
+                return
+            }
+            guard let observations = request.results as? [VNBarcodeObservation],
+                  let first = observations.first,
+                  let payload = first.payloadStringValue else {
+                fire("")
+                return
+            }
+            fire(payload)
+        }
+
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+        try? handler.perform([request])
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true)
+        self.completion("")
+    }
+}
+
+struct QRScannerView: UIViewControllerRepresentable {
+    let completion: (String) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> QRScannerDelegate {
+        QRScannerDelegate(completion: completion)
+    }
+}
+#endif
 
 // MARK: - Profile / safety / tool policy
 
@@ -266,6 +439,8 @@ struct PermissionProfileDetailScreen: View {
     @State private var saving = false
     @State private var message: String?
     @State private var error: String?
+    @State private var successFeedback = 0
+    @State private var errorFeedback = 0
 
     var body: some View {
         List {
@@ -298,13 +473,14 @@ struct PermissionProfileDetailScreen: View {
             }
             if let error {
                 Section {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red).font(.footnote)
+                    ErrorRow(message: error) { await save() }
                 }
             }
         }
         .navigationTitle("Permission profile")
         .navigationBarTitleDisplayMode(.inline)
+        .sensoryFeedback(.success, trigger: successFeedback)
+        .sensoryFeedback(.error, trigger: errorFeedback)
         .onAppear { selected = session.runtimeConfig?.permissionProfile ?? "" }
     }
 
@@ -316,10 +492,12 @@ struct PermissionProfileDetailScreen: View {
         defer { saving = false }
         do {
             let response = try await client.updateRuntimeProfile(selected)
-            message = response.message
+            withAnimation(.easeOut(duration: 0.22)) { message = response.message }
+            successFeedback &+= 1
             await session.refresh()
         } catch {
-            self.error = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.22)) { self.error = error.localizedDescription }
+            errorFeedback &+= 1
         }
     }
 }
@@ -336,6 +514,8 @@ struct SafetyFlagsDetailScreen: View {
     @State private var saving = false
     @State private var message: String?
     @State private var error: String?
+    @State private var successFeedback = 0
+    @State private var errorFeedback = 0
 
     var body: some View {
         List {
@@ -369,13 +549,18 @@ struct SafetyFlagsDetailScreen: View {
             }
             if let error {
                 Section {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red).font(.footnote)
+                    ErrorRow(message: error) {
+                        if let flags = session.runtimeConfig?.safetyFlags {
+                            await save(flags: flags)
+                        }
+                    }
                 }
             }
         }
         .navigationTitle("Safety flags")
         .navigationBarTitleDisplayMode(.inline)
+        .sensoryFeedback(.success, trigger: successFeedback)
+        .sensoryFeedback(.error, trigger: errorFeedback)
         .onAppear { syncDrafts() }
         .onChange(of: session.runtimeConfig) { syncDrafts() }
     }
@@ -401,11 +586,13 @@ struct SafetyFlagsDetailScreen: View {
         let updates = flags.map { RuntimeFlagUpdate(id: $0.id, enabled: drafts[$0.id] ?? $0.enabled) }
         do {
             let response = try await client.updateRuntimeFlags(updates)
-            message = response.message
+            withAnimation(.easeOut(duration: 0.22)) { message = response.message }
+            successFeedback &+= 1
             await session.refresh()
             syncDrafts()
         } catch {
-            self.error = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.22)) { self.error = error.localizedDescription }
+            errorFeedback &+= 1
         }
     }
 }

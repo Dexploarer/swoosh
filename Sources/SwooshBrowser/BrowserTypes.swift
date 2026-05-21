@@ -151,4 +151,5 @@ public enum BrowserError: Error, Sendable {
     case sessionClosed
     case chromeNotFound
     case cdpProtocolError(Int, String)
+    case invalidAction(String)
 }

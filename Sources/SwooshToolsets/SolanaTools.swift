@@ -1,6 +1,13 @@
-// SwooshToolsets/SolanaTools.swift — Solana toolset implementations
+// SwooshToolsets/SolanaTools.swift — Solana toolset implementations — 0.4B
 // Hard rules: No private keys. No seed phrases. No cookies.
 // Airdrop disabled on mainnet. Signing/sending humanOnly.
+//
+// Build-tool stance: tx_build_sol_transfer / tx_build_spl_transfer
+// return a preview-only `SolanaUnsignedTransaction` — a
+// `SolanaInstructionPreview` list plus a human summary, but no
+// serialized signable message. This is intentional and consistent
+// across both build tools: the agent inspects the preview, then the
+// signable message is assembled by the wallet at signing time.
 import Foundation
 import SwooshTools
 
@@ -16,7 +23,21 @@ public struct SolanaClusterInfoTool: SwooshTool {
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.solana
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        SolanaClusterInfoOutput(clusterID: input.clusterID, healthy: true, slot: nil, version: nil)
+        let client = try requireSolana(dependencies)
+        let cluster = SolanaCluster(id: input.clusterID, rpcURLSecretRef: "default")
+        // The latest blockhash doubles as a liveness probe: if the RPC
+        // answers, the cluster is reachable. lastValidBlockHeight tracks
+        // the chain tip, so we surface it as `slot`.
+        do {
+            let blockhash = try await client.getLatestBlockhash(cluster: cluster, commitment: .confirmed)
+            return SolanaClusterInfoOutput(
+                clusterID: input.clusterID,
+                healthy: true,
+                slot: blockhash.lastValidBlockHeight,
+                version: nil)
+        } catch {
+            return SolanaClusterInfoOutput(clusterID: input.clusterID, healthy: false, slot: nil, version: nil)
+        }
     }
 }
 
@@ -181,9 +202,18 @@ public struct SolanaBuildSPLTransferTool: SwooshTool {
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         let isMainnet = input.clusterID.lowercased().contains("mainnet")
         if isMainnet { try await dependencies.firewall.require(.solanaMainnetWrite) }
-        let risk = TransactionRiskSummary(network: "Solana-\(input.clusterID)", isMainnet: isMainnet, from: input.owner.base58, to: input.destinationTokenAccount.base58, asset: "SPL", amountHuman: input.amountRaw, estimatedFeeHuman: nil, warnings: [], requiresExplicitUserConfirmation: isMainnet)
-        let tx = SolanaUnsignedTransaction(clusterID: input.clusterID, feePayer: input.owner, instructions: [], recentBlockhash: input.recentBlockhash, riskSummary: risk)
-        return SolanaBuildSPLTransferOutput(unsignedTransaction: tx, humanPreview: "SPL transfer of \(input.amountRaw)")
+        let risk = TransactionRiskSummary(network: "Solana-\(input.clusterID)", isMainnet: isMainnet, from: input.owner.base58, to: input.destinationTokenAccount.base58, asset: "SPL", amountHuman: input.amountRaw, estimatedFeeHuman: nil, warnings: isMainnet ? ["MAINNET transaction"] : [], requiresExplicitUserConfirmation: isMainnet)
+        // SPL Token program (TokenkegQ...). This is a human-readable
+        // *preview* instruction, mirroring SolanaBuildSOLTransferTool —
+        // neither tool produces a signable serialized message; the
+        // unsigned transaction is for inspection before wallet signing.
+        let ix = SolanaInstructionPreview(
+            programID: SolanaPubkey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+            name: "Token.transfer",
+            accounts: [input.owner, input.destinationTokenAccount, input.mint],
+            humanSummary: "Transfer \(input.amountRaw) raw units of mint \(input.mint.base58) to \(input.destinationTokenAccount.base58)")
+        let tx = SolanaUnsignedTransaction(clusterID: input.clusterID, feePayer: input.owner, instructions: [ix], recentBlockhash: input.recentBlockhash, riskSummary: risk)
+        return SolanaBuildSPLTransferOutput(unsignedTransaction: tx, humanPreview: "SPL transfer of \(input.amountRaw) raw units (mint \(input.mint.base58))")
     }
 }
 
@@ -209,7 +239,14 @@ public struct SolanaWalletAccountsTool: SwooshTool {
     public static let description = "List connected accounts"; public static let permission = SwooshPermission.solanaRead
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.solana
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { SolanaWalletAccountsOutput(accounts: []) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        guard let session = input.walletSessionID else { return SolanaWalletAccountsOutput(accounts: []) }
+        guard let bridge = dependencies.walletBridge else {
+            throw ToolError.executionFailed("No wallet bridge configured — cannot list accounts for session \(session)")
+        }
+        let accounts = try await bridge.solanaAccounts(sessionID: session)
+        return SolanaWalletAccountsOutput(accounts: accounts)
+    }
 }
 
 public struct SolanaTxRequestSignatureTool: SwooshTool {

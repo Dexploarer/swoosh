@@ -116,6 +116,7 @@ public actor AgentToolLoop {
     private let toolPromptBuilder: ToolPromptBuilder
     private let promptBuilder: PromptBuilder
     private let policy: ToolCallPolicy
+    private let skillCatalogProvider: SkillCatalogProviding?
 
     /// The most recent response's tool traces (for /why).
     private var lastToolTraces: [ToolCallTrace] = []
@@ -132,7 +133,8 @@ public actor AgentToolLoop {
         toolParser: ToolCallParsing = ToolCallParser(),
         toolPromptBuilder: ToolPromptBuilder = ToolPromptBuilder(),
         promptBuilder: PromptBuilder = PromptBuilder(),
-        policy: ToolCallPolicy = .defaultAgent
+        policy: ToolCallPolicy = .defaultAgent,
+        skillCatalogProvider: SkillCatalogProviding? = nil
     ) {
         self.memoryLoader = memoryLoader
         self.reportLoader = reportLoader
@@ -145,6 +147,7 @@ public actor AgentToolLoop {
         self.toolPromptBuilder = toolPromptBuilder
         self.promptBuilder = promptBuilder
         self.policy = policy
+        self.skillCatalogProvider = skillCatalogProvider
     }
 
     public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
@@ -160,10 +163,12 @@ public actor AgentToolLoop {
         let permSummary = try await permSummarizer.permissionSummary()
 
         // 2. Build system prompt (privacy boundary)
+        let skillCatalog = await skillCatalogProvider?() ?? []
         let (basePrompt, memoryIDs) = promptBuilder.buildSystemPrompt(
             approvedMemories: memories,
             setupReport: report,
-            permissionSummary: permSummary
+            permissionSummary: permSummary,
+            skillCatalog: skillCatalog
         )
 
         // 3. Get available tools

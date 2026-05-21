@@ -94,7 +94,12 @@ public actor TokenCounter {
     public func allEntries() -> [TokenEntry] { entries }
 
     /// Clear entries older than a date.
+    ///
+    /// A future cutoff is treated as a no-op: pruning never removes entries
+    /// that are newer than "now", so an accidental future date can't wipe
+    /// live token history.
     public func prune(before date: Date) {
+        guard date <= Date() else { return }
         entries.removeAll { $0.timestamp < date }
     }
 

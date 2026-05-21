@@ -195,7 +195,11 @@ func runProviderTests(provider: String?) async throws {
             print("\r  \u{001B}[32m✓\u{001B}[0m \(name): healthy (\(latency)ms) — \"\(preview)\"")
         } catch {
             let errMsg = "\(error)".prefix(60)
+            let suggestion = suggestFix(for: error, provider: name)
             print("\r  \u{001B}[31m✗\u{001B}[0m \(name): \(errMsg)")
+            if let suggestion = suggestion {
+                print("    \u{001B}[33m→\u{001B}[0m \(suggestion)")
+            }
         }
     }
 
@@ -209,8 +213,43 @@ func runProviderTests(provider: String?) async throws {
             print("  \u{001B}[32m✓\u{001B}[0m \(local.name): \(local.models.count) model(s) available")
         }
     }
+}
 
-    print("")
+// MARK: - Error Suggestions
+
+private func suggestFix(for error: Error, provider: String) -> String? {
+    let errorDesc = "\(error)".lowercased()
+
+    if errorDesc.contains("api key") || errorDesc.contains("unauthorized") || errorDesc.contains("401") {
+        switch provider {
+        case "openai":
+            return "Run: swoosh provider auth openai --api-key <key>"
+        case "anthropic":
+            return "Run: swoosh provider auth anthropic --api-key <key>"
+        case "openrouter":
+            return "Run: swoosh provider auth openrouter (opens browser for PKCE flow)"
+        default:
+            return "Run: swoosh provider auth \(provider) --api-key <key>"
+        }
+    }
+
+    if errorDesc.contains("network") || errorDesc.contains("connection") || errorDesc.contains("timeout") {
+        return "Check your internet connection and try again"
+    }
+
+    if errorDesc.contains("rate limit") || errorDesc.contains("429") {
+        return "Rate limited. Wait a moment and retry"
+    }
+
+    if errorDesc.contains("quota") || errorDesc.contains("credit") {
+        return "Check your account quota/billing at the provider's dashboard"
+    }
+
+    if errorDesc.contains("model") || errorDesc.contains("not found") {
+        return "The model may not be available. Try: swoosh provider list"
+    }
+
+    return "Run: swoosh doctor for diagnostics"
 }
 
 // ═══════════════════════════════════════════════════════════════════

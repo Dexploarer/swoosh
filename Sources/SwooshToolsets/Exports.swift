@@ -59,6 +59,9 @@ public enum DefaultToolRegistrar {
         await registerWorkflow(into: registry, dependencies: dependencies)
         await registerEVM(into: registry, dependencies: dependencies)
         await registerSolana(into: registry, dependencies: dependencies)
+        await registerJupiter(into: registry, dependencies: dependencies)
+        await registerHyperliquid(into: registry, dependencies: dependencies)
+        await registerUniswap(into: registry, dependencies: dependencies)
         if let skills = selfImprovement.skills {
             await registerSkills(into: registry, dependencies: skills)
         }
@@ -244,5 +247,71 @@ public enum DefaultToolRegistrar {
         await registry.register(TypeErasedTool(SolanaTxRequestSignatureTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(SolanaTxSendSignedTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(SolanaRequestAirdropTool(dependencies: dependencies)))
+    }
+
+    // ── Jupiter (Solana DEX aggregator) ───────────────────────────
+    // Jupiter tools talk to the Jupiter HTTP API directly via JupSwift —
+    // they do not depend on the injected Solana RPC client, so the hook
+    // is unconditional. Write paths stay permissioned + trading-gated.
+    static func registerJupiter(into registry: ToolRegistry, dependencies: ToolDependencies) async {
+        // Swap
+        await registry.register(TypeErasedTool(JupiterQuoteTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterSwapTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterBuildOrderTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterExecuteTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterBalancesTool(dependencies: dependencies)))
+        // Tokens
+        await registry.register(TypeErasedTool(JupiterPriceTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterTokenInfoTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterTradableTokensTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterTaggedTokensTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterNewTokensTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterMarketMintsTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterAllTokensTool(dependencies: dependencies)))
+        // Ultra (shield / routers)
+        await registry.register(TypeErasedTool(JupiterShieldTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterRoutersTool(dependencies: dependencies)))
+        // Recurring (DCA)
+        await registry.register(TypeErasedTool(JupiterCreateDCATool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterListDCATool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterCancelDCATool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterPriceDepositTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterPriceWithdrawTool(dependencies: dependencies)))
+        // Trigger (limit orders)
+        await registry.register(TypeErasedTool(JupiterCreateLimitOrderTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterGetLimitOrdersTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(JupiterCancelLimitOrderTool(dependencies: dependencies)))
+    }
+
+    // ── Hyperliquid (perps DEX) ───────────────────────────────────
+    // Market-data tools use a keyless HyperliquidClient; trade tools
+    // load a private key from the Keychain via `dependencies.secrets`
+    // at call time. Both groups use their own HTTP client, so the hook
+    // is unconditional. Trade tools stay `hyperliquidTrade`-permissioned
+    // and `askEveryTime`.
+    static func registerHyperliquid(into registry: ToolRegistry, dependencies: ToolDependencies) async {
+        // Market data (read-only)
+        await registry.register(TypeErasedTool(HLAllMidsTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLL2BookTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLUserStateTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLOpenOrdersTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLUserFillsTool(dependencies: dependencies)))
+        // Trading (permissioned, askEveryTime)
+        await registry.register(TypeErasedTool(HLLimitOrderTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLMarketOrderTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLCancelOrderTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLCancelAllTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(HLUpdateLeverageTool(dependencies: dependencies)))
+    }
+
+    // ── Uniswap (EVM DEX) ─────────────────────────────────────────
+    // Uniswap quote uses the injected EVM RPC client (QuoterV2 eth_call),
+    // so this hook is gated on `evmClient` being present — same posture
+    // as registerEVM. The build-swap tool returns an unsigned tx only.
+    static func registerUniswap(into registry: ToolRegistry, dependencies: ToolDependencies) async {
+        guard dependencies.evmClient != nil else { return }
+        await registry.register(TypeErasedTool(UniswapQuoteTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(UniswapSwapTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(UniswapPoolTool(dependencies: dependencies)))
     }
 }

@@ -13,6 +13,8 @@ struct WalletAccountDetail: View {
     let account: WalletAccount
     @State private var copied: Bool = false
     @State private var showingReceive: Bool = false
+    @State private var copyFeedback = 0
+    @State private var errorFeedback = 0
 
     var body: some View {
         ScrollView {
@@ -30,10 +32,10 @@ struct WalletAccountDetail: View {
                     .padding(.horizontal, 16)
 
                 if let error = wallet.error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 16)
+                    ErrorBanner(message: error) {
+                        wallet.clearError()
+                        await wallet.refreshBalance(for: account)
+                    }
                 }
             }
             .padding(.vertical, 24)
@@ -45,6 +47,11 @@ struct WalletAccountDetail: View {
         }
         .task { await wallet.refreshBalance(for: account) }
         .refreshable { await wallet.refreshBalance(for: account) }
+        .sensoryFeedback(.impact(weight: .light), trigger: copyFeedback)
+        .sensoryFeedback(.error, trigger: errorFeedback)
+        .onChange(of: wallet.error) { _, newValue in
+            if newValue != nil { errorFeedback &+= 1 }
+        }
     }
 
     private var header: some View {
@@ -126,8 +133,12 @@ struct WalletAccountDetail: View {
                     #if canImport(UIKit)
                     UIPasteboard.general.string = account.address
                     #endif
-                    copied = true
-                    Task { try? await Task.sleep(nanoseconds: 1_500_000_000); copied = false }
+                    withAnimation(.easeOut(duration: 0.22)) { copied = true }
+                    copyFeedback &+= 1   // haptic: address copied
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        withAnimation(.easeOut(duration: 0.22)) { copied = false }
+                    }
                 } label: {
                     Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
                         .font(.footnote.weight(.medium))

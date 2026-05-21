@@ -292,4 +292,14 @@ enum ChannelCatalog {
             return bucket.isEmpty ? nil : (category, bucket)
         }
     }
+
+    /// Static catalog keyed by adapter id (`ChatAdapterKind.rawValue`). Used
+    /// as a metadata sidecar for the live `/api/chat-adapters` feed, which
+    /// carries status but not category or human-readable descriptions.
+    static let byID: [String: ChannelCatalogEntry] = Dictionary(
+        uniqueKeysWithValues: entries.map { ($0.kindRawValue, $0) }
+    )
+
+    /// Look up the static metadata entry for a live adapter id.
+    static func entry(id: String) -> ChannelCatalogEntry? { byID[id] }
 }

@@ -80,7 +80,8 @@ public final class Swoosh: Sendable {
             permSummarizer: permSummarizer,
             sessionStore: sessionStore,
             auditLogger: auditLogger,
-            modelProvider: modelProvider
+            modelProvider: modelProvider,
+            skillCatalogProvider: config.skillCatalogProvider
         )
         let toolLoop = config.toolRegistry.map {
             AgentToolLoop(
@@ -91,7 +92,8 @@ public final class Swoosh: Sendable {
                 auditLogger: auditLogger,
                 modelProvider: modelProvider,
                 toolRegistry: $0,
-                policy: config.toolPolicy
+                policy: config.toolPolicy,
+                skillCatalogProvider: config.skillCatalogProvider
             )
         }
         return Swoosh(kernel: kernel, toolLoop: toolLoop)
@@ -109,6 +111,10 @@ public struct SwooshConfiguration: Sendable {
     public var auditLogger: (any ResponseAuditing)? = nil
     public var toolRegistry: ToolRegistry? = nil
     public var toolPolicy: ToolCallPolicy = .defaultAgent
+    /// Optional Level-0 skill catalog provider. When set, the kernel and
+    /// tool loop inject `(id, title, description)` for every promotable
+    /// skill into the system prompt.
+    public var skillCatalogProvider: SkillCatalogProviding? = nil
 
     public init() {}
 }

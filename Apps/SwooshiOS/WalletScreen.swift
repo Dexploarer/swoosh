@@ -15,10 +15,13 @@ import SwooshWallet
 struct WalletScreen: View {
     @Environment(WalletSession.self) private var wallet
     @State private var showingCreate: Bool = false
+    @State private var errorFeedback = 0
 
     var body: some View {
         Group {
-            if wallet.accounts.isEmpty {
+            if !wallet.hasLoadedAccounts, wallet.loadingAccounts {
+                LoadingState("Loading wallets…")
+            } else if wallet.accounts.isEmpty {
                 emptyState
             } else {
                 accountsList
@@ -31,13 +34,18 @@ struct WalletScreen: View {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel("Add account")
+                .disabled(!wallet.hasLoadedAccounts && wallet.loadingAccounts)
             }
         }
         .sheet(isPresented: $showingCreate) {
             WalletCreateAccountSheet().environment(wallet)
         }
         .task { await wallet.reload(); await wallet.refreshAllBalances() }
-        .refreshable { await wallet.refreshAllBalances() }
+        .refreshable {
+            await wallet.refreshAllBalances()
+            if wallet.error != nil { errorFeedback &+= 1 }
+        }
+        .sensoryFeedback(.error, trigger: errorFeedback)
     }
 
     private var emptyState: some View {
@@ -66,16 +74,27 @@ struct WalletScreen: View {
 
     private var accountsList: some View {
         List {
-            ForEach(wallet.accounts) { account in
-                NavigationLink(value: account) {
-                    AccountRow(account: account)
+            Section {
+                ForEach(wallet.accounts) { account in
+                    NavigationLink(value: account) {
+                        AccountRow(account: account)
+                    }
+                }
+                .onDelete { indexSet in
+                    Task {
+                        for index in indexSet {
+                            let target = wallet.accounts[index]
+                            await wallet.delete(target)
+                        }
+                        if wallet.error != nil { errorFeedback &+= 1 }
+                    }
                 }
             }
-            .onDelete { indexSet in
-                Task {
-                    for index in indexSet {
-                        let target = wallet.accounts[index]
-                        await wallet.delete(target)
+            if let error = wallet.error {
+                Section {
+                    ErrorRow(message: error) {
+                        wallet.clearError()
+                        await wallet.refreshAllBalances()
                     }
                 }
             }

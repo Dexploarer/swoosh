@@ -1,5 +1,6 @@
 .build
 .env
+.vscode/
 Backend/SwooshDB/target
 Swoosh.xcodeproj/project.xcworkspace
 .DS_Store

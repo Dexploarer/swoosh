@@ -84,11 +84,14 @@ public actor GoalRunner {
             )
             try await store.appendIteration(goalID: goal.id, iteration: iter)
 
+            var shouldStop = false
             switch verdict {
             case .completed:
                 try await store.setState(goalID: goal.id, state: .completed)
+                shouldStop = true
             case .needsUserInput:
                 try await store.setState(goalID: goal.id, state: .paused)
+                shouldStop = true
             case .stuck where nextIndex >= goal.maxIterations:
                 try await store.setState(goalID: goal.id, state: .abandoned)
             case .stuck, .progressing:
@@ -98,10 +101,16 @@ public actor GoalRunner {
             // Reload to pick up the state changes.
             guard let refreshed = try await store.get(id: goal.id) else { break }
             goal = refreshed
+
+            // A conclusive verdict ends the run: `.completed` is terminal,
+            // and `.needsUserInput` parks the goal as `.paused` awaiting the
+            // user — neither should keep iterating.
+            if shouldStop { break }
         }
 
-        if !goal.isTerminal {
-            // Hit the iteration ceiling without converging.
+        if goal.state == .active {
+            // Ran out of iterations without converging — only an still-active
+            // goal is abandoned here; a `.paused` goal stays paused.
             try await store.setState(goalID: goal.id, state: .abandoned)
         }
         return try await store.get(id: goal.id) ?? goal

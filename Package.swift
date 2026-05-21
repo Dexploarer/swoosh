@@ -126,6 +126,9 @@ let package = Package(
                 "SwooshApprovals",
                 "SwooshFiles",
                 "SwooshProcess",
+                "SwooshMLX",
+                "SwooshFoundation",
+                "SwooshActantBackend",
                 .product(name: "ActantAgent", package: "swift"),
             ]
         ),
@@ -197,6 +200,7 @@ let package = Package(
         .target(
             name: "SwooshMLX",
             dependencies: [
+                "SwooshCore",
                 .product(name: "MLX",           package: "mlx-swift"),
                 .product(name: "MLXRandom",     package: "mlx-swift"),
                 .product(name: "MLXNN",         package: "mlx-swift"),
@@ -208,8 +212,8 @@ let package = Package(
                 .product(name: "Tokenizers", package: "swift-tokenizers"),
             ]
         ),
-        .target(name: "SwooshFoundation", dependencies: []),   // Apple Foundation Models adapter
-        .target(name: "SwooshSecrets",    dependencies: []),   // Keychain + SecretRef
+        .target(name: "SwooshFoundation", dependencies: ["SwooshCore"]),   // Apple Foundation Models adapter
+        .target(name: "SwooshSecrets",    dependencies: ["SwooshTools"]),   // Keychain + SecretRef + SecretResolving
         .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets"]),
         .target(
             name: "SwooshProviderBridge",
@@ -356,6 +360,7 @@ let package = Package(
             dependencies: [
                 "SwooshCore",
                 "SwooshTools",
+                "SwooshApprovals",
                 .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ActantAgent", package: "swift"),
             ]
@@ -422,7 +427,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshCoreTests",
-            dependencies: ["SwooshCore"]
+            dependencies: ["SwooshCore", "SwooshTools", "SwooshFirewall", "SwooshApprovals"]
         ),
         .testTarget(
             name: "SwooshScoutTests",
@@ -465,6 +470,8 @@ let package = Package(
             dependencies: [
                 "SwooshActantBackend",
                 "SwooshCore",
+                "SwooshTools",
+                "SwooshApprovals",
                 .product(name: "ActantDB", package: "swift"),
             ]
         ),
@@ -514,7 +521,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshMLXTests",
-            dependencies: ["SwooshMLX"]
+            dependencies: ["SwooshMLX", "SwooshCore"]
         ),
         .testTarget(
             name: "SwooshGoalsTests",
@@ -522,7 +529,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshManifestingTests",
-            dependencies: ["SwooshManifesting"]
+            dependencies: ["SwooshManifesting", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshObservabilityTests",
@@ -570,7 +577,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshFoundationTests",
-            dependencies: ["SwooshFoundation"]
+            dependencies: ["SwooshFoundation", "SwooshCore"]
         ),
         .testTarget(
             name: "SwooshKitTests",
@@ -585,10 +592,6 @@ let package = Package(
                 "SwooshFiles",
                 "SwooshProcess",
             ]
-        ),
-        .testTarget(
-            name: "SwooshBenchTests",
-            dependencies: ["SwooshBench", "SwooshTools"]
         ),
     ]
 )

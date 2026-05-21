@@ -179,10 +179,22 @@ public actor ProviderRouter {
             return ProviderHealth(providerID: id, status: .unconfigured, message: "Provider not registered")
         }
 
+        // Probe with a real model — the highest-priority enabled route for
+        // this provider. An empty model name is rejected by most live APIs,
+        // which would mis-report a healthy provider as `unreachable`.
+        let probeModel = await registry.allRoutes()
+            .filter { $0.providerID == id && $0.enabled }
+            .sorted { $0.priority > $1.priority }
+            .first?.model
+        guard let probeModel else {
+            return ProviderHealth(providerID: id, status: .unconfigured,
+                                  message: "No route configured for provider \(id)")
+        }
+
         let start = Date()
         do {
             let testReq = ModelRequest(
-                model: "", messages: [ChatMessage(role: .user, content: "Hello")],
+                model: probeModel, messages: [ChatMessage(role: .user, content: "Hello")],
                 maxOutputTokens: 10
             )
             _ = try await provider.complete(testReq)

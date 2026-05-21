@@ -16,6 +16,7 @@ struct DaemonRuntime: Sendable {
     let personalizationSignals: PersonalizationSignalStore
     let scoutAutopilotTask: Task<Void, Never>
     let manifestationTask: Task<Void, Never>
+    let goalAutopilotTask: Task<Void, Never>
     let cronStore: FileCronJobStore
     let cronScheduler: CronScheduler
     let cronTask: Task<Void, Never>
@@ -23,6 +24,7 @@ struct DaemonRuntime: Sendable {
     func stop() async {
         scoutAutopilotTask.cancel()
         manifestationTask.cancel()
+        goalAutopilotTask.cancel()
         cronTask.cancel()
         await appUsageRecorder.stop()
     }

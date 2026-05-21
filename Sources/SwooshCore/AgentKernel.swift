@@ -331,6 +331,15 @@ public struct PromptBuilder: Sendable {
     }
 }
 
+// MARK: - Skill catalog provider
+
+/// Loads the Level-0 skill catalog — `(id, title, description)` per
+/// promotable skill — for system-prompt injection. Returns `[]` when no
+/// skill store is wired (CLI one-shots, unit tests). Kept as a closure so
+/// `SwooshCore` need not depend on `SwooshSkills`.
+public typealias SkillCatalogProviding =
+    @Sendable () async -> [(id: String, title: String, description: String)]
+
 // MARK: - Agent kernel actor
 
 /// The personalized agent kernel.
@@ -344,6 +353,7 @@ public actor AgentKernel {
     private let auditLogger: any ResponseAuditing
     private let modelProvider: any ModelProvider
     private let promptBuilder: PromptBuilder
+    private let skillCatalogProvider: SkillCatalogProviding?
 
     public init(
         memoryLoader: any MemoryContextLoading,
@@ -352,7 +362,8 @@ public actor AgentKernel {
         sessionStore: any SessionStoring,
         auditLogger: any ResponseAuditing,
         modelProvider: any ModelProvider,
-        promptBuilder: PromptBuilder = PromptBuilder()
+        promptBuilder: PromptBuilder = PromptBuilder(),
+        skillCatalogProvider: SkillCatalogProviding? = nil
     ) {
         self.memoryLoader = memoryLoader
         self.reportLoader = reportLoader
@@ -361,6 +372,7 @@ public actor AgentKernel {
         self.auditLogger = auditLogger
         self.modelProvider = modelProvider
         self.promptBuilder = promptBuilder
+        self.skillCatalogProvider = skillCatalogProvider
     }
 
     public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
@@ -375,10 +387,12 @@ public actor AgentKernel {
         let permSummary = try await permSummarizer.permissionSummary()
 
         // 2. Build system prompt (privacy boundary)
+        let skillCatalog = await skillCatalogProvider?() ?? []
         let (systemPrompt, memoryIDs) = promptBuilder.buildSystemPrompt(
             approvedMemories: memories,
             setupReport: report,
-            permissionSummary: permSummary
+            permissionSummary: permSummary,
+            skillCatalog: skillCatalog
         )
 
         // 3. Load existing transcript for session continuation
@@ -418,7 +432,11 @@ public actor AgentKernel {
             cookiesExcluded: true,
             secretsExcluded: true
         )
-        try await auditLogger.logResponseAudit(auditRecord)
+        // Audit-log failures must NOT block the response. Losing one audit
+        // row is bad; losing the user's response because the auditor threw
+        // is worse. `try?` swallows the error — the writer is responsible
+        // for surfacing its own failures elsewhere if it cares.
+        try? await auditLogger.logResponseAudit(auditRecord)
 
         // 9. Return response with metadata
         return AgentResponse(

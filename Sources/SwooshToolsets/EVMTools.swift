@@ -4,6 +4,7 @@
 // Mainnet write requires evmMainnetWrite.
 import Foundation
 import SwooshTools
+import BigInt
 
 // ── Helper ────────────────────────────────────────────────────────
 private func requireEVM(_ deps: ToolDependencies) throws -> any EVMRPCClient {
@@ -117,7 +118,23 @@ public struct EVMERC20BalanceTool: SwooshTool {
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.evm
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        EVMERC20BalanceOutput(balance: EVMQuantity("0x0"), tokenSymbol: nil, tokenDecimals: nil)
+        let client = try requireEVM(dependencies)
+        let config = EVMRPCConfig(chainID: input.chainID, rpcURLSecretRef: "default")
+        // ERC-20 balanceOf(address)
+        let balanceCall = EVMContractCallInput(
+            chainID: input.chainID, to: input.tokenContract,
+            data: EVMABI.encodeBalanceOf(owner: input.owner))
+        let balanceData = try await client.call(config: config, call: balanceCall)
+        let balance = EVMQuantity(EVMABI.decodeUint(balanceData))
+        // decimals() — best effort; some non-standard tokens omit it.
+        var decimals: Int?
+        let decimalsCall = EVMContractCallInput(
+            chainID: input.chainID, to: input.tokenContract, data: EVMABI.encodeDecimals())
+        if let decimalsData = try? await client.call(config: config, call: decimalsCall) {
+            let raw = EVMABI.decodeUint(decimalsData)
+            if raw > 0, raw < 256 { decimals = Int(raw) }
+        }
+        return EVMERC20BalanceOutput(balance: balance, tokenSymbol: nil, tokenDecimals: decimals)
     }
 }
 
@@ -128,7 +145,19 @@ public struct EVMERC20AllowanceTool: SwooshTool {
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.evm
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        EVMERC20AllowanceOutput(allowance: EVMQuantity("0x0"), isUnlimited: false)
+        let client = try requireEVM(dependencies)
+        let config = EVMRPCConfig(chainID: input.chainID, rpcURLSecretRef: "default")
+        let allowanceCall = EVMContractCallInput(
+            chainID: input.chainID, to: input.tokenContract,
+            data: EVMABI.encodeAllowance(owner: input.owner, spender: input.spender))
+        let data = try await client.call(config: config, call: allowanceCall)
+        let allowance = EVMABI.decodeUint(data)
+        // Treat anything in the top quartile of uint256 as effectively unlimited.
+        let maxUint = (BigInt(1) << 256) - 1
+        let unlimitedThreshold = maxUint - (BigInt(1) << 200)
+        return EVMERC20AllowanceOutput(
+            allowance: EVMQuantity(allowance),
+            isUnlimited: allowance >= unlimitedThreshold)
     }
 }
 
@@ -139,7 +168,26 @@ public struct EVMABIEncodeCallTool: SwooshTool {
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.evm
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        EVMABIEncodeCallOutput(encodedData: EVMHexData("0x"))
+        // Function signature, e.g. "transfer(address,uint256)".
+        let signature = input.functionSignature.trimmingCharacters(in: .whitespaces)
+        guard let openParen = signature.firstIndex(of: "("),
+              let closeParen = signature.lastIndex(of: ")") else {
+            throw ToolError.invalidInput("Function signature must look like name(type,type)")
+        }
+        let typeList = String(signature[signature.index(after: openParen)..<closeParen])
+        let types = typeList.isEmpty
+            ? []
+            : typeList.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }
+        guard types.count == input.arguments.count else {
+            throw ToolError.invalidInput(
+                "Signature has \(types.count) parameter(s) but \(input.arguments.count) argument(s) were supplied")
+        }
+        let selector = EVMABI.functionSelector(signature)
+        var encoded = selector
+        for (type, value) in zip(types, input.arguments) {
+            encoded += try EVMABI.encodeArgument(type: type, value: value)
+        }
+        return EVMABIEncodeCallOutput(encodedData: EVMHexData("0x" + encoded))
     }
 }
 
@@ -149,7 +197,16 @@ public struct EVMABIDecodeResultTool: SwooshTool {
     public static let description = "ABI decode result"; public static let permission = SwooshPermission.evmRead
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.evm
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { EVMABIDecodeResultOutput(values: []) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        guard !input.types.isEmpty else {
+            throw ToolError.invalidInput("At least one ABI type is required to decode a result")
+        }
+        var values: [String] = []
+        for (index, type) in input.types.enumerated() {
+            values.append(try EVMABI.decodeArgument(type: type, data: input.data, index: index))
+        }
+        return EVMABIDecodeResultOutput(values: values)
+    }
 }
 
 public struct EVMTxEstimateGasTool: SwooshTool {
@@ -173,7 +230,28 @@ public struct EVMTxPreflightTool: SwooshTool {
     public static let risk = ToolRisk.medium; public static let approval = ApprovalPolicy.askFirstTime; public static let toolset = ToolsetID.evm
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        EVMTxPreflightOutput(estimatedGas: EVMQuantity("0x5208"), callResult: nil, warnings: [])
+        let client = try requireEVM(dependencies)
+        let config = EVMRPCConfig(chainID: input.chainID, rpcURLSecretRef: "default")
+        var warnings: [String] = []
+        if input.chainID.isMainnet { warnings.append("MAINNET transaction") }
+
+        let estimate = EVMTxEstimateGasInput(
+            chainID: input.chainID, from: input.from, to: input.to,
+            data: input.data, valueWei: input.valueWei)
+        let gas = try await client.estimateGas(config: config, tx: estimate)
+
+        // Read-only call mirrors what the tx would do without sending it.
+        var callResult: EVMHexData?
+        if let data = input.data {
+            let preflightCall = EVMContractCallInput(
+                chainID: input.chainID, from: input.from, to: input.to,
+                data: data, valueWei: input.valueWei)
+            callResult = try? await client.call(config: config, call: preflightCall)
+            if callResult == nil {
+                warnings.append("Read-only preflight call reverted — sending this transaction may fail")
+            }
+        }
+        return EVMTxPreflightOutput(estimatedGas: gas, callResult: callResult, warnings: warnings)
     }
 }
 
@@ -201,7 +279,7 @@ public struct EVMTxBuildContractCallTool: SwooshTool {
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         if input.chainID.isMainnet { try await dependencies.firewall.require(.evmMainnetWrite) }
-        let risk = TransactionRiskSummary(network: "EVM-\(input.chainID.value)", isMainnet: input.chainID.isMainnet, from: input.from.hex, to: input.to.hex, asset: nil, amountHuman: input.valueWei?.hex, estimatedFeeHuman: nil, warnings: [], requiresExplicitUserConfirmation: input.chainID.isMainnet)
+        let risk = TransactionRiskSummary(network: "EVM-\(input.chainID.value)", isMainnet: input.chainID.isMainnet, from: input.from.hex, to: input.to.hex, asset: nil, amountHuman: input.valueWei?.hex, estimatedFeeHuman: nil, warnings: input.chainID.isMainnet ? ["MAINNET transaction"] : [], requiresExplicitUserConfirmation: input.chainID.isMainnet)
         let tx = EVMUnsignedTransaction(chainID: input.chainID, from: input.from, to: input.to, valueWei: input.valueWei, data: input.data, gasLimit: input.gasLimit, maxFeePerGas: nil, maxPriorityFeePerGas: nil, nonce: input.nonce, riskSummary: risk)
         return EVMBuildContractCallOutput(unsignedTransaction: tx, humanPreview: "Contract call to \(input.to.hex)")
     }
@@ -215,9 +293,12 @@ public struct EVMERC20BuildTransferTool: SwooshTool {
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         if input.chainID.isMainnet { try await dependencies.firewall.require(.evmMainnetWrite) }
-        let risk = TransactionRiskSummary(network: "EVM-\(input.chainID.value)", isMainnet: input.chainID.isMainnet, from: input.from.hex, to: input.to.hex, asset: input.tokenSymbol, amountHuman: input.amountRaw.hex, estimatedFeeHuman: nil, warnings: [], requiresExplicitUserConfirmation: input.chainID.isMainnet)
-        let tx = EVMUnsignedTransaction(chainID: input.chainID, from: input.from, to: input.tokenContract, valueWei: nil, data: EVMHexData("0x"), gasLimit: nil, maxFeePerGas: nil, maxPriorityFeePerGas: nil, nonce: nil, riskSummary: risk)
-        return EVMERC20BuildTransferOutput(unsignedTransaction: tx, humanPreview: "Transfer \(input.tokenSymbol ?? "token") to \(input.to.hex)")
+        // Real ABI-encoded ERC-20 transfer(address,uint256) calldata —
+        // selector 0xa9059cbb + 32-byte-padded recipient + amount.
+        let calldata = EVMABI.encodeTransfer(to: input.to, amount: input.amountRaw.value)
+        let risk = TransactionRiskSummary(network: "EVM-\(input.chainID.value)", isMainnet: input.chainID.isMainnet, from: input.from.hex, to: input.to.hex, asset: input.tokenSymbol, amountHuman: input.amountRaw.hex, estimatedFeeHuman: nil, warnings: input.chainID.isMainnet ? ["MAINNET transaction"] : [], requiresExplicitUserConfirmation: input.chainID.isMainnet)
+        let tx = EVMUnsignedTransaction(chainID: input.chainID, from: input.from, to: input.tokenContract, valueWei: nil, data: calldata, gasLimit: nil, maxFeePerGas: nil, maxPriorityFeePerGas: nil, nonce: nil, riskSummary: risk)
+        return EVMERC20BuildTransferOutput(unsignedTransaction: tx, humanPreview: "Transfer \(input.amountRaw) of \(input.tokenSymbol ?? "token") (\(input.tokenContract.hex)) to \(input.to.hex)")
     }
 }
 
@@ -234,8 +315,12 @@ public struct EVMERC20BuildApproveTool: SwooshTool {
         let isUnlimited = input.amountRaw.hex.lowercased() == maxUint
         var warnings: [String] = []
         if isUnlimited { warnings.append("⚠️ UNLIMITED APPROVAL — spender \(input.spender.hex) will have unlimited access to your \(input.tokenSymbol ?? "tokens")") }
+        if input.chainID.isMainnet { warnings.append("MAINNET transaction") }
+        // Real ABI-encoded ERC-20 approve(address,uint256) calldata —
+        // selector 0x095ea7b3 + 32-byte-padded spender + amount.
+        let calldata = EVMABI.encodeApprove(spender: input.spender, amount: input.amountRaw.value)
         let risk = TransactionRiskSummary(network: "EVM-\(input.chainID.value)", isMainnet: input.chainID.isMainnet, from: input.owner.hex, to: input.spender.hex, asset: input.tokenSymbol, amountHuman: isUnlimited ? "UNLIMITED" : input.amountRaw.hex, estimatedFeeHuman: nil, warnings: warnings, requiresExplicitUserConfirmation: true)
-        let tx = EVMUnsignedTransaction(chainID: input.chainID, from: input.owner, to: input.tokenContract, valueWei: nil, data: EVMHexData("0x"), gasLimit: nil, maxFeePerGas: nil, maxPriorityFeePerGas: nil, nonce: nil, riskSummary: risk)
+        let tx = EVMUnsignedTransaction(chainID: input.chainID, from: input.owner, to: input.tokenContract, valueWei: nil, data: calldata, gasLimit: nil, maxFeePerGas: nil, maxPriorityFeePerGas: nil, nonce: nil, riskSummary: risk)
         return EVMERC20BuildApproveOutput(unsignedTransaction: tx, isUnlimitedApproval: isUnlimited, warnings: warnings, humanPreview: "Approve \(input.spender.hex) to spend \(isUnlimited ? "UNLIMITED" : input.amountRaw.hex) \(input.tokenSymbol ?? "tokens")")
     }
 }
@@ -262,7 +347,15 @@ public struct EVMWalletAccountsTool: SwooshTool {
     public static let description = "List connected accounts"; public static let permission = SwooshPermission.evmRead
     public static let risk = ToolRisk.readOnly; public static let approval = ApprovalPolicy.never; public static let toolset = ToolsetID.evm
     let dependencies: ToolDependencies; public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
-    public func call(_ input: Input, context: ToolContext) async throws -> Output { EVMWalletAccountsOutput(accounts: []) }
+    public func call(_ input: Input, context: ToolContext) async throws -> Output {
+        // No session id ⇒ nothing connected yet; an empty list is honest.
+        guard let session = input.walletSessionID else { return EVMWalletAccountsOutput(accounts: []) }
+        guard let bridge = dependencies.walletBridge else {
+            throw ToolError.executionFailed("No wallet bridge configured — cannot list accounts for session \(session)")
+        }
+        let accounts = try await bridge.evmAccounts(sessionID: session)
+        return EVMWalletAccountsOutput(accounts: accounts)
+    }
 }
 
 public struct EVMTxRequestSignatureTool: SwooshTool {

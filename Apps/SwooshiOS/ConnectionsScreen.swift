@@ -14,8 +14,14 @@ struct ConnectionsScreen: View {
     @State private var memories = MemoriesResponse(approved: [], pending: [])
     @State private var records: RecordsResponse?
     @State private var media: MediaGalleryResponse?
+    @State private var chatAdapters: ChatAdaptersResponse?
     @State private var isLoading = false
     @State private var errorText: String?
+
+    /// True until the very first load resolves — drives the full-bleed
+    /// loading state instead of a list of "Loading…" rows.
+    @State private var hasLoadedOnce = false
+    @State private var errorFeedback = 0
 
     var body: some View {
         Group {
@@ -29,26 +35,39 @@ struct ConnectionsScreen: View {
         .navigationBarTitleDisplayMode(.large)
         .task(id: session.host?.absoluteString) { await loadAll() }
         .refreshable { await loadAll() }
+        .sensoryFeedback(.error, trigger: errorFeedback)
     }
 
     // MARK: - Paired
 
+    @ViewBuilder
     private var paired: some View {
-        List {
-            modelsSection
-            channelsSection
-            knowledgeSection
-            stateSection
-            mediaSection
-            if let errorText {
-                Section {
-                    Label(errorText, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
-                        .font(.footnote)
+        if !hasLoadedOnce, isLoading {
+            LoadingState("Loading connections…")
+        } else if !hasLoadedOnce, let errorText {
+            ContentUnavailableView {
+                Label("Couldn't reach swooshd", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+            } description: {
+                Text(errorText)
+            } actions: {
+                Button("Retry") { Task { await loadAll() } }
+                    .buttonStyle(.borderedProminent)
+            }
+        } else {
+            List {
+                modelsSection
+                channelsSection
+                knowledgeSection
+                stateSection
+                mediaSection
+                if let errorText {
+                    Section {
+                        ErrorRow(message: errorText) { await loadAll() }
+                    }
                 }
             }
+            .listStyle(.insetGrouped)
         }
-        .listStyle(.insetGrouped)
     }
 
     private var channelsSection: some View {
@@ -66,9 +85,11 @@ struct ConnectionsScreen: View {
     }
 
     private var channelsCaption: String {
-        let total = ChannelCatalog.entries.count
-        let official = ChannelCatalog.entries.filter { $0.distribution == .official }.count
-        return "\(total) catalogued · \(official) official"
+        guard let chatAdapters else { return "Loading…" }
+        let adapters = chatAdapters.adapters
+        let enabled = adapters.filter(\.enabled).count
+        let configured = adapters.filter(\.configured).count
+        return "\(enabled) on · \(configured) configured · \(adapters.count) total"
     }
 
     private var unpaired: some View {
@@ -92,14 +113,15 @@ struct ConnectionsScreen: View {
                     }
                 }
             } else if isLoading {
-                HStack {
-                    ProgressView()
-                    Text("Loading providers…").foregroundStyle(.secondary)
-                }
+                LoadingRow("Loading providers…")
             } else {
-                Text("No providers reported by the daemon.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                ContentUnavailableView {
+                    Label("No models connected", systemImage: "cpu")
+                } description: {
+                    Text("swooshd reported no model providers. Add an API key on the Mac, then pull to refresh.")
+                } actions: {
+                    Button("Refresh") { Task { await loadAll() } }
+                }
             }
         } header: {
             Text("Models")
@@ -205,18 +227,37 @@ struct ConnectionsScreen: View {
 
     private func loadAll() async {
         guard session.isPaired, let client = session.client() else { return }
-        isLoading = true
-        errorText = nil
-        defer { isLoading = false }
+        withAnimation(.easeOut(duration: 0.22)) {
+            isLoading = true
+            errorText = nil
+        }
+        defer {
+            withAnimation(.easeOut(duration: 0.22)) {
+                isLoading = false
+                hasLoadedOnce = true
+            }
+        }
         do {
-            providers = try await client.providers()
-            skills = try await client.skills()
-            memories = try await client.memories()
-            records = try await client.records()
-            media = try await client.mediaGallery()
+            let loadedProviders = try await client.providers()
+            let loadedSkills = try await client.skills()
+            let loadedMemories = try await client.memories()
+            let loadedRecords = try await client.records()
+            let loadedMedia = try await client.mediaGallery()
+            let loadedAdapters = try await client.chatAdapters()
+            withAnimation(.easeOut(duration: 0.22)) {
+                providers = loadedProviders
+                skills = loadedSkills
+                memories = loadedMemories
+                records = loadedRecords
+                media = loadedMedia
+                chatAdapters = loadedAdapters
+            }
             await session.refresh()
         } catch {
-            errorText = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.22)) {
+                errorText = error.localizedDescription
+            }
+            errorFeedback &+= 1
         }
     }
 }
@@ -312,6 +353,8 @@ struct ProviderDetailScreen: View {
     @State private var setActive = false
     @State private var message: String?
     @State private var error: String?
+    @State private var successFeedback = 0
+    @State private var errorFeedback = 0
 
     var body: some View {
         Form {
@@ -368,11 +411,23 @@ struct ProviderDetailScreen: View {
                 Section { Label(message, systemImage: "checkmark.circle").foregroundStyle(.green).font(.footnote) }
             }
             if let error {
-                Section { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.footnote) }
+                Section {
+                    ErrorRow(message: error) {
+                        // Retry whichever op was in flight: a draft key
+                        // present means saveKey, otherwise selectProvider.
+                        if !draftKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            await saveKey()
+                        } else {
+                            await selectProvider()
+                        }
+                    }
+                }
             }
         }
         .navigationTitle(provider.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sensoryFeedback(.success, trigger: successFeedback)
+        .sensoryFeedback(.error, trigger: errorFeedback)
     }
 
     private var acceptsPhoneKey: Bool {
@@ -391,11 +446,13 @@ struct ProviderDetailScreen: View {
         defer { saving = false }
         do {
             let response = try await client.saveProviderKey(providerID: provider.id, apiKey: key)
-            message = response.message
+            withAnimation(.easeOut(duration: 0.22)) { message = response.message }
             draftKey = ""
+            successFeedback &+= 1
             await session.refresh()
         } catch {
-            self.error = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.22)) { self.error = error.localizedDescription }
+            errorFeedback &+= 1
         }
     }
 
@@ -407,10 +464,12 @@ struct ProviderDetailScreen: View {
         defer { saving = false }
         do {
             let response = try await client.selectProvider(providerID: provider.id)
-            message = response.message
+            withAnimation(.easeOut(duration: 0.22)) { message = response.message }
+            successFeedback &+= 1
             await session.refresh()
         } catch {
-            self.error = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.22)) { self.error = error.localizedDescription }
+            errorFeedback &+= 1
         }
     }
 }
@@ -425,11 +484,15 @@ private extension ProviderSummary {
 struct SkillsDetailScreen: View {
     let skills: [SkillSummary]
     var body: some View {
-        List {
-            if skills.isEmpty {
-                Text("No reviewed or promoted skills loaded.")
-                    .foregroundStyle(.secondary)
-            } else {
+        Group {
+        if skills.isEmpty {
+            ContentUnavailableView {
+                Label("No skills yet", systemImage: "books.vertical")
+            } description: {
+                Text("Reviewed and promoted skills appear here. Draft skills are reviewed on the Mac before they reach the agent.")
+            }
+        } else {
+            List {
                 ForEach(skills) { skill in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -448,6 +511,7 @@ struct SkillsDetailScreen: View {
                     .padding(.vertical, 3)
                 }
             }
+        }
         }
         .navigationTitle("Skills")
     }
@@ -547,6 +611,11 @@ struct RuntimeDetailScreen: View {
                     }
                 }
             }
+            // The parent passes nil until `loadAll` resolves — show a
+            // loading row rather than a blank list.
+            if records == nil, runtimeConfig == nil {
+                LoadingRow("Loading runtime…")
+            }
         }
         .navigationTitle("Readiness & policy")
         .navigationBarTitleDisplayMode(.inline)
@@ -601,7 +670,7 @@ struct AutomationsDetailScreen: View {
                     }
                 }
             } else {
-                Text("Loading…").foregroundStyle(.secondary)
+                LoadingRow("Loading automations…")
             }
         }
         .navigationTitle("Automations & goals")
@@ -627,7 +696,11 @@ struct MediaDetailScreen: View {
                 }
                 Section("Files") {
                     if media.items.isEmpty {
-                        Text("No generated files yet.").foregroundStyle(.secondary).font(.footnote)
+                        ContentUnavailableView {
+                            Label("No generated files", systemImage: "photo.on.rectangle.angled")
+                        } description: {
+                            Text("Images, video, and audio the agent produces land here.")
+                        }
                     } else {
                         ForEach(media.items) { item in
                             HStack(spacing: 12) {
@@ -644,7 +717,7 @@ struct MediaDetailScreen: View {
                     }
                 }
             } else {
-                Text("Loading…").foregroundStyle(.secondary)
+                LoadingRow("Loading media…")
             }
         }
         .navigationTitle("Generated files")
