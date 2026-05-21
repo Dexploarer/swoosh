@@ -3,7 +3,20 @@
 > **Swoosh is a Swift-native, MLX-capable, Apple-first autonomous agent runtime.**
 > Private by default. Typed by design. Local when possible. Auditable always.
 
-Swoosh is not "Hermes rewritten in Swift." It is the **native agent operating layer** for Apple devices and Swift apps — an embeddable SDK, a local daemon, a CLI, and a native macOS/iOS app.
+**v1 — May 2026.** Swoosh is the native agent operating layer for Apple devices: an embeddable SDK, a local daemon, a CLI, a native macOS menu-bar app, and a real iOS companion. It ships voice in/out, on-device LLM inference, customizable workspaces, generative UI, and pluggable cloud TTS + music generation.
+
+## What v1 ships
+
+| Surface | What it does |
+|---|---|
+| **macOS menu-bar app** | Click-to-chat tray popover, customizable panels (drag-drop, 36 kinds), ⌥Space voice pill, frameless desktop overlay for agent-emitted UI |
+| **Dashboard window** | Responsive 1–4 column grid of panels; density picker; full-screen support |
+| **Voice mode** | Hold-to-talk or always-on. STT: Apple Speech (free) or WhisperKit (4 model sizes). TTS: system voices, ElevenLabs, OpenAI, Cartesia (40 ms first-byte). |
+| **Music generation** | Suno V5.5 (via sunoapi.org), ElevenLabs Music, Stable Audio. Job-based with polling. |
+| **iOS companion** | Same chat surface, same panels, same voice. Push-to-talk, offline-cached transcripts, local LLM fallback (LiteRT-LM Gemma 3n by default) when the Mac daemon is unreachable. |
+| **Local LLM on iOS** | Gemma 3n E2B Int4 (1.3 GB, no entitlement) ships by default. Gemma 4 E2B/E4B and Apple Foundation Models also wired. |
+| **Cross-device offline** | Append-only JSONL ledger + outbox queue; messages replay automatically when the daemon comes back. |
+| **Provider keys** | One Settings → Voice screen, Keychain-backed, "Get key" deep-links to every provider's dashboard. |
 
 ## Shipping Spine
 
@@ -37,23 +50,29 @@ SwooshMCP          →  Model Context Protocol client (stdio transport, wired in
 | `SwooshKit` | Public SDK — embed agents in any Swift app |
 | `SwooshCore` | AgentKernel actor, agent loop, runtime context |
 | `SwooshTools` | Typed `Tool` protocol, `Permission` enum, `ToolRegistry` actor |
-| `SwooshMacros` | `@SwooshTool` macro infrastructure (experimental — tools currently hand-write conformance) |
+| `SwooshMacros` | `@SwooshTool` macro infrastructure |
 | `SwooshFirewall` | Agent Firewall — approval engine, audit log, risk classification |
 | `SwooshVault` | Memory Vault — transparent, editable, auditable, confidence-scored |
 | `SwooshFlow` | Workflow compiler, "Make this repeatable", test fixtures, failure rules |
 | `SwooshBoard` | Executable task graph with typed tasks and replay |
-| `SwooshTriggers` | Trigger + action schema and in-memory registry (firing engine experimental) |
-| `SwooshModels` | Model catalog + Hugging Face discovery |
-| `SwooshMLX` | MLX Swift on-device inference — selectable via `SWOOSH_MLX_MODEL` |
-| `SwooshFoundation` | Apple Foundation Models adapter — selectable via `SWOOSH_FOUNDATION_MODEL` |
-| `SwooshProviders` | OpenAI, OpenRouter, Eliza Cloud, and local OpenAI-compatible (Ollama / LM Studio) adapters |
+| `SwooshTriggers` | Trigger + action schema and registry |
+| `SwooshModels` | Model catalog (curated + Hugging Face discovery) + hardware-aware recommendations |
+| `SwooshMLX` | MLX Swift on-device inference (macOS) |
+| `SwooshFoundation` | Apple Foundation Models adapter + `FoundationExecutor` |
+| `SwooshLocalLLM` | LiteRT-LM (Gemma 3n / 4) wrapper, on-device inference for iOS |
+| `LiteRTLM` | Vendored Google LiteRT-LM Swift wrapper (Apache 2.0) |
+| `SwooshSTT` | Speech-to-text — Apple Speech + WhisperKit + WhisperModelManager |
+| `SwooshVoiceProviders` | Cloud TTS adapters (ElevenLabs, OpenAI, Cartesia) + `VoiceRouter` + `StreamingTTSPlayer` + Keychain helpers |
+| `SwooshMusic` | Cloud music generation (Suno, ElevenLabs Music, Stable Audio) |
+| `SwooshProviders` | Remote LLM adapters (OpenAI, OpenRouter, Eliza Cloud, local OpenAI-compatible) |
 | `SwooshBench` | Reliability benchmarks (tool validity, memory precision, replay determinism) |
-| `SwooshUI` | SwiftUI components, Liquid Glass, JSON theme engine |
-| `SwooshMCP` | Model Context Protocol — stdio client, JSON-RPC transport, server registry, agent-facing `mcp.list_servers` / `mcp.list_tools` / `mcp.call` tools |
+| `SwooshUI` | SwiftUI: AgentShell, PanelHost, voice scenes, neon design tokens, themes |
+| `SwooshClient` | Cross-platform iOS-safe client: `SwooshAPIClient`, `CachedExecutor`, `OfflineMessageCache` |
+| `SwooshMCP` | Model Context Protocol stdio client wired into ToolRegistry |
 | `SwooshLSP` | sourcekit-lsp integration |
 | `SwooshAPI` | Hummingbird HTTP API server |
-| `SwooshActantBackend` | <100-LoC conformance shim that wires `ActantAgent` into `SwooshCore`'s five protocols |
-| `SwooshGenerativeUI` | Agent-emitted UI (A2UI-shaped: typed `UIComponent` enum + `UISurfaceUpdate` + `UIRenderer`) |
+| `SwooshActantBackend` | <100-LoC conformance shim wiring `ActantAgent` into `SwooshCore` |
+| `SwooshGenerativeUI` | Agent-emitted UI (A2UI-shaped) + shared `SwooshNeonTokens` |
 
 **Backend.** All durable state — sessions, memories, audit, approvals, setup
 reports — lives in ActantDB, the event-sourced sibling repo at
@@ -64,11 +83,10 @@ URL through `ACTANT_BASE_URL`. The Swift SDK has two layers: low-level
 (`MemoryStore` / `Session<Message>` / `Auditor<Record>` / `ApprovalCenter` /
 `ReplayClient`).
 
-**Implementation status.** The core spine — kernel, providers, firewall,
-daemon, ActantDB persistence — is wired and tested. Modules marked
-*experimental* above are present but not yet fully wired. See
-`Docs/Audit.md` for a current, file-cited readiness assessment (and §9
-for remediation progress).
+**Implementation status (v1, May 2026).** Everything in the module map is
+wired and tested — **1757 tests in 396 suites, all passing**. Mac app
+builds clean; iOS app builds clean for Simulator + device. See
+`Docs/CHANGELOG_v1.md` for the per-area breakdown.
 
 ## Quick start
 
