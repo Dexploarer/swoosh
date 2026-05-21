@@ -1,0 +1,30 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+/* Swoosh brand — indigo/violet accent */
+:root {
+  --ifm-color-primary: #6366f1;
+  --ifm-color-primary-dark: #4f52ea;
+  --ifm-color-primary-darker: #4347e7;
+  --ifm-color-primary-darkest: #2528d5;
+  --ifm-color-primary-light: #7779f4;
+  --ifm-color-primary-lighter: #8385f5;
+  --ifm-color-primary-lightest: #a5a7f9;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #818cf8;
+  --ifm-color-primary-dark: #6366f1;
+  --ifm-color-primary-darker: #5558ef;
+  --ifm-color-primary-darkest: #3437e9;
+  --ifm-color-primary-light: #a5a7f9;
+  --ifm-color-primary-lighter: #b0b3fa;
+  --ifm-color-primary-lightest: #c7c9fc;
+  --docusaurus-highlighted-code-line-bg: rgba(129, 140, 248, 0.15);
+}

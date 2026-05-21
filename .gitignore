@@ -21,6 +21,9 @@ Backend/SwooshDB/.build
 /image\ copy\ 2.png
 /image\ copy\ 3.png
 
-# Local docs-site preview build (if present)
-/docs-site/.build/
+# Docusaurus docs-site build output (committed source only)
+/docs-site/node_modules/
+/docs-site/build/
+/docs-site/.docusaurus/
 /docs-site/.next/
+/docs-site/.cache/
