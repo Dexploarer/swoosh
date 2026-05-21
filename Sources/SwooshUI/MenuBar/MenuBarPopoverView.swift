@@ -4,12 +4,16 @@
 // Each section is a collapsible card. Supports all card styles.
 
 import SwiftUI
+import SwooshGenerativeUI
 import SwooshSecrets
 
 public struct MenuBarPopoverView: View {
     @Bindable var manager: MenuBarManager
     @Environment(\.swooshTheme) var theme
+    @Environment(AgentShellModel.self) private var shell
     @State private var showingCustomizer = false
+    @State private var panelStore = PanelLayoutStore()
+    @State private var editingPanels = false
 
     public init(manager: MenuBarManager) {
         self.manager = manager
@@ -22,21 +26,14 @@ public struct MenuBarPopoverView: View {
 
             Divider().opacity(0.3)
 
-            // ── Sections ──
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: manager.config.compactMode ? 6 : 10) {
-                    ForEach(manager.enabledSections) { sectionConfig in
-                        MenuBarSectionCard(
-                            config: sectionConfig,
-                            manager: manager,
-                            cardStyle: manager.config.cardStyle,
-                            compact: manager.config.compactMode
-                        )
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            }
+            // ── Panel host (customizable capsules) ──
+            PanelHost(
+                store: panelStore,
+                surface: "tray",
+                context: PanelHostContext(shell: shell),
+                editing: $editingPanels
+            )
+            .environment(shell)
             .frame(maxHeight: manager.config.popoverMaxHeight - 60)
 
             Divider().opacity(0.3)
@@ -79,13 +76,14 @@ public struct MenuBarPopoverView: View {
             .buttonStyle(.plain)
 
             Button {
-                showingCustomizer = true
+                withAnimation(.spring(duration: 0.2)) { editingPanels.toggle() }
             } label: {
-                Image(systemName: "slider.horizontal.3")
+                Image(systemName: editingPanels ? "checkmark.circle.fill" : "slider.horizontal.3")
                     .font(.system(size: 11))
-                    .foregroundStyle(theme.textSecondary)
+                    .foregroundStyle(editingPanels ? SwooshNeonTokens.Accent.cyan : theme.textSecondary)
             }
             .buttonStyle(.plain)
+            .help(editingPanels ? "Done editing" : "Edit panels")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)

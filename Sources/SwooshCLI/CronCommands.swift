@@ -142,8 +142,22 @@ struct CronRemoveCommand: AsyncParsableCommand {
     @Argument(help: "Job id or name.")
     var id: String
 
+    @Flag(name: .long, help: "Skip confirmation prompt.")
+    var force = false
+
     func run() async throws {
-        try await cronStore().delete(idOrName: id)
+        let store = cronStore()
+        guard let job = try await store.get(idOrName: id) else {
+            throw ValidationError("Job not found: \(id)")
+        }
+        if !force {
+            print("Remove job '\(job.name)' (\(job.id))? [y/N] ", terminator: "")
+            guard let input = readLine()?.lowercased(), input == "y" || input == "yes" else {
+                print("Aborted.")
+                return
+            }
+        }
+        try await store.delete(idOrName: id)
         print("Removed \(id).")
     }
 }

@@ -1,6 +1,10 @@
 // SwooshUI/DashboardView.swift — Native Swoosh dashboard
 //
-// Not a demo. The real agent control panel.
+// Not a demo. The real agent control panel. macOS-only: the iOS app
+// has its own root surface and doesn't use NavigationSplitView the
+// same way.
+
+#if os(macOS)
 
 import SwiftUI
 import SwooshClient
@@ -15,8 +19,11 @@ import Foundation
 
 public struct DashboardView: View {
     @State private var themeManager = ThemeManager()
-    @State private var selectedTab: DashboardTab = .chat
+    @State private var selectedTab: DashboardTab = .workspace
     @State private var runtime = DashboardRuntimeSnapshot.empty
+    @State private var panelStore = PanelLayoutStore()
+    @State private var editingPanels = false
+    @Environment(AgentShellModel.self) private var shell
 
     public init() {}
 
@@ -43,6 +50,7 @@ public struct DashboardView: View {
     private var sidebar: some View {
         List(selection: $selectedTab) {
             Section("Agent") {
+                Label("Workspace", systemImage: "square.grid.2x2").tag(DashboardTab.workspace)
                 Label("Chat", systemImage: "bubble.left.and.bubble.right").tag(DashboardTab.chat)
                 Label("Agents", systemImage: "person.3").tag(DashboardTab.agents)
             }
@@ -87,7 +95,15 @@ public struct DashboardView: View {
     @ViewBuilder
     private var detailView: some View {
         switch selectedTab {
-        case .chat:        RuntimePane(title: "Chat", icon: "bubble.left.and.bubble.right", rows: runtime.chatRows)
+        case .workspace:
+            PanelHost(
+                store: panelStore,
+                surface: "dashboard",
+                context: PanelHostContext(shell: shell),
+                editing: $editingPanels
+            )
+            .environment(shell)
+        case .chat:        AgentShellView(shell: shell, mode: .window)
         case .agents:      RuntimePane(title: "Active Agents", icon: "person.3", rows: runtime.agentRows)
         case .board:       BoardPane(cards: runtime.boardCards)
         case .workflows:   RuntimePane(title: "Workflows", icon: "arrow.triangle.branch", rows: runtime.workflowRows)
@@ -112,6 +128,7 @@ public struct DashboardView: View {
 // MARK: - Tab enum
 
 enum DashboardTab: Hashable {
+    case workspace
     case chat, agents, board, workflows, triggers
     case vault, skills
     case tools, firewall, providers, localModels, mcp, plugins
@@ -427,7 +444,7 @@ struct LocalRuntimeCounts: Sendable {
     let runtimeConfig: SwooshRuntimeConfig?
 
     static func load() -> LocalRuntimeCounts {
-        let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".swoosh", isDirectory: true)
+        let root = swooshHomeDirectoryForCurrentUser().appendingPathComponent(".swoosh", isDirectory: true)
         return LocalRuntimeCounts(
             hasConfig: FileManager.default.fileExists(atPath: root.appendingPathComponent("config.json").path),
             memoryFiles: countFiles(root.appendingPathComponent("memories", isDirectory: true), extensionFilter: "json"),
@@ -457,3 +474,5 @@ struct LocalRuntimeCounts: Sendable {
 #Preview {
     DashboardView()
 }
+
+#endif

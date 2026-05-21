@@ -42,6 +42,11 @@ let package = Package(
         .library(name: "SwooshProviderBridge", targets: ["SwooshProviderBridge"]),
         .library(name: "SwooshCron", targets: ["SwooshCron"]),
         .library(name: "SwooshChatSDK", targets: ["SwooshChatSDK"]),
+        .library(name: "SwooshLocalLLM", targets: ["SwooshLocalLLM"]),
+        .library(name: "SwooshModels", targets: ["SwooshModels"]),
+        .library(name: "SwooshSTT", targets: ["SwooshSTT"]),
+        .library(name: "SwooshVoiceProviders", targets: ["SwooshVoiceProviders"]),
+        .library(name: "SwooshMusic", targets: ["SwooshMusic"]),
     ],
     dependencies: [
         // CLI
@@ -71,6 +76,8 @@ let package = Package(
         .package(path: "Vendor/hyperliquid-swift-sdk"),
         // ActantDB — event-sourced agent backend (sibling repo, local path)
         .package(path: "../actantDB/sdks/swift"),
+        // WhisperKit — Apple Silicon-optimised speech-to-text via Core ML
+        .package(url: "https://github.com/argmaxinc/WhisperKit", from: "1.0.0"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -211,7 +218,7 @@ let package = Package(
                 .product(name: "Tokenizers", package: "swift-tokenizers"),
             ]
         ),
-        .target(name: "SwooshFoundation", dependencies: ["SwooshCore"]),   // Apple Foundation Models adapter
+        .target(name: "SwooshFoundation", dependencies: ["SwooshCore", "SwooshClient"]),   // Apple Foundation Models adapter
         .target(name: "SwooshSecrets",    dependencies: ["SwooshTools"]),   // Keychain + SecretRef + SecretResolving
         .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets"]),
         .target(
@@ -342,9 +349,76 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - SwiftUI (shared)
         // ══════════════════════════════════════════════════════════════
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - LiteRT-LM (vendored Swift wrapper + binary)
+        // ══════════════════════════════════════════════════════════════
+        //
+        // Wrapper sources live in Sources/LiteRTLM/ (vendored from
+        // google-ai-edge/LiteRT-LM under Apache 2.0). The actual native
+        // engine ships as a binary xcframework from the upstream's
+        // GitHub release. Vendoring the wrapper means we don't pay the
+        // multi-GB git clone tax SwiftPM imposes for full-repo deps.
+        .binaryTarget(
+            name: "CLiteRTLM",
+            url: "https://github.com/google-ai-edge/LiteRT-LM/releases/download/v0.12.0/CLiteRTLM.xcframework.zip",
+            checksum: "3c2a11ecc8511d1e74efa7ca308dc7130c95223325c33212337ffb0563b79cde"
+        ),
+        .target(
+            name: "LiteRTLM",
+            dependencies: ["CLiteRTLM"],
+            swiftSettings: [
+                // Upstream was written against Swift 5.9; relax our 6.x
+                // strict-concurrency checks just for this vendored target.
+                .swiftLanguageMode(.v5),
+            ],
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-all_load"]),
+            ]
+        ),
+        .target(
+            name: "SwooshLocalLLM",
+            dependencies: [
+                "SwooshClient",
+                "LiteRTLM",
+            ],
+            swiftSettings: [
+                // The upstream LiteRTLM API isn't Sendable-clean; relax
+                // strict concurrency for this thin wrapper. Public types
+                // we export are still Sendable-safe (SwooshExecutor is
+                // an actor, FallbackExecutor is an actor).
+                .swiftLanguageMode(.v5),
+            ]
+        ),
+
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - SwooshSTT — speech-to-text providers
+        // ══════════════════════════════════════════════════════════════
+        .target(
+            name: "SwooshSTT",
+            dependencies: [
+                .product(name: "WhisperKit", package: "WhisperKit"),
+            ]
+        ),
+
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - SwooshVoiceProviders — cloud TTS adapters
+        // ══════════════════════════════════════════════════════════════
+        .target(
+            name: "SwooshVoiceProviders",
+            dependencies: ["SwooshSecrets", "SwooshMusic"]
+        ),
+
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - SwooshMusic — music generation providers
+        // ══════════════════════════════════════════════════════════════
+        .target(
+            name: "SwooshMusic",
+            dependencies: ["SwooshSecrets"]
+        ),
+
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI"]
+            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
         ),
         .target(
             name: "SwooshWidgets",
@@ -586,6 +660,12 @@ let package = Package(
                 "SwooshFirewall",
                 "SwooshFiles",
                 "SwooshProcess",
+            ]
+        ),
+        .testTarget(
+            name: "SwooshCLITests",
+            dependencies: [
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
     ]

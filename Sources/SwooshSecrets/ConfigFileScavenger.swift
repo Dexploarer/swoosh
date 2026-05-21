@@ -80,7 +80,7 @@ public enum ConfigFileScavenger {
     ]}
 
     public static func scan() -> [DiscoveredCredential] {
-        let home = FileManager.default.homeDirectoryForCurrentUser
+        let home = swooshHomeDirectoryForCurrentUser()
         var results: [DiscoveredCredential] = []
 
         for source in sources {

@@ -92,6 +92,39 @@ public protocol EmbeddingProviding: Sendable {
 // MARK: - Request / Response
 // ═══════════════════════════════════════════════════════════════════
 
+/// Reasoning depth for models that expose an effort knob (OpenAI GPT-5.x,
+/// Anthropic extended-thinking, etc.). The Codex picker shows these four
+/// levels; Swoosh mirrors the same shape so the UX is portable across
+/// providers. Providers that don't support a knob ignore this field.
+public enum ReasoningEffort: String, Codable, Sendable, CaseIterable {
+    case low
+    case medium
+    case high
+    case extraHigh
+
+    /// Display label used by pickers.
+    public var displayName: String {
+        switch self {
+        case .low:       return "Low"
+        case .medium:    return "Medium"
+        case .high:      return "High"
+        case .extraHigh: return "Extra High"
+        }
+    }
+
+    /// Wire value sent to OpenAI's Responses API (`reasoning.effort`).
+    /// OpenAI uses `"xhigh"` for the top tier; other providers receive this
+    /// via their own adapter mapping.
+    public var openAIWireValue: String {
+        switch self {
+        case .low:       return "low"
+        case .medium:    return "medium"
+        case .high:      return "high"
+        case .extraHigh: return "xhigh"
+        }
+    }
+}
+
 /// Provider-level model request. Uses SwooshTools.ChatMessage.
 public struct ModelRequest: Sendable {
     public var model: String
@@ -100,17 +133,18 @@ public struct ModelRequest: Sendable {
     public var tools: [ToolDescriptor]
     public var temperature: Double?
     public var maxOutputTokens: Int?
+    public var reasoningEffort: ReasoningEffort?
     public var stream: Bool
     public var metadata: [String: String]
 
     public init(model: String, messages: [ChatMessage], instructions: String? = nil,
                 tools: [ToolDescriptor] = [], temperature: Double? = nil,
-                maxOutputTokens: Int? = nil, stream: Bool = false,
-                metadata: [String: String] = [:]) {
+                maxOutputTokens: Int? = nil, reasoningEffort: ReasoningEffort? = nil,
+                stream: Bool = false, metadata: [String: String] = [:]) {
         self.model = model; self.messages = messages; self.instructions = instructions
         self.tools = tools; self.temperature = temperature
-        self.maxOutputTokens = maxOutputTokens; self.stream = stream
-        self.metadata = metadata
+        self.maxOutputTokens = maxOutputTokens; self.reasoningEffort = reasoningEffort
+        self.stream = stream; self.metadata = metadata
     }
 
     public func withModel(_ m: String) -> ModelRequest {

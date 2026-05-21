@@ -58,22 +58,23 @@ public struct ScoutPipeline: Sendable {
     }
 
     /// Run the full pipeline: scan → redact → generate candidates → produce report
+    /// `progress` is called before each source scan with `(current, total, sourceName)`.
     public func run(
         depth: PersonalizationDepth,
         options: ScoutPipelineOptions = ScoutPipelineOptions(),
-        log: @Sendable (String) -> Void = { _ in }
+        log: @Sendable (String) -> Void = { _ in },
+        progress: @Sendable (_ current: Int, _ total: Int, _ sourceName: String) -> Void = { _, _, _ in }
     ) async throws -> ScoutPipelineResult {
-        let progress = ScanProgress()
+        let scanProgress = ScanProgress()
         var allRecords: [ScoutRecord] = []
         var sourcesScanned = 0
         var totalRedacted = 0
+        let applicableSources = sources.filter { shouldInclude($0, depth: depth) }
+        let totalApplicable = applicableSources.count
 
         // Phase 1: Scan each source
-        for source in sources {
-            guard shouldInclude(source, depth: depth) else {
-                log("  ○ \(source.displayName) — skipped (sensitivity: \(source.sensitivity.rawValue))")
-                continue
-            }
+        for (index, source) in applicableSources.enumerated() {
+            progress(index + 1, totalApplicable, source.displayName)
 
             let permStatus = try await source.checkPermission()
             var hasPermission = (permStatus == .granted)
@@ -97,7 +98,7 @@ public struct ScoutPipeline: Sendable {
             }
 
             log("  ⟳ Scanning \(source.displayName)...")
-            let records = try await source.scan(progress: progress)
+            let records = try await source.scan(progress: scanProgress)
             sourcesScanned += 1
             log("  ✓ \(source.displayName) — \(records.count) records")
 

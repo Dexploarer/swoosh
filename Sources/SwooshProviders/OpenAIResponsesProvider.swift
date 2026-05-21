@@ -129,6 +129,9 @@ public actor OpenAIResponsesProvider: ToolCallingModelProviding {
         if let temp = modelReq.temperature { body["temperature"] = temp }
         if let max = modelReq.maxOutputTokens { body["max_output_tokens"] = max }
         if let instructions = modelReq.instructions { body["instructions"] = instructions }
+        if let effort = modelReq.reasoningEffort {
+            body["reasoning"] = ["effort": effort.openAIWireValue]
+        }
 
         // Tools
         if !modelReq.tools.isEmpty {

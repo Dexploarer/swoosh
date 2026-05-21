@@ -75,7 +75,7 @@ public final class SetupContext: Sendable {
         config: SwooshConfigStore,
         hardware: HardwareProfile,
         ui: any SetupUI,
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+        homeDirectory: URL = swooshHomeDirectoryForCurrentUser()
     ) {
         self.credentials = credentials
         self.config = config

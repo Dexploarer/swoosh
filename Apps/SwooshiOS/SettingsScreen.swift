@@ -62,6 +62,22 @@ struct SettingsScreen: View {
                 }
             }
 
+            Section("Local model") {
+                LocalFallbackToggleRow()
+            }
+
+            Section("Voice") {
+                NavigationLink {
+                    VoicePickerScreen()
+                } label: {
+                    IconRow(
+                        tile: IconTile(systemName: "waveform", tint: .cyan),
+                        title: "Speech & Voice",
+                        detail: "STT engine, TTS provider, voice picker"
+                    )
+                }
+            }
+
             Section {
                 NavigationLink {
                     AboutScreen()

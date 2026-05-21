@@ -118,7 +118,11 @@ public struct MenuBarCustomizerView: View {
                     manager.moveSection(from: source, to: destination)
                 }
             }
+            #if os(macOS)
             .listStyle(.inset(alternatesRowBackgrounds: true))
+            #else
+            .listStyle(.inset)
+            #endif
         }
         .padding(.top)
     }
@@ -136,7 +140,11 @@ public struct MenuBarCustomizerView: View {
                         Text(iconModeLabel(mode)).tag(mode)
                     }
                 }
+                #if os(macOS)
                 .pickerStyle(.radioGroup)
+                #else
+                .pickerStyle(.segmented)
+                #endif
 
                 if manager.config.iconMode == .custom {
                     TextField("SF Symbol name", text: Binding(

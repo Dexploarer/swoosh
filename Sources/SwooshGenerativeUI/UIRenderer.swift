@@ -183,21 +183,23 @@ struct UIValidationErrorView: View {
     let surface: UISurfaceUpdate
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: SwooshNeonTokens.Spacing.micro) {
+            HStack(spacing: SwooshNeonTokens.Spacing.micro) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(SwooshNeonTokens.Accent.gold)
                 Text("Surface \(surface.surfaceID) failed validation")
                     .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
             }
             ForEach(0..<issues.count, id: \.self) { idx in
                 Text("• \(describe(issues[idx]))")
                     .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text2)
             }
         }
-        .padding(12)
-        .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+        .padding(SwooshNeonTokens.Spacing.base + 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .neonTile(.gold, state: .focus, shape: .card)
     }
 
     private func describe(_ issue: UISurfaceUpdate.ValidationIssue) -> String {
@@ -220,14 +222,14 @@ struct UICatalogBlockedView: View {
         HStack(spacing: 4) {
             Image(systemName: "shield.lefthalf.filled")
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
             Text("Blocked: \(typeName)")
                 .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, SwooshNeonTokens.Spacing.micro)
         .padding(.vertical, 3)
-        .background(Color.secondary.opacity(0.12), in: Capsule())
+        .neonTile(.cyan, state: .idle, shape: .card)
     }
 }
 
@@ -236,10 +238,10 @@ struct UIMissingComponentView: View {
     var body: some View {
         Text("⚠ missing: \(id)")
             .font(.system(size: 10, design: .monospaced))
-            .foregroundStyle(.red)
-            .padding(.horizontal, 6)
+            .foregroundStyle(SwooshNeonTokens.Accent.gold)
+            .padding(.horizontal, SwooshNeonTokens.Spacing.micro)
             .padding(.vertical, 3)
-            .background(Color.red.opacity(0.1), in: Capsule())
+            .neonTile(.gold, state: .focus, shape: .card)
     }
 }
 

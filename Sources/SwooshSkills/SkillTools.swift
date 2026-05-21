@@ -434,8 +434,19 @@ public struct SkillManageTool: SwooshTool {
         if let sourceDirectory = skill.sourceDirectory {
             return URL(fileURLWithPath: sourceDirectory, isDirectory: true)
         }
-        let dir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".swoosh/skill-assets/\(skill.id)", isDirectory: true)
+        #if os(macOS)
+        let base = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh/skill-assets", isDirectory: true)
+        #else
+        let base = ((try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? URL(fileURLWithPath: NSTemporaryDirectory()))
+            .appendingPathComponent("ai.swoosh.agent/skill-assets", isDirectory: true)
+        #endif
+        let dir = base.appendingPathComponent(skill.id, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try skill.body.write(to: dir.appendingPathComponent("SKILL.md"), atomically: true, encoding: .utf8)
         skill.sourceDirectory = dir.path

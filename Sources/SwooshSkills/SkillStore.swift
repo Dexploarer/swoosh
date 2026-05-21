@@ -33,8 +33,25 @@ public actor FileSkillStore: SkillStoring {
     private var loaded = false
 
     public init(directory: URL? = nil) {
-        self.directory = directory ?? FileManager.default.homeDirectoryForCurrentUser
+        self.directory = directory ?? Self.defaultDirectory()
+    }
+
+    /// Cross-platform default location for the skill store.
+    /// macOS uses `~/.swoosh/skills/`; iOS uses the app sandbox's
+    /// Application Support directory.
+    private static func defaultDirectory() -> URL {
+        #if os(macOS)
+        return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".swoosh/skills")
+        #else
+        let base = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        return base.appendingPathComponent("ai.swoosh.agent/skills", isDirectory: true)
+        #endif
     }
 
     public func save(_ skill: SkillDocument) async throws {

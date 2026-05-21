@@ -11,3 +11,16 @@ Backend/SwooshDB/.build
 !.codex/hooks.json
 !.codex/scripts/
 !.codex/scripts/**
+
+# Claude Code runtime artifacts
+.claude/scheduled_tasks.lock
+
+# Local design references — not part of the repo
+/image.png
+/image\ copy.png
+/image\ copy\ 2.png
+/image\ copy\ 3.png
+
+# Local docs-site preview build (if present)
+/docs-site/.build/
+/docs-site/.next/

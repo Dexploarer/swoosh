@@ -33,6 +33,10 @@
 	<string>Swoosh uses Face ID to unlock the wallet keys stored on this device. Your private keys never leave the iPhone.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Swoosh connects to the swooshd daemon running on your Mac so the same agent can answer from your phone.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Swoosh listens to your voice and turns it into chat input. Audio is processed on-device.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Swoosh transcribes your spoken commands into text so you can talk to the agent hands-free.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

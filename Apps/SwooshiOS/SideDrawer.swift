@@ -32,6 +32,7 @@ struct SideDrawer: View {
                         recentRow
                         Divider().padding(.vertical, 6)
                         sectionLabel("Surfaces")
+                        drawerLink(.workspace,   title: "Workspace",   symbol: "square.grid.2x2", caption: nil)
                         drawerLink(.wallet,      title: "Wallet",      symbol: "wallet.pass", caption: walletCaption)
                         drawerLink(.connections, title: "Connections", symbol: "slider.horizontal.3", caption: connectionsCaption)
                         drawerLink(.settings,    title: "Settings",    symbol: "gear",        caption: settingsCaption)

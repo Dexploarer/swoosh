@@ -37,10 +37,25 @@ public actor SkillInstaller {
         guardrail: SkillGuard = SkillGuard(allowImportedSkills: true)
     ) {
         self.store = store
-        self.installDirectory = installDirectory ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".swoosh/skill-assets", isDirectory: true)
+        self.installDirectory = installDirectory ?? SkillInstaller.defaultInstallDirectory()
         self.parser = parser
         self.guardrail = guardrail
+    }
+
+    /// Cross-platform default location for installed skill assets.
+    private static func defaultInstallDirectory() -> URL {
+        #if os(macOS)
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh/skill-assets", isDirectory: true)
+        #else
+        let base = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? URL(fileURLWithPath: NSTemporaryDirectory())
+        return base.appendingPathComponent("ai.swoosh.agent/skill-assets", isDirectory: true)
+        #endif
     }
 
     public func install(source: String, name: String? = nil, trust: SkillInstallTrust = .reviewed) async throws -> SkillInstallResult {

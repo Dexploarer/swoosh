@@ -149,7 +149,7 @@ public final class EnvironmentCredentialStore: CredentialStore, @unchecked Senda
     public init(prefix: String = "SWOOSH_", directory: URL? = nil) {
         self.envPrefix = prefix
         let baseDir = directory ??
-            FileManager.default.homeDirectoryForCurrentUser.appending(path: ".swoosh")
+            swooshHomeDirectoryForCurrentUser().appending(path: ".swoosh")
         self.envFile = baseDir.appending(path: ".env")
     }
 

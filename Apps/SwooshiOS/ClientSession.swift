@@ -8,6 +8,9 @@
 import Foundation
 import Observation
 import SwooshClient
+#if os(iOS)
+import SwooshLocalLLM
+#endif
 
 @MainActor
 @Observable
@@ -20,6 +23,14 @@ final class ClientSession {
     private(set) var agentStatus: AgentStatusResponse?
     private(set) var runtimeConfig: RuntimeConfigResponse?
     private(set) var sessionID: String = ClientSession.defaultSessionID
+
+    /// User preference. When true and the daemon is unreachable, the
+    /// chat path falls through to the on-device LiteRT model.
+    /// Persisted via `UserDefaults` under `swoosh.localFallback`.
+    var localFallbackEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: "swoosh.localFallback") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "swoosh.localFallback") }
+    }
 
     enum HealthState: Sendable, Equatable {
         case unknown
@@ -34,13 +45,36 @@ final class ClientSession {
         return SwooshAPIClient(baseURL: host, token: TokenStore.load())
     }
 
-    /// Build the executor the chat surface actually calls. Today this is
-    /// always `RemoteKernelExecutor` (the Mac is the kernel host). When
-    /// the iOS-local kernel ships, this is where the routing logic lives
-    /// — pick `LocalKernelExecutor` when offline, remote when paired and
-    /// reachable.
+    /// Build the executor the chat surface actually calls. Layered:
+    ///   1. `RemoteKernelExecutor` hits `/api/agent/chat` on the Mac.
+    ///   2. `FallbackExecutor` (iOS only) falls through to the on-device
+    ///      LiteRT model when the Mac is unreachable AND the user has
+    ///      `localFallbackEnabled = true`.
+    ///   3. `CachedExecutor` persists every turn and queues sends that
+    ///      hit "everything offline" for later replay.
     func executor() -> (any SwooshExecutor)? {
-        client().map(RemoteKernelExecutor.init)
+        guard let client = client() else { return nil }
+        let remote = RemoteKernelExecutor(client: client)
+
+        #if os(iOS)
+        let routedRemote: any SwooshExecutor = MainActor.assumeIsolated {
+            FallbackExecutor(
+                remote: remote,
+                enableLocalFallback: localFallbackEnabled
+            )
+        }
+        #else
+        let routedRemote: any SwooshExecutor = remote
+        #endif
+
+        do {
+            return try CachedExecutor(inner: routedRemote, sessionID: sessionID)
+        } catch {
+            // App-support unavailable — fall back to raw routed remote
+            // so the user can still chat (no offline buffer, but no
+            // broken UI).
+            return routedRemote
+        }
     }
 
     var isPaired: Bool { host != nil && hasToken }

@@ -59,10 +59,17 @@ struct ScoutRunCommand: AsyncParsableCommand {
         let backend = loadCLIBackend()
         let existingMemories = await loadExistingMemorySummaries(backend: backend)
         let pipeline = ScoutPipeline(sources: sources)
+        let progressBar = CLIProgress(total: 0, label: "Scanning")
         let result = try await pipeline.run(
             depth: parsedDepth,
-            options: ScoutPipelineOptions(existingMemories: existingMemories)
-        ) { msg in print(msg) }
+            options: ScoutPipelineOptions(existingMemories: existingMemories),
+            log: { msg in print(msg) },
+            progress: { current, total, name in
+                if progressBar.total == 0 { progressBar.total = total }
+                progressBar.update(step: current, detail: name)
+            }
+        )
+        progressBar.finish(message: "Scanned \(result.sourcesScanned) source(s), \(result.recordsCollected) record(s)")
 
         guard let backend else {
             print("  ⚠ \(cliBackendUnsetMessage)")
@@ -232,12 +239,21 @@ struct MemoryRejectCommand: AsyncParsableCommand {
     var id: String
     @Option(name: .long, help: "Optional reason.")
     var reason: String?
+    @Flag(name: .long, help: "Skip confirmation prompt.")
+    var force = false
     func run() async throws {
         guard let backend = loadCLIBackend() else { print(cliBackendUnsetMessage); return }
         let memory = MemoryStore(backend: backend)
         let pending = try await memory.listPending()
         guard let match = pending.first(where: { $0.id.hasPrefix(id) }) else {
             print("No pending candidate matching '\(id)'"); return
+        }
+        if !force {
+            print("Reject candidate '\(match.text)'? [y/N] ", terminator: "")
+            guard let input = readLine()?.lowercased(), input == "y" || input == "yes" else {
+                print("Aborted.")
+                return
+            }
         }
         try await memory.reject(candidateID: match.id, reason: reason)
         print("✗ Rejected: \(match.text)")

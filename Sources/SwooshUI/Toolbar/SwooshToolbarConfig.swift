@@ -207,7 +207,7 @@ public struct SwooshToolbarConfig: Codable, Sendable {
     )
 
     static let persistPath: URL = {
-        let base = FileManager.default.homeDirectoryForCurrentUser
+        let base = swooshHomeDirectoryForCurrentUser()
             .appendingPathComponent(".swoosh", isDirectory: true)
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         return base.appendingPathComponent("toolbar.json")

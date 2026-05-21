@@ -326,7 +326,7 @@ public final class ThemeManager {
 
     /// Default theme.json location (`~/.swoosh/theme.json`).
     public static var defaultURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        swooshHomeDirectoryForCurrentUser()
             .appendingPathComponent(".swoosh", isDirectory: true)
             .appendingPathComponent("theme.json")
     }

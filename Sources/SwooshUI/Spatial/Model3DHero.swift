@@ -25,8 +25,8 @@ public struct SwooshModel3DHero: View {
 
     public var body: some View {
         Group {
-            #if canImport(RealityKit) && (os(iOS) || os(visionOS))
-            if #available(iOS 17.0, visionOS 1.0, *), let url {
+            #if canImport(RealityKit) && os(visionOS)
+            if #available(visionOS 1.0, *), let url {
                 Model3D(url: url) { phase in
                     switch phase {
                     case .empty:

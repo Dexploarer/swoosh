@@ -172,7 +172,7 @@ public struct HardwareDetector {
     }
 
     private func detectAvailableDisk() -> Double {
-        let home = FileManager.default.homeDirectoryForCurrentUser
+        let home = swooshHomeDirectoryForCurrentUser()
         guard let attrs = try? FileManager.default.attributesOfFileSystem(forPath: home.path),
               let freeSpace = attrs[.systemFreeSize] as? Int64 else {
             return 0
@@ -181,6 +181,7 @@ public struct HardwareDetector {
     }
 
     private func commandExists(_ name: String) -> Bool {
+        #if os(macOS)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         process.arguments = [name]
@@ -189,5 +190,9 @@ public struct HardwareDetector {
         try? process.run()
         process.waitUntilExit()
         return process.terminationStatus == 0
+        #else
+        // iOS sandbox has no shell; CLI tools are not reachable.
+        return false
+        #endif
     }
 }

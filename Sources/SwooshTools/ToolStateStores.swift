@@ -216,8 +216,8 @@ public actor FileScoutToolStore: ScoutToolStoring {
     private var snapshot = ScoutToolStoreSnapshot()
 
     public init(url: URL? = nil) {
-        self.url = url ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".swoosh/scout/tool-state.json")
+        self.url = url ?? defaultSwooshStateDirectory()
+            .appendingPathComponent("scout/tool-state.json")
     }
 
     public func listSources() throws -> [ScoutSourceInfo] {
@@ -332,8 +332,8 @@ public actor FileWorkflowToolStore: WorkflowToolStoring {
     private var drafts: [String: WorkflowDraft] = [:]
 
     public init(url: URL? = nil) {
-        self.url = url ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".swoosh/workflows/tool-drafts.json")
+        self.url = url ?? defaultSwooshStateDirectory()
+            .appendingPathComponent("workflows/tool-drafts.json")
     }
 
     public func saveDraft(_ draft: WorkflowDraft) throws {
@@ -422,4 +422,24 @@ extension JSONDecoder {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
+}
+
+// MARK: - Cross-platform state directory
+
+/// Returns the directory where Swoosh stores its per-tool state.
+///   • macOS — `~/.swoosh/` (matches the daemon's convention).
+///   • iOS   — the app sandbox's Application Support directory.
+private func defaultSwooshStateDirectory() -> URL {
+    #if os(macOS)
+    return FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".swoosh", isDirectory: true)
+    #else
+    let base = (try? FileManager.default.url(
+        for: .applicationSupportDirectory,
+        in: .userDomainMask,
+        appropriateFor: nil,
+        create: true
+    )) ?? URL(fileURLWithPath: NSTemporaryDirectory())
+    return base.appendingPathComponent("ai.swoosh.agent", isDirectory: true)
+    #endif
 }

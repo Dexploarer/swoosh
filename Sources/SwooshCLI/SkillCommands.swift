@@ -138,6 +138,9 @@ struct SkillsDeleteCommand: AsyncParsableCommand {
     @Argument(help: "Skill id.")
     var id: String
 
+    @Flag(name: .long, help: "Skip confirmation prompt.")
+    var force = false
+
     func run() async throws {
         let store = skillStore()
         guard let skill = try await store.get(id: id) else {
@@ -145,6 +148,13 @@ struct SkillsDeleteCommand: AsyncParsableCommand {
         }
         guard !skill.pinned else {
             throw ValidationError("Skill is pinned and cannot be deleted: \(id)")
+        }
+        if !force {
+            print("Delete skill '\(skill.title)' (\(id))? [y/N] ", terminator: "")
+            guard let input = readLine()?.lowercased(), input == "y" || input == "yes" else {
+                print("Aborted.")
+                return
+            }
         }
         try await store.delete(id: id)
         print("Deleted \(id).")

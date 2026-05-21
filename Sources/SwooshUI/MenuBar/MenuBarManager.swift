@@ -72,7 +72,7 @@ public final class MenuBarManager {
     // ── Persistence ──
 
     private static var configURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
+        swooshHomeDirectoryForCurrentUser()
             .appendingPathComponent(".swoosh")
             .appendingPathComponent(configFileName)
     }

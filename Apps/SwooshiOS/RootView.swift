@@ -11,6 +11,7 @@
 import SwiftUI
 
 enum DrawerDestination: Hashable {
+    case workspace
     case wallet
     case connections
     case settings
@@ -24,17 +25,17 @@ struct RootView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ChatScreen(
+            AgentRoot(
                 onOpenDrawer: { withAnimation(.easeOut(duration: 0.22)) { drawerOpen = true } }
             )
             .navigationDestination(for: DrawerDestination.self) { destination in
                 switch destination {
+                case .workspace:   WorkspaceScreen()
                 case .wallet:      WalletScreen().environment(wallet)
                 case .connections: ConnectionsScreen()
                 case .settings:    SettingsScreen()
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
         }
         .overlay(alignment: .leading) {
             if drawerOpen {

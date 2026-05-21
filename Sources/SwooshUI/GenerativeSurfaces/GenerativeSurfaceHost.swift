@@ -41,7 +41,7 @@ public final class GenerativeSurfaceHost {
 
     /// Handler for `UIAction`s emitted by rendered components.
     @MainActor
-    public func handle(_ action: UIAction, context: UIActionContext) {
+    public func handle(_ action: SwooshGenerativeUI.UIAction, context: SwooshGenerativeUI.UIActionContext) {
         switch action {
         case let .toolCall(name, arguments):
             onToolCall?(name, arguments)

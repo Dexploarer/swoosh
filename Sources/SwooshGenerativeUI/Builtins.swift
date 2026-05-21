@@ -248,20 +248,22 @@ struct UICardView: View {
     let handler: UIActionHandler
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: SwooshNeonTokens.Spacing.base) {
             if let title {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
             }
             if let subtitle {
                 Text(subtitle)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text2)
             }
             UIComponentRenderer(componentID: child, surface: surface, catalog: catalog, handler: handler)
         }
-        .padding(14)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(SwooshNeonTokens.Spacing.base + 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .neonTile(.cyan, state: .idle, shape: .card)
     }
 }
 

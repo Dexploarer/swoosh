@@ -109,6 +109,22 @@ targets:
         product: SwooshClient
       - package: Swoosh
         product: SwooshWallet
+      - package: Swoosh
+        product: SwooshUI
+      - package: Swoosh
+        product: SwooshGenerativeUI
+      - package: Swoosh
+        product: SwooshLocalLLM
+      - package: Swoosh
+        product: SwooshFoundation
+      - package: Swoosh
+        product: SwooshModels
+      - package: Swoosh
+        product: SwooshSTT
+      - package: Swoosh
+        product: SwooshVoiceProviders
+      - package: Swoosh
+        product: SwooshMusic
     info:
       path: Apps/SwooshiOS/Info.plist
       properties:
@@ -144,6 +160,13 @@ targets:
         NSFaceIDUsageDescription: >-
           Swoosh uses Face ID to unlock the wallet keys stored on this
           device. Your private keys never leave the iPhone.
+        # Voice mode capture (SFSpeechRecognizer + AVAudioEngine).
+        NSMicrophoneUsageDescription: >-
+          Swoosh listens to your voice and turns it into chat input.
+          Audio is processed on-device.
+        NSSpeechRecognitionUsageDescription: >-
+          Swoosh transcribes your spoken commands into text so you can
+          talk to the agent hands-free.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.swoosh.app.ios

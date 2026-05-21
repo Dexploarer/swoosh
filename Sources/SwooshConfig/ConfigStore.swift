@@ -11,7 +11,7 @@ public struct SwooshConfigStore: Sendable {
 
     public init(configDirectory: URL? = nil) {
         self.configDirectory = configDirectory ??
-            FileManager.default.homeDirectoryForCurrentUser.appending(path: ".swoosh")
+            swooshHomeDirectoryForCurrentUser().appending(path: ".swoosh")
     }
 
     public var configFile: URL { configDirectory.appending(path: "config.json") }
