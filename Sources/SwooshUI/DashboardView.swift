@@ -87,7 +87,7 @@ public struct DashboardView: View {
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("Swoosh")
+        .navigationTitle("Detour")
     }
 
     // MARK: - Detail

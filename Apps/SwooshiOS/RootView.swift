@@ -9,24 +9,33 @@
 // the drawer as a pushed destination.
 
 import SwiftUI
+import SwooshUI
 
 enum DrawerDestination: Hashable {
     case workspace
     case wallet
     case connections
     case settings
+    case mcpServers
 }
 
 struct RootView: View {
     @Environment(ClientSession.self) private var session
     @State private var wallet = WalletSession()
+    /// One AgentShellModel for the whole iOS app — hoisted above
+    /// NavigationStack so every destination (Workspace, etc.) inherits
+    /// it via the environment. Otherwise pushed views fatalError on
+    /// `@Environment(AgentShellModel.self)`.
+    @State private var shell = AgentShellModel()
     @State private var drawerOpen: Bool = false
     @State private var path = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $path) {
             AgentRoot(
-                onOpenDrawer: { withAnimation(.easeOut(duration: 0.22)) { drawerOpen = true } }
+                shell: shell,
+                onOpenDrawer: { withAnimation(.easeOut(duration: 0.22)) { drawerOpen = true } },
+                onNavigate: { destination in path.append(destination) }
             )
             .navigationDestination(for: DrawerDestination.self) { destination in
                 switch destination {
@@ -34,6 +43,7 @@ struct RootView: View {
                 case .wallet:      WalletScreen().environment(wallet)
                 case .connections: ConnectionsScreen()
                 case .settings:    SettingsScreen()
+                case .mcpServers:  MCPServersScreen()
                 }
             }
         }
@@ -51,6 +61,7 @@ struct RootView: View {
             }
         }
         .environment(wallet)
+        .environment(shell)
         .task { await wallet.reload() }
     }
 }

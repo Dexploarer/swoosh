@@ -105,7 +105,7 @@ public enum MenuBarPresetChoice: String, AppEnum {
 
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Menu Bar Preset")
     public static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
-        .swoosh:    "Swoosh",
+        .swoosh:    "Detour",
         .codexBar:  "CodexBar",
         .minimal:   "Minimal",
         .developer: "Developer",

@@ -84,7 +84,7 @@ struct SettingsScreen: View {
                 } label: {
                     IconRow(
                         tile: IconTile(systemName: "info.circle", tint: .gray),
-                        title: "About Swoosh"
+                        title: "About Detour"
                     )
                 }
             }
@@ -680,8 +680,8 @@ struct AboutScreen: View {
                 HStack(spacing: 12) {
                     IconTile(systemName: "sparkles", tint: .accentColor, size: 44, cornerRadius: 12)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Swoosh").font(.title3.weight(.semibold))
-                        Text("Thin client to swooshd")
+                        Text("Detour").font(.title3.weight(.semibold))
+                        Text("Built on Swoosh · Thin client to swooshd")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

@@ -77,7 +77,7 @@ struct SwooshApp: App {
         DesktopOverlayScene(shell: shell)
 
         // ── Full dashboard window ──
-        Window("Swoosh", id: "dashboard") {
+        Window("Detour", id: "dashboard") {
             DashboardView()
                 .environment(shell)
         }

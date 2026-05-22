@@ -335,7 +335,7 @@ private struct ChatTopBar: View {
             Spacer()
 
             VStack(spacing: 0) {
-                Text("Swoosh").font(.body.weight(.semibold))
+                Text("Detour").font(.body.weight(.semibold))
                 if let model {
                     Text(model)
                         .font(.caption2)

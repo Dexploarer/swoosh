@@ -65,15 +65,38 @@ public enum WalletChain: String, Codable, Sendable, CaseIterable, Hashable {
     public var isEVM: Bool { evmChainID != nil }
 
     /// Public RPC endpoint used by default. Production deployments should
-    /// override these with paid endpoints (Helius for Solana, Alchemy / public
-    /// node providers for EVM). Read paths only; we never push signed txs
-    /// without explicit per-account confirmation.
+    /// override these with paid endpoints (Helius for Solana, Alchemy /
+    /// public-node providers for EVM). Read paths only; we never push
+    /// signed txs without explicit per-account confirmation.
+    ///
+    /// Defaults favor PublicNode where possible — `api.mainnet-beta.solana.com`
+    /// and `eth.llamarpc.com` are both heavily rate-limited from consumer
+    /// IPs and were the source of phantom "RPC error" surfaces on first
+    /// account creation.
     public var defaultRPCURL: URL {
         switch self {
-        case .solana:   URL(string: "https://api.mainnet-beta.solana.com")!
-        case .ethereum: URL(string: "https://eth.llamarpc.com")!
-        case .base:     URL(string: "https://mainnet.base.org")!
-        case .bnb:      URL(string: "https://bsc-dataseed.binance.org")!
+        case .solana:   URL(string: "https://solana-rpc.publicnode.com")!
+        case .ethereum: URL(string: "https://ethereum-rpc.publicnode.com")!
+        case .base:     URL(string: "https://base-rpc.publicnode.com")!
+        case .bnb:      URL(string: "https://bsc-rpc.publicnode.com")!
+        }
+    }
+
+    /// Backup endpoints tried in order when `defaultRPCURL` fails. Keeps
+    /// the original chain-official endpoints around so we degrade rather
+    /// than fail outright if PublicNode is down.
+    public var fallbackRPCURLs: [URL] {
+        switch self {
+        case .solana:
+            return [URL(string: "https://api.mainnet-beta.solana.com")!]
+        case .ethereum:
+            return [URL(string: "https://eth.llamarpc.com")!,
+                    URL(string: "https://rpc.ankr.com/eth")!]
+        case .base:
+            return [URL(string: "https://mainnet.base.org")!]
+        case .bnb:
+            return [URL(string: "https://bsc-dataseed.binance.org")!,
+                    URL(string: "https://bsc-dataseed1.defibit.io")!]
         }
     }
 }

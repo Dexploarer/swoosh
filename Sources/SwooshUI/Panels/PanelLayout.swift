@@ -158,6 +158,17 @@ public final class PanelLayoutStore {
             return PanelLayout(surface: surface, panels: [
                 .init(kind: .agentShell),
             ])
+        case "ios":
+            // iPhone Workspace shows *complementary* surfaces — the chat
+            // itself already lives on the main screen, so the workspace
+            // is where the user reaches recent chats, provider status,
+            // skills, and wallet at a glance. No agentShell hero here.
+            return PanelLayout(surface: surface, panels: [
+                .init(kind: .recentChats),
+                .init(kind: .providerStatus),
+                .init(kind: .skills),
+                .init(kind: .wallet),
+            ])
         default:
             return PanelLayout(surface: surface, panels: [
                 .init(kind: .agentShell),

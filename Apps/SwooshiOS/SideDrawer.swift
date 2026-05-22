@@ -6,10 +6,12 @@
 // adjacent surfaces (Wallet, Connections, Settings).
 
 import SwiftUI
+import SwooshUI
 
 struct SideDrawer: View {
     @Environment(ClientSession.self) private var session
     @Environment(WalletSession.self) private var wallet
+    @Environment(AgentShellModel.self) private var shell
     @Binding var isOpen: Bool
     let onSelect: (DrawerDestination) -> Void
 
@@ -45,7 +47,10 @@ struct SideDrawer: View {
             }
             .frame(maxWidth: 320, maxHeight: .infinity, alignment: .leading)
             .background(.thinMaterial)
-            .ignoresSafeArea(edges: .vertical)
+            // Only extend material under the home indicator. Respecting
+            // the top safe area drops the "Detour" dropdown beneath the
+            // Dynamic Island so it isn't clipped or hard to tap.
+            .ignoresSafeArea(edges: .bottom)
         }
     }
 
@@ -53,8 +58,50 @@ struct SideDrawer: View {
 
     private var header: some View {
         HStack(alignment: .center) {
-            Text("Swoosh")
-                .font(.title2.weight(.semibold))
+            Menu {
+                Section {
+                    Button {
+                        shell.clearConversation()
+                        withAnimation(.easeOut(duration: 0.22)) { isOpen = false }
+                    } label: {
+                        Label("New Chat", systemImage: "square.and.pencil")
+                    }
+                    Button {
+                        onSelect(.connections)
+                    } label: {
+                        Label("Connections", systemImage: "slider.horizontal.3")
+                    }
+                    Button {
+                        onSelect(.mcpServers)
+                    } label: {
+                        Label("MCP Servers", systemImage: "puzzlepiece.extension")
+                    }
+                }
+                Section {
+                    Button {
+                        onSelect(.settings)
+                    } label: {
+                        Label("Settings", systemImage: "gear")
+                    }
+                }
+                Section {
+                    Text("Detour · Built on Swoosh")
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("Detour")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Image(systemName: "chevron.down")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+            .accessibilityLabel("Detour menu")
             Spacer()
             Button {
                 withAnimation(.easeOut(duration: 0.22)) { isOpen = false }
@@ -68,8 +115,8 @@ struct SideDrawer: View {
             .accessibilityLabel("Close drawer")
         }
         .padding(.horizontal, 18)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
+        .padding(.top, 22)
+        .padding(.bottom, 14)
     }
 
     private var footer: some View {

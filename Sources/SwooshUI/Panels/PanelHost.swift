@@ -97,37 +97,54 @@ public struct PanelHost: View {
 
     @State private var showingAddSheet = false
     @State private var density: PanelDensity = .cozy
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var hSize
+    private var isCompact: Bool { hSize == .compact }
+    #else
+    private var isCompact: Bool { false }
+    #endif
 
     // MARK: - Body
 
     public var body: some View {
         let layout = store.layout(for: surface)
-        let hero = layout.panels.first(where: { isHero($0) })
-        let grid = layout.panels.filter { !isHero($0) }
+        // On compact width (iPhone) no panel is treated as a hero — the
+        // 360pt min-height strip would push the rest of the workspace
+        // off-screen. Everything just flows in the grid.
+        let hero = isCompact ? nil : layout.panels.first(where: { isHero($0) })
+        let grid = layout.panels.filter { isCompact || !isHero($0) }
+        let pad: CGFloat = isCompact ? 12 : density.spacing + 4
+        let cardSpacing: CGFloat = isCompact ? 12 : density.spacing + 4
 
         GeometryReader { proxy in
             ScrollView {
-                VStack(spacing: density.spacing + 4) {
+                VStack(spacing: cardSpacing) {
                     if let hero {
                         heroStrip(hero, in: layout)
                     }
-                    adaptiveGrid(grid, width: proxy.size.width, in: layout)
+                    adaptiveGrid(grid, width: proxy.size.width, spacing: cardSpacing, in: layout)
                     if editing {
                         addPanelButton
                     }
                 }
-                .padding(density.spacing + 4)
+                .padding(pad)
                 .animation(.spring(duration: 0.25), value: density)
                 .animation(.spring(duration: 0.25), value: columnCount(for: proxy.size.width))
             }
             .background(SwooshNeonTokens.Canvas.bg)
         }
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                densityMenu
-            }
-            ToolbarItem(placement: .primaryAction) {
-                editButton
+            // On iPhone the parent screen owns the toolbar, so PanelHost
+            // only adds its density + edit buttons on regular-width
+            // surfaces. Otherwise two slider glyphs collide in the
+            // navigation bar with no clear ownership.
+            if !isCompact {
+                ToolbarItem(placement: .primaryAction) {
+                    densityMenu
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    editButton
+                }
             }
         }
         .sheet(isPresented: $showingAddSheet) {
@@ -135,6 +152,11 @@ public struct PanelHost: View {
                 store.addPanel(kind, to: surface)
                 showingAddSheet = false
             }
+        }
+        .onAppear {
+            // Compact surfaces look way better with the denser layout —
+            // generous padding doesn't fit on a 6.7" phone.
+            if isCompact, density != .compact { density = .compact }
         }
     }
 
@@ -150,13 +172,16 @@ public struct PanelHost: View {
     // MARK: - Adaptive grid
 
     @ViewBuilder
-    private func adaptiveGrid(_ panels: [PanelInstance], width: CGFloat, in layout: PanelLayout) -> some View {
+    private func adaptiveGrid(_ panels: [PanelInstance], width: CGFloat, spacing: CGFloat, in layout: PanelLayout) -> some View {
         let cols = columnCount(for: width)
-        let columns = Array(repeating: GridItem(.flexible(), spacing: density.spacing + 4), count: cols)
-        LazyVGrid(columns: columns, spacing: density.spacing + 4) {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: spacing), count: cols)
+        // Compact width gets a tighter card height so 3-4 panels fit on a
+        // single iPhone screen without a long scroll.
+        let heightScale: CGFloat = isCompact ? 0.55 : density.heightMultiplier
+        LazyVGrid(columns: columns, spacing: spacing) {
             ForEach(panels) { instance in
                 cardWithDnD(instance: instance, layout: layout)
-                    .frame(minHeight: instance.kind.preferredHeight * density.heightMultiplier)
+                    .frame(minHeight: instance.kind.preferredHeight * heightScale)
             }
         }
     }
@@ -346,7 +371,61 @@ struct AddPanelSheet: View {
     let onPick: (PanelKind) -> Void
     @Environment(\.dismiss) private var dismiss
 
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var hSize
+    private var isCompact: Bool { hSize == .compact }
+    #else
+    private var isCompact: Bool { false }
+    #endif
+
     var body: some View {
+        // On iPhone, present as a real bottom sheet — a wrapping
+        // NavigationStack gives a proper title bar with a Close button,
+        // and the grid adapts to a narrower minimum so two columns fit a
+        // 6.7" screen without horizontal overflow. On Mac, keep the
+        // existing flush popover styling.
+        Group {
+            if isCompact {
+                NavigationStack {
+                    sheetBody
+                        .navigationTitle("Add Panel")
+                        #if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+                        #endif
+                        .toolbar {
+                            #if os(iOS)
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Close") { dismiss() }
+                            }
+                            #endif
+                        }
+                }
+                #if os(iOS)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                #endif
+            } else {
+                desktopBody
+            }
+        }
+    }
+
+    /// iPhone content. No fixed minWidth/minHeight — the parent sheet
+    /// owns sizing via presentation detents.
+    @ViewBuilder
+    private var sheetBody: some View {
+        ScrollView {
+            gridContent
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+        }
+        .background(SwooshNeonTokens.Canvas.bg)
+    }
+
+    /// Mac content. Keeps the original flush styling, including the
+    /// minWidth/minHeight clamps that look right in a popover.
+    @ViewBuilder
+    private var desktopBody: some View {
         VStack(alignment: .leading, spacing: SwooshNeonTokens.Spacing.base + 2) {
             HStack {
                 Text("ADD PANEL")
@@ -360,43 +439,49 @@ struct AddPanelSheet: View {
                 }
                 .buttonStyle(.plain)
             }
-
             ScrollView {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 220), spacing: 10)],
-                    spacing: 10
-                ) {
-                    ForEach(PanelKind.allBuiltIn, id: \.self) { kind in
-                        Button {
-                            onPick(kind)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    Image(systemName: kind.systemImage)
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(kind.defaultAccent.color)
-                                    Spacer()
-                                }
-                                Text(kind.title)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                                Text(kind.blurb)
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(3)
-                            }
-                            .padding(SwooshNeonTokens.Spacing.base + 4)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .neonTile(kind.defaultAccent, state: .idle, shape: .card)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+                gridContent
             }
         }
         .padding(SwooshNeonTokens.Spacing.base * 2)
         .frame(minWidth: 540, minHeight: 560)
         .background(SwooshNeonTokens.Canvas.bg)
+    }
+
+    /// The card grid shared by both layouts. Adaptive minimum drops on
+    /// compact width so two cards fit per row instead of one giant card.
+    @ViewBuilder
+    private var gridContent: some View {
+        LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: isCompact ? 150 : 220), spacing: 10)],
+            spacing: 10
+        ) {
+            ForEach(PanelKind.allBuiltIn, id: \.self) { kind in
+                Button {
+                    onPick(kind)
+                } label: {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Image(systemName: kind.systemImage)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(kind.defaultAccent.color)
+                            Spacer()
+                        }
+                        Text(kind.title)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(SwooshNeonTokens.Canvas.text1)
+                        Text(kind.blurb)
+                            .font(.system(size: 11))
+                            .foregroundStyle(SwooshNeonTokens.Canvas.text2)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(3)
+                    }
+                    .padding(SwooshNeonTokens.Spacing.base + 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .neonTile(kind.defaultAccent, state: .idle, shape: .card)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 }

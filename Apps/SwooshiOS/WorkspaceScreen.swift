@@ -23,11 +23,18 @@ struct WorkspaceScreen: View {
         .navigationTitle("Workspace")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Single edit toggle for iPhone. PanelHost only adds its own
+            // toolbar items on regular-width screens, so this is the
+            // canonical "rearrange" affordance here.
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     withAnimation(.spring(duration: 0.2)) { editing.toggle() }
                 } label: {
-                    Image(systemName: editing ? "checkmark.circle.fill" : "slider.horizontal.3")
+                    Label(
+                        editing ? "Done" : "Edit",
+                        systemImage: editing ? "checkmark.circle.fill" : "square.grid.2x2"
+                    )
+                    .labelStyle(.titleAndIcon)
                 }
             }
         }

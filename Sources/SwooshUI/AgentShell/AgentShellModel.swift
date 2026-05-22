@@ -50,13 +50,14 @@ public struct AgentShellMessage: Identifiable, Sendable, Hashable {
 // MARK: - Shell mode
 // ═══════════════════════════════════════════════════════════════════
 
-/// Which Mac host the user is currently looking at. Affects density and
+/// Which host the user is currently looking at. Affects density and
 /// chrome, not behaviour — the same chat thread and surface host serve
-/// all three.
+/// every mode.
 public enum AgentShellMode: Sendable, CaseIterable {
-    case tray       // ~360pt popover from MenuBarExtra
-    case pill       // ~440×56 floating capsule (expands when answering)
-    case window     // ~900pt main window with sidebar
+    case tray       // ~360pt popover from MenuBarExtra (macOS)
+    case pill       // ~440×56 floating capsule (macOS)
+    case window     // ~900pt main window with sidebar (macOS dashboard)
+    case phone      // iPhone — fills width, respects safe areas, no minWidth clamp
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -187,7 +188,12 @@ public final class AgentShellModel {
 
     private static let defaultEcho: AgentSendHandler = { text, shell in
         // Placeholder until the kernel/daemon wire-up replaces `send`.
+        // Speaks in Detour's voice so the persona is consistent even
+        // before a real provider is connected.
         try? await Task.sleep(nanoseconds: 200_000_000)
-        shell.messages.append(.init(role: .agent, text: "echo: \(text)"))
+        shell.messages.append(.init(
+            role: .agent,
+            text: "Detour (placeholder): \(text)"
+        ))
     }
 }

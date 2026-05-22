@@ -30,12 +30,12 @@ public struct LocalDiagnosticProvider: ModelProvider, Sendable {
         let userQuery = request.messages.last(where: { $0.role == .user })?.content ?? ""
 
         var responseLines: [String] = []
-        responseLines.append("Swoosh is connected to the Mac daemon, but no model provider is configured yet.")
-        responseLines.append("This is the local diagnostic fallback, so I can only show what context would be sent to a real model.")
+        responseLines.append("Hi — I'm Detour, but I can't reason yet because no model provider is configured on this Mac.")
+        responseLines.append("You're seeing the local diagnostic fallback, which only reflects the prompt back to you.")
         responseLines.append("")
 
         if systemPrompt.contains("Approved Memories") {
-            responseLines.append("Approved context visible to the fallback:")
+            responseLines.append("Approved context visible to me:")
             let memLines = systemPrompt.components(separatedBy: "\n")
                 .filter { $0.hasPrefix("- [") }
             for memLine in memLines {
@@ -46,10 +46,12 @@ public struct LocalDiagnosticProvider: ModelProvider, Sendable {
         }
 
         responseLines.append("")
-        responseLines.append("Your message: \(userQuery)")
+        responseLines.append("You said: \(userQuery)")
         responseLines.append("")
-        responseLines.append("Configure a provider on the Mac to enable real chat:")
-        responseLines.append("swoosh provider auth openai --api-key <key>")
+        responseLines.append("To enable real replies, add a provider key on the Mac. For example:")
+        responseLines.append("  swoosh provider auth openai --api-key sk-…")
+        responseLines.append("  swoosh provider auth anthropic --api-key sk-ant-…")
+        responseLines.append("…then restart swooshd.")
 
         return ModelCompletionResponse(
             content: responseLines.joined(separator: "\n"),

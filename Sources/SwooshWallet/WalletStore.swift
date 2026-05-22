@@ -22,7 +22,7 @@ public actor WalletStore {
     private let keychain: KeychainKeyStore
     private let userDefaults: UserDefaults
     private var rpcOverrides: [WalletChain: URL] = [:]
-    private var rpcClients: [WalletChain: RPCClient] = [:]
+    private var rpcClients: [WalletChain: MultiEndpointRPC] = [:]
 
     public init(
         keychain: KeychainKeyStore = KeychainKeyStore(),
@@ -121,9 +121,13 @@ public actor WalletStore {
         rpcOverrides[chain] ?? chain.defaultRPCURL
     }
 
-    private func rpcClient(for chain: WalletChain) -> RPCClient {
+    private func rpcClient(for chain: WalletChain) -> MultiEndpointRPC {
         if let cached = rpcClients[chain] { return cached }
-        let client = RPCClient(url: rpcURL(for: chain))
+        let primary = rpcURL(for: chain)
+        // If the user has set an override, ignore the chain's fallback list —
+        // their endpoint is the source of truth.
+        let fallbacks = rpcOverrides[chain] == nil ? chain.fallbackRPCURLs : []
+        let client = MultiEndpointRPC(primary: primary, fallbacks: fallbacks)
         rpcClients[chain] = client
         return client
     }

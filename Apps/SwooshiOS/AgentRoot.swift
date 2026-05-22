@@ -13,13 +13,17 @@ import SwooshVoiceProviders
 
 struct AgentRoot: View {
     @Environment(ClientSession.self) private var session
-    @State private var shell = AgentShellModel()
+    let shell: AgentShellModel
     @State private var tts = TTSEngine()
     @State private var voice: VoiceMode? = nil
     @State private var wiredExecutor = false
     @State private var showVoicePill = false
 
     let onOpenDrawer: () -> Void
+    /// Push a drawer destination onto RootView's NavigationStack. Used by
+    /// the composer's `+` attachment menu so tapping Skills / MCP / etc.
+    /// actually goes somewhere.
+    let onNavigate: (DrawerDestination) -> Void
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -45,8 +49,14 @@ struct AgentRoot: View {
     // MARK: - Shell
 
     private var shellSurface: some View {
-        AgentShellView(shell: shell, mode: .window)
-            .toolbar(.hidden, for: .navigationBar)
+        AgentShellView(
+            shell: shell,
+            mode: .phone,
+            attachmentActions: AttachmentActions(
+                openSkills: { onNavigate(.connections) },
+                openMCP:    { onNavigate(.mcpServers) }
+            )
+        )
     }
 
     @ToolbarContentBuilder
@@ -76,6 +86,16 @@ struct AgentRoot: View {
             voice = VoiceMode(shell: shell, tts: tts)
         }
         guard let executor = session.executor() else {
+            // Not paired — overwrite the SwooshUI default-echo placeholder
+            // with a Detour-voiced explanation so the user sees a real
+            // diagnostic instead of "Detour (placeholder): hi".
+            shell.send = { @MainActor _, shellModel in
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                shellModel.messages.append(.init(
+                    role: .agent,
+                    text: "I'm not connected to your Mac yet. Open the side drawer → Settings → Pair with swooshd, paste the bearer token, then come back here to chat."
+                ))
+            }
             return
         }
         // Wrap shell.send: persist + route to executor + speak through

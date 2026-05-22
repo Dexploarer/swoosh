@@ -17,7 +17,7 @@ public enum MenuBarPreset: String, CaseIterable, Sendable, Codable, Identifiable
 
     public var displayName: String {
         switch self {
-        case .swoosh:    return "Swoosh"
+        case .swoosh:    return "Detour"
         case .codexBar:  return "CodexBar"
         case .minimal:   return "Minimal"
         case .developer: return "Developer"
@@ -29,7 +29,7 @@ public enum MenuBarPreset: String, CaseIterable, Sendable, Codable, Identifiable
 
     public var description: String {
         switch self {
-        case .swoosh:    return "Full command center: providers, agents, board, approvals, and workflows"
+        case .swoosh:    return "Full Detour command center: providers, agents, board, approvals, and workflows"
         case .codexBar:  return "Provider usage meters, cost tracking, and reset countdowns"
         case .minimal:   return "Clean and quiet — just a status dot and quick actions"
         case .developer: return "Focused on code: providers, board cards, workflows, and MCP"
@@ -55,10 +55,11 @@ public enum MenuBarPreset: String, CaseIterable, Sendable, Codable, Identifiable
     // MARK: - Preset configurations
     // ═══════════════════════════════════════════════════════════════
 
-    /// Full Swoosh experience
+    /// Full Detour experience (preset key stays `.swoosh` for back-compat
+    /// with stored user layouts; only the user-facing name is rebranded).
     private static var swooshConfig: MenuBarConfiguration {
         MenuBarConfiguration(
-            presetName: "Swoosh",
+            presetName: "Detour",
             iconMode: .swooshLogo,
             popoverWidth: 400,
             popoverMaxHeight: 700,

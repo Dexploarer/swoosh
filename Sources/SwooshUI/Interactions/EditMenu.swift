@@ -23,7 +23,7 @@ public struct SwooshEditCommands: Commands {
             .keyboardShortcut("k", modifiers: [.command, .shift])
         }
 
-        CommandMenu("Swoosh") {
+        CommandMenu("Detour") {
             Button("New Chat") {
                 NotificationCenter.default.post(name: .swooshNewChat, object: nil)
             }

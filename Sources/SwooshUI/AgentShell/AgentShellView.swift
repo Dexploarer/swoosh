@@ -26,17 +26,27 @@ public struct AgentShellView: View {
     @Bindable public var shell: AgentShellModel
     public let mode: AgentShellMode
 
-    /// Catalog slice for the model picker. Defaults to OpenAI's lineup.
+    /// Catalog slice for the model picker. Defaults to **every wired
+    /// provider** — OpenAI, Anthropic, Google, xAI, DeepSeek, Mistral,
+    /// Meta. The picker groups them by provider in the sheet so users
+    /// can see what's available everywhere, not just the OpenAI lineup.
     public let modelCatalog: [CloudModelEntry]
+
+    /// Callbacks the composer's "+" attachment menu invokes. Host-supplied;
+    /// the defaults are no-ops so the sheet still renders when a host
+    /// hasn't wired a given capability.
+    public let attachmentActions: AttachmentActions
 
     public init(
         shell: AgentShellModel,
         mode: AgentShellMode,
-        modelCatalog: [CloudModelEntry] = CloudCatalog.openAI
+        modelCatalog: [CloudModelEntry] = CloudCatalog.all,
+        attachmentActions: AttachmentActions = AttachmentActions()
     ) {
         self.shell = shell
         self.mode = mode
         self.modelCatalog = modelCatalog
+        self.attachmentActions = attachmentActions
     }
 
     /// Animation scratch for the thinking row's three dots.
@@ -79,10 +89,7 @@ public struct AgentShellView: View {
             inputRow
         }
         .background(SwooshNeonTokens.Canvas.bg)
-        .frame(
-            minWidth: minWidth,
-            minHeight: minHeight
-        )
+        .modifier(SizeConstraints(mode: mode))
     }
 
     // MARK: - Chat thread
@@ -109,7 +116,7 @@ public struct AgentShellView: View {
             EmptyStateDot()
                 .padding(.top, 4)
             VStack(alignment: .leading, spacing: 4) {
-                Text("SWOOSH")
+                Text("DETOUR")
                     .font(.system(size: 10, weight: .semibold))
                     .tracking(1.2)
                     .foregroundStyle(SwooshNeonTokens.Canvas.text3)
@@ -139,7 +146,7 @@ public struct AgentShellView: View {
                 // bubble — keeps the channel calm and lets the eye
                 // settle on content rather than chrome.
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("AGENT")
+                    Text("DETOUR")
                         .font(.system(size: 9, weight: .semibold))
                         .tracking(1.2)
                         .foregroundStyle(SwooshNeonTokens.Canvas.text3)
@@ -225,11 +232,21 @@ public struct AgentShellView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Main input row
-            HStack(spacing: SwooshNeonTokens.Spacing.base) {
-                modelPicker
+            // Main input row.
+            // [+] opens the attachment sheet (Files / Photos / Skills /
+            // MCP). [⚙] opens the unified picker (Brain / Listen / Speak /
+            // Music). Both are tiny 36×36 glyphs that defer their content
+            // to bottom sheets so the composer stays narrow.
+            HStack(spacing: SwooshNeonTokens.Spacing.micro + 2) {
+                AttachmentMenu(accent: .cyan, actions: attachmentActions)
+                unifiedPicker
                 inputField
-                micButton
+                // On iPhone the host (AgentRoot toolbar + bottom voice
+                // pill) owns the mic affordance; rendering one here too
+                // would mean two mics on screen at once.
+                if mode != .phone {
+                    micButton
+                }
             }
         }
         .padding(.horizontal, SwooshNeonTokens.Spacing.base + 2)
@@ -242,8 +259,8 @@ public struct AgentShellView: View {
         .background(SwooshNeonTokens.Canvas.bg)
     }
 
-    private var modelPicker: some View {
-        ModelPicker(
+    private var unifiedPicker: some View {
+        UnifiedAgentPicker(
             models: modelCatalog,
             selectedModelID: $shell.selectedModelID,
             effort: $shell.selectedEffort
@@ -295,22 +312,30 @@ public struct AgentShellView: View {
         switch mode {
         case .tray, .pill: return 13
         case .window:      return 14
+        case .phone:       return 15
         }
     }
+}
 
-    private var minWidth: CGFloat {
-        switch mode {
-        case .tray:   return 360
-        case .pill:   return 440
-        case .window: return 720
-        }
-    }
+// MARK: - Per-mode size constraints
 
-    private var minHeight: CGFloat {
+/// iPhone needs `.frame(maxWidth: .infinity, maxHeight: .infinity)` (no
+/// minWidth/minHeight clamps) so it fills whatever the navigation stack
+/// gives it. The Mac modes get specific minimums so their windows /
+/// popovers don't collapse below usable sizes.
+private struct SizeConstraints: ViewModifier {
+    let mode: AgentShellMode
+
+    func body(content: Content) -> some View {
         switch mode {
-        case .tray:   return 320
-        case .pill:   return 56   // collapsed pill is just the input row
-        case .window: return 560
+        case .phone:
+            content.frame(maxWidth: .infinity, maxHeight: .infinity)
+        case .tray:
+            content.frame(minWidth: 360, minHeight: 320)
+        case .pill:
+            content.frame(minWidth: 440, minHeight: 56)
+        case .window:
+            content.frame(minWidth: 720, minHeight: 560)
         }
     }
 }

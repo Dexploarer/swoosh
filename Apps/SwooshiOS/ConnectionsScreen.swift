@@ -50,11 +50,18 @@ struct ConnectionsScreen: View {
             } description: {
                 Text(errorText)
             } actions: {
-                Button("Retry") { Task { await loadAll() } }
-                    .buttonStyle(.borderedProminent)
+                VStack(spacing: 10) {
+                    Button("Retry") { Task { await loadAll() } }
+                        .buttonStyle(.borderedProminent)
+                    NavigationLink(value: DrawerDestination.settings) {
+                        Label("Open Pairing", systemImage: "gear")
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         } else {
             List {
+                daemonStatusSection
                 modelsSection
                 channelsSection
                 knowledgeSection
@@ -96,11 +103,105 @@ struct ConnectionsScreen: View {
         ContentUnavailableView {
             Label("Pair this iPhone first", systemImage: "link.badge.plus")
         } description: {
-            Text("Open Settings → Pairing and paste the bearer token from swooshd to load Connections.")
+            Text("Connections needs the daemon (`swooshd`) to be running on your Mac and this iPhone paired with its bearer token.")
+        } actions: {
+            VStack(spacing: 10) {
+                NavigationLink(value: DrawerDestination.settings) {
+                    Label("Open Pairing", systemImage: "gear")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: 240)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text(pairingHowTo)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
         }
     }
 
+    private var pairingHowTo: String {
+        """
+        On your Mac:
+          cd /Users/home/swoosh
+          SWOOSH_HOST=0.0.0.0 swift run swooshd
+        Then copy the token from ~/.swoosh/api_token into iPhone Settings.
+        """
+    }
+
     // MARK: - Sections
+
+    /// Top-of-screen "daemon is reachable" banner. Without it, users
+    /// staring at the empty-by-default Models / Skills / Memories sections
+    /// concluded "connections don't ever connect" — there was no signal
+    /// distinguishing "daemon unreachable" from "daemon reachable but
+    /// nothing configured yet."
+    private var daemonStatusSection: some View {
+        Section {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(daemonStatusColor)
+                    .frame(width: 10, height: 10)
+                    .shadow(color: daemonStatusColor.opacity(0.6), radius: 4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(daemonStatusTitle)
+                        .font(.body.weight(.semibold))
+                    if let host = session.host {
+                        Text(host.host ?? host.absoluteString)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+                if let active = providers?.activeProviderID {
+                    Text(active)
+                        .font(.caption2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.secondary.opacity(0.15), in: .capsule)
+                }
+            }
+            if needsProviderKey {
+                NavigationLink(value: DrawerDestination.settings) {
+                    Label("Add a provider key on the Mac", systemImage: "key")
+                        .foregroundStyle(.tint)
+                }
+            }
+        } header: {
+            Text("Daemon")
+        } footer: {
+            if needsProviderKey {
+                Text("swooshd is reachable, but only the local diagnostic fallback is active. Real replies need a cloud API key. On the Mac: `swoosh provider auth openai --api-key sk-…` then restart swooshd.")
+            } else if let active = providers?.activeProviderID {
+                Text("Routing to \(providerName(id: active, in: providers!)).")
+            }
+        }
+    }
+
+    private var daemonStatusColor: Color {
+        switch session.lastHealth {
+        case .ok:          return .green
+        case .unreachable: return .red
+        case .unknown:     return .gray
+        }
+    }
+
+    private var daemonStatusTitle: String {
+        switch session.lastHealth {
+        case .ok:          return "Connected to swooshd"
+        case .unreachable: return "swooshd unreachable"
+        case .unknown:     return "swooshd status pending…"
+        }
+    }
+
+    private var needsProviderKey: Bool {
+        guard let providers else { return false }
+        return providers.activeProviderID == "local-diagnostic"
+    }
 
     private var modelsSection: some View {
         Section {
@@ -152,6 +253,15 @@ struct ConnectionsScreen: View {
                     detail: memoryCaption
                 )
             }
+            NavigationLink {
+                MCPServersScreen()
+            } label: {
+                IconRow(
+                    tile: IconTile(systemName: "puzzlepiece.extension.fill", tint: .cyan),
+                    title: "MCP Servers",
+                    detail: mcpServersCaption
+                )
+            }
         }
     }
 
@@ -193,6 +303,13 @@ struct ConnectionsScreen: View {
     }
 
     // MARK: - Captions
+
+    private var mcpServersCaption: String {
+        let count = MCPServerStore.shared.servers.count
+        if count == 0 { return "Add a custom server or pick a template" }
+        let enabled = MCPServerStore.shared.servers.filter(\.enabled).count
+        return "\(enabled)/\(count) enabled"
+    }
 
     private var skillsCaption: String {
         guard let count = skills?.skills.count else { return "Loading…" }
@@ -237,28 +354,62 @@ struct ConnectionsScreen: View {
                 hasLoadedOnce = true
             }
         }
-        do {
-            let loadedProviders = try await client.providers()
-            let loadedSkills = try await client.skills()
-            let loadedMemories = try await client.memories()
-            let loadedRecords = try await client.records()
-            let loadedMedia = try await client.mediaGallery()
-            let loadedAdapters = try await client.chatAdapters()
-            withAnimation(.easeOut(duration: 0.22)) {
-                providers = loadedProviders
-                skills = loadedSkills
-                memories = loadedMemories
-                records = loadedRecords
-                media = loadedMedia
-                chatAdapters = loadedAdapters
-            }
-            await session.refresh()
-        } catch {
-            withAnimation(.easeOut(duration: 0.22)) {
-                errorText = error.localizedDescription
-            }
-            errorFeedback &+= 1
+
+        // Run every endpoint in parallel and collect per-endpoint results.
+        // The old version awaited each call serially with `try`, so a
+        // single 404 / network blip killed everything — the user saw a
+        // generic "Couldn't reach swooshd" even when 5 of 6 endpoints
+        // worked. Now individual failures degrade gracefully and we only
+        // surface the *first* error encountered as a banner.
+        async let providersR  = result { try await client.providers() }
+        async let skillsR     = result { try await client.skills() }
+        async let memoriesR   = result { try await client.memories() }
+        async let recordsR    = result { try await client.records() }
+        async let mediaR      = result { try await client.mediaGallery() }
+        async let adaptersR   = result { try await client.chatAdapters() }
+
+        let (p, s, m, r, md, a) = await (providersR, skillsR, memoriesR, recordsR, mediaR, adaptersR)
+
+        var firstError: Error?
+        withAnimation(.easeOut(duration: 0.22)) {
+            if case .success(let v) = p { providers = v }    else if case .failure(let e) = p, firstError == nil { firstError = e }
+            if case .success(let v) = s { skills = v }       else if case .failure(let e) = s, firstError == nil { firstError = e }
+            if case .success(let v) = m { memories = v }     else if case .failure(let e) = m, firstError == nil { firstError = e }
+            if case .success(let v) = r { records = v }      else if case .failure(let e) = r, firstError == nil { firstError = e }
+            if case .success(let v) = md { media = v }       else if case .failure(let e) = md, firstError == nil { firstError = e }
+            if case .success(let v) = a { chatAdapters = v } else if case .failure(let e) = a, firstError == nil { firstError = e }
+
+            errorText = firstError.map { humanizeNetworkError($0) }
         }
+        if firstError != nil { errorFeedback &+= 1 }
+        await session.refresh()
+    }
+
+    /// Tiny `Result` helper so we can `async let` six fallible calls and
+    /// inspect each one independently.
+    private func result<T>(_ work: @Sendable () async throws -> T) async -> Result<T, Error> {
+        do { return .success(try await work()) }
+        catch { return .failure(error) }
+    }
+
+    /// Turn URLSession noise into something a person can act on.
+    private func humanizeNetworkError(_ error: Error) -> String {
+        let raw = error.localizedDescription
+        if let url = error as? URLError {
+            switch url.code {
+            case .cannotConnectToHost, .cannotFindHost, .networkConnectionLost:
+                return "Can't reach swooshd. Is `swift run swooshd` running on your Mac and on the same Wi-Fi as this iPhone?"
+            case .timedOut:
+                return "Timed out reaching swooshd. Check that the host URL in Settings → Pairing matches the Mac's IP."
+            case .userAuthenticationRequired:
+                return "Bearer token rejected. Re-copy `~/.swoosh/api_token` from the Mac into Settings → Pairing."
+            case .notConnectedToInternet:
+                return "This iPhone isn't on a network."
+            default:
+                return "Network error (\(url.code.rawValue)). \(raw)"
+            }
+        }
+        return raw
     }
 }
 
