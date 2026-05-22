@@ -53,8 +53,15 @@ public class SwooshDispatchTool: Tool {
             return ["error": "No Swoosh dispatch handler registered."]
         }
         do {
-            let result = try await dispatch(name, args)
-            return ["result": result]
+            let jsonString = try await dispatch(name, args)
+            // Dispatcher returns a JSON-serialized string. Parse it so the
+            // model receives a structured object — otherwise the response
+            // arrives as a string-of-JSON and the model has to unwrap it.
+            if let data = jsonString.data(using: .utf8),
+               let parsed = try? JSONSerialization.jsonObject(with: data) {
+                return parsed
+            }
+            return ["result": jsonString]
         } catch {
             return ["error": String(describing: error)]
         }

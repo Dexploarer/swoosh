@@ -127,7 +127,30 @@ targets:
       - package: Swoosh
         product: SwooshVoiceProviders
       - package: Swoosh
+        product: SwooshLocalVoice
+      - package: Swoosh
         product: SwooshMusic
+      - package: Swoosh
+        product: SwooshVision
+      - package: Swoosh
+        product: SwooshTranslation
+      - package: Swoosh
+        product: SwooshEmbeddings
+      - package: Swoosh
+        product: SwooshImageGen
+      - package: Swoosh
+        product: SwooshCapabilities
+    entitlements:
+      path: Apps/SwooshiOS/Swoosh.iOS.entitlements
+      properties:
+        # Raises the per-process address-space limit so the 3.65 GB
+        # Gemma 4 E4B `.litertlm` model can be mapped on devices with
+        # 6 GB+ RAM. Without this, large local models are restricted
+        # to the standard ~2 GB iOS budget and fail to load.
+        com.apple.developer.kernel.extended-virtual-addressing: true
+        # Companion to the above — increases the jetsam memory limit
+        # so inference doesn't OOM-kill mid-decode on supported devices.
+        com.apple.developer.kernel.increased-memory-limit: true
     info:
       path: Apps/SwooshiOS/Info.plist
       properties:

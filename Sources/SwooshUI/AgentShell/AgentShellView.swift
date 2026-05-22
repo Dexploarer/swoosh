@@ -145,10 +145,28 @@ public struct AgentShellView: View {
                 // bubble — keeps the channel calm and lets the eye
                 // settle on content rather than chrome.
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DETOUR")
-                        .font(.system(size: 9, weight: .semibold))
-                        .tracking(1.2)
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+                    HStack(spacing: 6) {
+                        Text("DETOUR")
+                            .font(.system(size: 9, weight: .semibold))
+                            .tracking(1.2)
+                            .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+                        if let local = msg.localModelName {
+                            HStack(spacing: 3) {
+                                Image(systemName: "memorychip")
+                                    .font(.system(size: 8, weight: .semibold))
+                                Text("LOCAL · \(local.uppercased())")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .tracking(0.8)
+                            }
+                            .foregroundStyle(Color.cyan)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule().fill(Color.cyan.opacity(0.12))
+                            )
+                            .accessibilityLabel("Served by local model \(local)")
+                        }
+                    }
                     Text(msg.text)
                         .font(.system(size: bubbleFontSize))
                         .foregroundStyle(SwooshNeonTokens.Canvas.text1)

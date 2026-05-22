@@ -23,6 +23,7 @@ public actor LiteRTEngineWrapper {
     private var engine: Engine?
     private var conversation: Conversation?
     private var loadedModelPath: String?
+    private var loadedToolsSignature: String?
 
     public init() {}
 
@@ -46,7 +47,10 @@ public actor LiteRTEngineWrapper {
         backend: Backend = .cpu(),
         tools: [Tool.Type] = []
     ) async throws {
-        if loadedModelPath == modelPath.path, engine != nil, !tools.isEmpty == false {
+        let signature = tools.map { String(describing: $0) }.sorted().joined(separator: ",")
+        if loadedModelPath == modelPath.path,
+           engine != nil,
+           loadedToolsSignature == signature {
             return
         }
         try await unload()
@@ -62,6 +66,7 @@ public actor LiteRTEngineWrapper {
             self.engine = engine
             self.conversation = conv
             self.loadedModelPath = modelPath.path
+            self.loadedToolsSignature = signature
             loadState = .ready
         } catch {
             loadState = .failed("\(error)")
@@ -73,6 +78,7 @@ public actor LiteRTEngineWrapper {
         engine = nil
         conversation = nil
         loadedModelPath = nil
+        loadedToolsSignature = nil
         loadState = .unloaded
     }
 

@@ -41,6 +41,8 @@ struct VoicePickerScreen: View {
             whisperDownloadsSection
             ttsSection
             cartesiaVoiceSection
+            LocalVoiceCatalogSection()
+            ClonedVoicesSection()
             musicSection
             cloudKeysSection
         }
@@ -152,6 +154,7 @@ struct VoicePickerScreen: View {
         Section {
             Picker("Voice", selection: $ttsEngine) {
                 Text("Apple voices (system)").tag("system")
+                LocalVoicePickerOptions()
                 Text("ElevenLabs").tag("elevenlabs")
                 Text("OpenAI TTS").tag("openai-tts")
                 Text("Cartesia Sonic").tag("cartesia")

@@ -114,6 +114,15 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case mcpRead                  // list configured servers + their discovered tools
     case mcpExecute               // call a discovered MCP tool (untrusted by default; high-risk gated)
 
+    // ── Media generation ──────────────────────────────────────────
+    // Generative-media privileges. Distinct from tool/file writes so a
+    // user can grant chat-with-images without granting shell access.
+    // Cloud-backed providers also need `networkAccess`; the local image
+    // path (Apple Image Playground) needs only `imageGenerate`.
+    case imageGenerate            // Text-to-image (local or cloud)
+    case videoGenerate            // Text-to-video (cloud only today)
+    case threeDGenerate           // Text/image-to-3D (cloud only today)
+
     // ── Plugins ───────────────────────────────────────────────────
     // Plugin host admin permissions. These gate *plugin lifecycle* —
     // install / uninstall / enable / disable — and are humanOnly: the

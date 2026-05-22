@@ -1,5 +1,23 @@
 {
-  "$comment": "Swoosh project-local settings. Extends ~/.claude/settings.json (which already auto-allows Bash/Read/Glob/Grep). Adds project-specific allows for build tools and deny rules for paths that would destroy local agent state.",
+  "$comment": "Swoosh project-local settings. Extends ~/.claude/settings.json (which already auto-allows Bash/Read/Glob/Grep). Adds project-specific allows for build tools, deny rules for paths that would destroy local agent state, and three hooks: PreToolUse safety-banner (non-blocking reminders on sensitive files) + loc-guard (warns at 350 LOC, blocks at >400 per CLAUDE.md convention), and UserPromptSubmit prompt-enhancer (Haiku-powered context-aware rewrite, skips slash commands / short / long prompts; toggle off with PROMPT_ENHANCER=off).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/safety-banner.sh" },
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/loc-guard.sh" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/prompt-enhancer.sh", "timeout": 65 }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(swift build*)",

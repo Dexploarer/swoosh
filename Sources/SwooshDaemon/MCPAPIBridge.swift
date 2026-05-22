@@ -69,6 +69,7 @@ extension SwooshDaemon {
         }
         let transport = try makeTransport(request)
         let trust = try parseTrust(request.trustLevel)
+        let wantsEnabled = request.enabled ?? false
         let profile = MCPServerProfile(
             id: trimmedID,
             name: request.name.isEmpty ? trimmedID : request.name,
@@ -76,15 +77,27 @@ extension SwooshDaemon {
             transport: transport,
             state: .configured,
             trustLevel: trust,
-            enabled: request.enabled ?? false
+            enabled: wantsEnabled
         )
         do {
             try await registry.addServer(profile)
         } catch {
             throw APIError.badRequest("could not add MCP server: \(error.localizedDescription)")
         }
-        let summary = await mcpServerRuntimeSummary(profile, registry: registry)
-        return MCPServerMutationResponse(server: summary, message: "MCP server registered.")
+        // If the caller asked for enabled=true, follow through with a connect.
+        // Without this, the profile stores enabled=true but no transport
+        // is brought up and no tools are discovered — silently no-op.
+        if wantsEnabled {
+            do {
+                try await registry.enableServer(trimmedID)
+            } catch {
+                throw APIError.badRequest("MCP server registered but could not enable: \(error.localizedDescription)")
+            }
+        }
+        let stored = await registry.getServer(trimmedID) ?? profile
+        let summary = await mcpServerRuntimeSummary(stored, registry: registry)
+        let message = wantsEnabled ? "MCP server registered and enabled." : "MCP server registered."
+        return MCPServerMutationResponse(server: summary, message: message)
     }
 
     static func removeMCPServerResponse(

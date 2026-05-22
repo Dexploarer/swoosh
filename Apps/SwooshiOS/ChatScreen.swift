@@ -14,6 +14,9 @@
 
 import SwiftUI
 import SwooshClient
+#if os(iOS)
+import SwooshLocalLLM
+#endif
 
 private let suggestedPrompts: [String] = [
     "Summarize what I asked you last week",
@@ -289,8 +292,13 @@ struct ChatScreen: View {
             let response = try await executor.run(
                 ChatRequest(sessionID: session.sessionID, input: text)
             )
+            let localName = localModelTag(for: response.modelUsed)
             withAnimation(.easeOut(duration: 0.22)) {
-                messages.append(ChatBubble(role: .agent, text: response.message))
+                messages.append(ChatBubble(
+                    role: .agent,
+                    text: response.message,
+                    localModelName: localName
+                ))
             }
             lastSentText = nil
         } catch {
@@ -299,6 +307,19 @@ struct ChatScreen: View {
             }
             errorFeedback &+= 1   // haptic: send failed
         }
+    }
+
+    /// Returns the on-device model display name when the daemon's
+    /// `modelUsed` field matches a known LiteRT catalog ID — drives the
+    /// in-chat "Local · …" badge so the user can tell when fallback served.
+    private func localModelTag(for modelUsed: String) -> String? {
+        #if os(iOS)
+        return LiteRTModelCatalog.all
+            .first(where: { $0.id == modelUsed })?
+            .displayName
+        #else
+        return nil
+        #endif
     }
 
     private func newChat() {
@@ -383,13 +404,34 @@ private struct ChatBubbleRow: View {
                     )
                     .foregroundStyle(.primary)
             case .agent:
-                Text(message.text)
-                    .padding(.horizontal, 4)
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 4) {
+                    if let local = message.localModelName {
+                        localBadge(name: local)
+                    }
+                    Text(message.text)
+                        .padding(.horizontal, 4)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .padding(.horizontal, 14)
+    }
+
+    private func localBadge(name: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "memorychip")
+            Text("Local · \(name)")
+        }
+        .font(.caption2.weight(.medium))
+        .foregroundStyle(.cyan)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            Capsule().fill(Color.cyan.opacity(0.12))
+        )
+        .padding(.horizontal, 4)
+        .accessibilityLabel("Served by local model \(name)")
     }
 }
 
@@ -455,11 +497,20 @@ struct ChatBubble: Identifiable, Equatable, Sendable {
     let id: String
     let role: Role
     let text: String
+    /// Non-nil when this turn was served by the on-device LiteRT model
+    /// rather than the Mac daemon. Drives the "Local · …" badge.
+    let localModelName: String?
 
-    init(id: String = UUID().uuidString, role: Role, text: String) {
+    init(
+        id: String = UUID().uuidString,
+        role: Role,
+        text: String,
+        localModelName: String? = nil
+    ) {
         self.id = id
         self.role = role
         self.text = text
+        self.localModelName = localModelName
     }
 
     init?(_ message: TranscriptMessage) {
