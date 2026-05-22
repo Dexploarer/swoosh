@@ -77,7 +77,7 @@ struct ConfigStoreInitializationTests {
     @Test("ConfigStore is Sendable")
     func isSendable() {
         let _: any Sendable.Type = SwooshConfigStore.self
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 

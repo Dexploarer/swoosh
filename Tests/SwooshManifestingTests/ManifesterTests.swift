@@ -35,6 +35,10 @@ actor MockManifestationStore: ManifestationStoring {
     func mostRecentCompleted() async throws -> Manifestation? {
         try await listRecent(limit: .max).first { $0.status == .completed }
     }
+
+    func delete(id: String) async throws {
+        manifestations.removeValue(forKey: id)
+    }
 }
 
 actor MockAuditSource: ManifestationAuditSource {
@@ -146,7 +150,8 @@ struct ManifesterInitializationTests {
         let store = MockManifestationStore()
         let manifester = Manifester(store: store)
 
-        #expect(manifester != nil)
+        _ = manifester
+        #expect(Bool(true))
     }
 
     @Test("Manifester initializes with custom audit source")
@@ -155,7 +160,8 @@ struct ManifesterInitializationTests {
         let auditSource = MockAuditSource()
         let manifester = Manifester(store: store, auditSource: auditSource)
 
-        #expect(manifester != nil)
+        _ = manifester
+        #expect(Bool(true))
     }
 
     @Test("Manifester initializes with custom miner")
@@ -172,7 +178,8 @@ struct ManifesterInitializationTests {
         }
 
         let manifester = Manifester(store: store, miner: customMiner)
-        #expect(manifester != nil)
+        _ = manifester
+        #expect(Bool(true))
     }
 
     @Test("Manifester uses empty audit source by default")
@@ -596,7 +603,7 @@ struct ManifesterPersistenceTests {
         new.finishedAt = Date(timeIntervalSince1970: 2000)
         try await store.save(new)
 
-        let manifester = Manifester(store: store)
+        _ = Manifester(store: store)
         let mostRecent = try await store.mostRecentCompleted()
 
         #expect(mostRecent?.triggerReason == "new")

@@ -36,7 +36,7 @@ struct GoalToolDependenciesTests {
         let deps = GoalToolDependencies(store: store)
 
         let _: any Sendable = deps
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 
@@ -48,7 +48,7 @@ struct GoalSetToolTests {
     @Test("Tool conforms to SwooshTool protocol")
     func conformsToProtocol() {
         let _: any SwooshTool.Type = GoalSetTool.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Tool has correct metadata")
@@ -163,7 +163,7 @@ struct GoalStatusToolTests {
     @Test("Tool conforms to SwooshTool protocol")
     func conformsToProtocol() {
         let _: any SwooshTool.Type = GoalStatusTool.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Tool has correct metadata")
@@ -296,7 +296,7 @@ struct GoalAbandonToolTests {
     @Test("Tool conforms to SwooshTool protocol")
     func conformsToProtocol() {
         let _: any SwooshTool.Type = GoalAbandonTool.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Tool has correct metadata")
@@ -438,7 +438,7 @@ struct GoalToolErrorTests {
     func conformsToProtocols() {
         let _: any Sendable.Type = GoalToolError.self
         let _: any LocalizedError.Type = GoalToolError.self
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 

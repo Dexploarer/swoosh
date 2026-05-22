@@ -162,7 +162,7 @@ struct GoalRunnerErrorTests {
     @Test("GoalRunnerError is Sendable")
     func isSendable() {
         let _: any Sendable.Type = GoalRunnerError.self
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 

@@ -217,7 +217,8 @@ struct FileGoalStoreTests {
     func initializesWithDefaultURL() {
         let store = FileGoalStore()
         // Should use ~/.swoosh/goals/goals.json
-        #expect(store != nil)
+        _ = store
+        #expect(Bool(true))
     }
 
     @Test("Store initializes with custom URL")
@@ -226,7 +227,8 @@ struct FileGoalStoreTests {
         let url = tempDir.appendingPathComponent("test-goals.json")
 
         let store = FileGoalStore(url: url)
-        #expect(store != nil)
+        _ = store
+        #expect(Bool(true))
     }
 
     @Test("Save persists goal to file")
@@ -412,13 +414,13 @@ struct GoalStoringProtocolTests {
     @Test("InMemoryGoalStore conforms to GoalStoring")
     func inMemoryConforms() {
         let _: any GoalStoring.Type = InMemoryGoalStore.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("FileGoalStore conforms to GoalStoring")
     func fileConforms() {
         let _: any GoalStoring.Type = FileGoalStore.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Can use GoalStoring existential")

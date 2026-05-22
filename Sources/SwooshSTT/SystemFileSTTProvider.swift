@@ -43,8 +43,7 @@ public actor SystemFileSTTProvider: STTProviding {
         request.requiresOnDeviceRecognition = recognizer.supportsOnDeviceRecognition
 
         return try await withCheckedThrowingContinuation { continuation in
-            var task: SFSpeechRecognitionTask?
-            task = recognizer.recognitionTask(with: request) { result, error in
+            recognizer.recognitionTask(with: request) { result, error in
                 if let error {
                     // 1110 = no speech detected — surface as empty transcript.
                     let ns = error as NSError
@@ -53,7 +52,6 @@ public actor SystemFileSTTProvider: STTProviding {
                     } else {
                         continuation.resume(throwing: STTError.transcribeFailed(error.localizedDescription))
                     }
-                    task = nil
                     return
                 }
                 guard let result else { return }
@@ -75,7 +73,6 @@ public actor SystemFileSTTProvider: STTProviding {
                         segments: segments,
                         language: locale.identifier
                     ))
-                    task = nil
                 }
             }
         }

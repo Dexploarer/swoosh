@@ -36,13 +36,13 @@ struct CredentialStoreProtocolTests {
     @Test("KeychainCredentialStore conforms to CredentialStore")
     func keychainConforms() {
         let _: any CredentialStore.Type = KeychainCredentialStore.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("EnvironmentCredentialStore conforms to CredentialStore")
     func environmentConforms() {
         let _: any CredentialStore.Type = EnvironmentCredentialStore.self
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Can use CredentialStore existential")
@@ -71,19 +71,21 @@ struct KeychainCredentialStoreTests {
     func initializesWithDefault() {
         let store = KeychainCredentialStore()
         // If this compiles, initialization works
-        #expect(store != nil)
+        _ = store
+        #expect(Bool(true))
     }
 
     @Test("Initializes with custom service")
     func initializesWithCustom() {
         let store = KeychainCredentialStore(service: "com.test.service")
-        #expect(store != nil)
+        _ = store
+        #expect(Bool(true))
     }
 
     @Test("Is Sendable")
     func isSendable() {
         let _: any Sendable = KeychainCredentialStore()
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Is unchecked Sendable")
@@ -92,7 +94,7 @@ struct KeychainCredentialStoreTests {
         // This test verifies it compiles as such
         let store = KeychainCredentialStore()
         _ = store
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 
@@ -104,26 +106,28 @@ struct EnvironmentCredentialStoreTests {
     @Test("Initializes with default prefix")
     func initializesWithDefault() {
         let store = EnvironmentCredentialStore()
-        #expect(store != nil)
+        _ = store
+        #expect(Bool(true))
     }
 
     @Test("Initializes with custom prefix")
     func initializesWithCustom() {
         let store = EnvironmentCredentialStore(prefix: "MYAPP_")
-        #expect(store != nil)
+        _ = store
+        #expect(Bool(true))
     }
 
     @Test("Is Sendable")
     func isSendable() {
         let _: any Sendable = EnvironmentCredentialStore()
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test("Is unchecked Sendable")
     func isUncheckedSendable() {
         let store = EnvironmentCredentialStore()
         _ = store
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 
@@ -150,7 +154,7 @@ struct EnvironmentCredentialStoreGetTests {
         _ = try await store.get(key: "my.key", service: "test")
 
         // If we reach here without crash, the API works
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 
@@ -268,7 +272,7 @@ struct KeychainErrorTests {
     @Test("KeychainError is LocalizedError")
     func isLocalizedError() {
         let _: any LocalizedError.Type = KeychainError.self
-        #expect(true)
+        #expect(Bool(true))
     }
 }
 

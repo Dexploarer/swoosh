@@ -63,7 +63,7 @@ public final class GlobalHotKey: @unchecked Sendable {
         self.handler = handler
         GlobalHotKeyRegistry.shared.register(self)
 
-        var hkID = EventHotKeyID(signature: signature, id: id)
+        let hkID = EventHotKeyID(signature: signature, id: id)
         var hkRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
             key.rawValue,
