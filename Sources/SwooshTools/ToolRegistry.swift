@@ -39,6 +39,15 @@ public actor ToolRegistry {
         return true
     }
 
+    /// Unregister a previously-registered tool by name. Used by the plugin
+    /// host to drop a plugin's tools from the catalog when it's disabled,
+    /// so the model doesn't keep seeing them. No-op if the name isn't
+    /// registered. Returns true if a tool was removed.
+    @discardableResult
+    public func unregister(name: ToolName) -> Bool {
+        tools.removeValue(forKey: name) != nil
+    }
+
     public func listAvailable(
         context: ToolContext
     ) async -> [ToolDescriptor] {

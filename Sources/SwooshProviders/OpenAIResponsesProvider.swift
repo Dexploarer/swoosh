@@ -11,7 +11,7 @@ import SwooshTools
 // MARK: - OpenAI Responses Provider
 // ═══════════════════════════════════════════════════════════════════
 
-public actor OpenAIResponsesProvider: ToolCallingModelProviding {
+public actor OpenAIResponsesProvider: ToolCallingModelProviding, EmbeddingProviding {
     public nonisolated let providerID: ProviderID = "openai"
     public nonisolated let displayName: String = "OpenAI API"
     public nonisolated let capabilities = ProviderCapabilities(
@@ -45,6 +45,15 @@ public actor OpenAIResponsesProvider: ToolCallingModelProviding {
         var req = request
         req.tools = tools
         return try await complete(req)
+    }
+
+    // ── Embeddings ─────────────────────────────────────────────────
+
+    public func embed(_ request: EmbeddingRequest) async throws -> EmbeddingResponse {
+        let apiKey = try await loadAPIKey()
+        let httpReq = try buildEmbeddingRequest(apiKey: apiKey, embeddingReq: request)
+        let response = try await http.send(httpReq)
+        return try parseEmbeddingResponse(response.data, model: request.model)
     }
 
     // ── Stream ────────────────────────────────────────────────────
@@ -149,6 +158,24 @@ public actor OpenAIResponsesProvider: ToolCallingModelProviding {
         return req
     }
 
+    private func buildEmbeddingRequest(apiKey: String, embeddingReq: EmbeddingRequest) throws -> URLRequest {
+        guard let url = URL(string: "\(baseURL)/v1/embeddings") else {
+            throw ProviderError.requestFailed(providerID, "Invalid base URL")
+        }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Swoosh/0.9P", forHTTPHeaderField: "User-Agent")
+        req.httpBody = try JSONSerialization.data(withJSONObject: [
+            "model": embeddingReq.model,
+            "input": embeddingReq.input,
+            "encoding_format": "float",
+        ])
+        return req
+    }
+
     private func parseResponse(_ data: Data, model: String) throws -> ModelResponse {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ProviderError.responseParseFailed(providerID, "Invalid JSON")
@@ -202,6 +229,59 @@ public actor OpenAIResponsesProvider: ToolCallingModelProviding {
             providerID: providerID, model: responseModel, text: text,
             toolCalls: toolCalls, finishReason: "stop", usage: usageInfo
         )
+    }
+
+    private func parseEmbeddingResponse(_ data: Data, model: String) throws -> EmbeddingResponse {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ProviderError.responseParseFailed(providerID, "Invalid JSON")
+        }
+
+        if let error = json["error"] as? [String: Any],
+           let message = error["message"] as? String {
+            throw ProviderError.requestFailed(providerID, message)
+        }
+
+        guard let data = json["data"] as? [[String: Any]] else {
+            throw ProviderError.responseParseFailed(providerID, "Missing embedding data")
+        }
+
+        var embeddings: [[Double]] = []
+        embeddings.reserveCapacity(data.count)
+        for item in data {
+            embeddings.append(try parseEmbeddingVector(item["embedding"]))
+        }
+
+        var usageInfo: ProviderUsage?
+        if let rawUsage = json["usage"] {
+            guard let usage = rawUsage as? [String: Any],
+                  let promptTokens = usage["prompt_tokens"] as? Int,
+                  let totalTokens = usage["total_tokens"] as? Int else {
+                throw ProviderError.responseParseFailed(providerID, "Invalid embedding usage")
+            }
+            usageInfo = ProviderUsage(
+                promptTokens: promptTokens,
+                completionTokens: 0,
+                totalTokens: totalTokens
+            )
+        }
+
+        let responseModel = (json["model"] as? String) ?? model
+        return EmbeddingResponse(
+            providerID: providerID,
+            model: responseModel,
+            embeddings: embeddings,
+            usage: usageInfo
+        )
+    }
+
+    private func parseEmbeddingVector(_ value: Any?) throws -> [Double] {
+        if let vector = value as? [Double] {
+            return vector
+        }
+        if let vector = value as? [NSNumber] {
+            return vector.map(\.doubleValue)
+        }
+        throw ProviderError.responseParseFailed(providerID, "Invalid embedding vector")
     }
 
     private func parseStreamChunk(_ json: String) -> ModelStreamEvent? {

@@ -140,7 +140,8 @@ public struct CronProcessRunner: ProcessRunning, Sendable {
             "PRIVATE_KEY",
             "AWS_SECRET",
             "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
+            "OPENROUTER_API_KEY",
+            "ELIZA_CLOUD_API_KEY",
         ]
         for key in env.keys {
             let upper = key.uppercased()

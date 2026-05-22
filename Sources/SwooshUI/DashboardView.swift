@@ -15,6 +15,7 @@ import SwooshFirewall
 import SwooshBoard
 import SwooshFlow
 import SwooshTools
+import SwooshGenerativeUI
 import Foundation
 
 public struct DashboardView: View {
@@ -22,21 +23,42 @@ public struct DashboardView: View {
     @State private var selectedTab: DashboardTab = .workspace
     @State private var runtime = DashboardRuntimeSnapshot.empty
     @State private var panelStore = PanelLayoutStore()
+    @State private var toolbarManager = SwooshToolbarManager()
     @State private var editingPanels = false
     @Environment(AgentShellModel.self) private var shell
+    let voice: VoiceMode?
 
-    public init() {}
+    public init(voice: VoiceMode? = nil) {
+        self.voice = voice
+    }
 
     public var body: some View {
         NavigationSplitView {
             sidebar
-                .swooshGlass()
+                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
+                .background(SwooshNeonTokens.Canvas.bg)
         } detail: {
             detailView
+                .background(SwooshNeonTokens.Canvas.bg)
         }
-        .swooshGlassContainer()
-        .swooshThemedBackground()
+        .swooshToolbar(
+            manager: toolbarManager,
+            pendingApprovals: runtime.pendingApprovalCount,
+            runningAgents: runtime.status?.chat == true ? 1 : 0,
+            boardCards: runtime.boardCards.count
+        )
         .swooshTheme(themeManager.currentTheme)
+        .preferredColorScheme(.dark)
+        .onReceive(NotificationCenter.default.publisher(for: .swooshToolbarAction)) { event in
+            guard let raw = event.object as? String,
+                  let item = SwooshToolbarItem(rawValue: raw) else { return }
+            handleToolbarAction(item)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .swooshOpenDashboardTab)) { event in
+            guard let raw = event.object as? String,
+                  let tab = DashboardTab(rawValue: raw) else { return }
+            selectedTab = tab
+        }
         .onAppear {
             themeManager.load(from: ThemeManager.defaultURL)
         }
@@ -49,41 +71,12 @@ public struct DashboardView: View {
 
     private var sidebar: some View {
         List(selection: $selectedTab) {
-            Section("Agent") {
-                Label("Workspace", systemImage: "square.grid.2x2").tag(DashboardTab.workspace)
-                Label("Chat", systemImage: "bubble.left.and.bubble.right").tag(DashboardTab.chat)
-                Label("Agents", systemImage: "person.3").tag(DashboardTab.agents)
-            }
-
-            Section("Work") {
-                Label("Board", systemImage: "square.grid.3x3").tag(DashboardTab.board)
-                Label("Workflows", systemImage: "arrow.triangle.branch").tag(DashboardTab.workflows)
-                Label("Triggers", systemImage: "bolt").tag(DashboardTab.triggers)
-            }
-
-            Section("Knowledge") {
-                Label("Memory Vault", systemImage: "brain.head.profile").tag(DashboardTab.vault)
-                Label("Skills", systemImage: "star").tag(DashboardTab.skills)
-            }
-
-            Section("System") {
-                Label("Tools", systemImage: "wrench.and.screwdriver").tag(DashboardTab.tools)
-                Label("Firewall", systemImage: "shield.checkered").tag(DashboardTab.firewall)
-                Label("Providers", systemImage: "cloud").tag(DashboardTab.providers)
-                Label("Local Models", systemImage: "cpu").tag(DashboardTab.localModels)
-                Label("MCP", systemImage: "cable.connector").tag(DashboardTab.mcp)
-                Label("Plugins", systemImage: "puzzlepiece").tag(DashboardTab.plugins)
-            }
-
-            Section("Observe") {
-                Label("Approvals", systemImage: "hand.raised").tag(DashboardTab.approvals)
-                Label("Audit Log", systemImage: "list.bullet.rectangle").tag(DashboardTab.auditLog)
-                Label("Benchmarks", systemImage: "chart.bar").tag(DashboardTab.benchmarks)
-            }
-
-            Section {
-                Label("Appearance", systemImage: "paintbrush").tag(DashboardTab.appearance)
-                Label("Settings", systemImage: "gear").tag(DashboardTab.settings)
+            ForEach(DashboardSection.allCases) { section in
+                Section(section.title) {
+                    ForEach(section.tabs) { tab in
+                        Label(tab.title, systemImage: tab.systemImage).tag(tab)
+                    }
+                }
             }
         }
         .listStyle(.sidebar)
@@ -104,36 +97,214 @@ public struct DashboardView: View {
             )
             .environment(shell)
         case .chat:        AgentShellView(shell: shell, mode: .window)
-        case .agents:      RuntimePane(title: "Active Agents", icon: "person.3", rows: runtime.agentRows)
+        case .voice:
+            if let voice {
+                VoicePane(voice: voice, shell: shell)
+            } else {
+                ContentUnavailableView(
+                    "Voice unavailable",
+                    systemImage: "mic.slash",
+                    description: Text("Voice mode wasn't injected into this DashboardView instance.")
+                )
+            }
+        case .generative:  GenerativeUIPane()
+        case .agents:      AgentsPane(snapshot: runtime)
         case .board:       BoardPane(cards: runtime.boardCards)
-        case .workflows:   RuntimePane(title: "Workflows", icon: "arrow.triangle.branch", rows: runtime.workflowRows)
-        case .triggers:    RuntimePane(title: "Triggers", icon: "bolt", rows: runtime.triggerRows)
-        case .vault:       RuntimePane(title: "Memory Vault", icon: "brain.head.profile", rows: runtime.memoryRows)
-        case .skills:      RuntimePane(title: "Skills", icon: "star", rows: runtime.skillRows)
-        case .tools:       RuntimePane(title: "Tools", icon: "wrench.and.screwdriver", rows: runtime.toolRows)
-        case .firewall:    RuntimePane(title: "Agent Firewall", icon: "shield.checkered", rows: runtime.firewallRows)
-        case .providers:   ProviderStatusPane()
-        case .localModels: RuntimePane(title: "Local Models", icon: "cpu", rows: runtime.localModelRows)
-        case .mcp:         RuntimePane(title: "MCP Servers", icon: "cable.connector", rows: runtime.mcpRows)
-        case .plugins:     RuntimePane(title: "Plugins", icon: "puzzlepiece", rows: runtime.pluginRows)
-        case .approvals:   RuntimePane(title: "Approval Center", icon: "hand.raised", rows: runtime.approvalRows)
-        case .auditLog:    RuntimePane(title: "Audit Log", icon: "list.bullet.rectangle", rows: runtime.auditRows)
-        case .benchmarks:  RuntimePane(title: "Benchmarks", icon: "chart.bar", rows: runtime.benchmarkRows)
+        case .workflows:   WorkflowsPane(snapshot: runtime)
+        case .triggers:    TriggersPane(snapshot: runtime)
+        case .goals:       GoalsDashboardPane(snapshot: runtime)
+        case .manifesting: ManifestingDashboardPane(snapshot: runtime)
+        case .vault:       MemoryVaultPane(snapshot: runtime)
+        case .skills:      SkillsPane(snapshot: runtime)
+        case .wallet:      PanelKindDashboardPane(kind: .wallet)
+        case .trading:     PanelKindDashboardPane(kind: .tradingCapabilities)
+        case .jupiter:     PanelKindDashboardPane(kind: .jupiterDocs)
+        case .defi:        PanelKindDashboardPane(kind: .defiDocs)
+        case .launchpads:  PanelKindDashboardPane(kind: .launchpadDocs)
+        case .tools:       ToolsPane(snapshot: runtime)
+        case .firewall:    FirewallPane(snapshot: runtime)
+        case .secrets:     PanelKindDashboardPane(kind: .secrets)
+        case .providers:   ProvidersConfigPane()
+        case .localModels: LocalModelsPane(snapshot: runtime)
+        case .mcp:         MCPPane(snapshot: runtime)
+        case .plugins:     PluginsPane(snapshot: runtime)
+        case .chatAdapters: PanelKindDashboardPane(kind: .chatAdapters)
+        case .media:       PanelKindDashboardPane(kind: .mediaGallery)
+        case .scout:       PanelKindDashboardPane(kind: .scoutSources)
+        case .spotlight:   PanelKindDashboardPane(kind: .spotlight)
+        case .approvals:   ApprovalsPane(snapshot: runtime)
+        case .auditLog:    AuditLogPane(snapshot: runtime)
+        case .usage:       PanelKindDashboardPane(kind: .usage)
+        case .costs:       PanelKindDashboardPane(kind: .costs)
+        case .traces:      PanelKindDashboardPane(kind: .observabilitySpans)
+        case .benchmarks:  BenchmarksPane(snapshot: runtime)
         case .appearance:  AppearanceEditorView(manager: themeManager)
         case .settings:    RuntimeSettingsPane(runtimeConfig: runtime.runtimeConfig, readinessRows: runtime.settingsRows)
+        }
+    }
+
+    private func handleToolbarAction(_ item: SwooshToolbarItem) {
+        switch item {
+        case .newChat:
+            shell.clearConversation()
+            selectedTab = .chat
+        case .runWorkflow:
+            selectedTab = .workflows
+        case .board:
+            selectedTab = .board
+        case .approvals:
+            selectedTab = .approvals
+        case .agentStatus:
+            selectedTab = .agents
+        case .providers:
+            selectedTab = .providers
+        case .modelSelector:
+            selectedTab = .localModels
+        case .search:
+            selectedTab = .spotlight
+        case .memoryVault:
+            selectedTab = .vault
+        case .toolLog:
+            selectedTab = .auditLog
+        case .settings:
+            selectedTab = .settings
+        case .spacer, .divider:
+            break
         }
     }
 }
 
 // MARK: - Tab enum
 
-enum DashboardTab: Hashable {
+enum DashboardSection: String, CaseIterable, Identifiable {
+    case agent
+    case work
+    case knowledge
+    case value
+    case system
+    case observe
+    case app
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .agent: return "Agent"
+        case .work: return "Work"
+        case .knowledge: return "Knowledge"
+        case .value: return "Value"
+        case .system: return "System"
+        case .observe: return "Observe"
+        case .app: return "App"
+        }
+    }
+
+    var tabs: [DashboardTab] {
+        switch self {
+        case .agent: return [.workspace, .chat, .voice, .generative, .agents]
+        case .work: return [.board, .workflows, .triggers, .goals, .manifesting]
+        case .knowledge: return [.vault, .skills, .scout, .spotlight]
+        case .value: return [.wallet, .trading, .jupiter, .defi, .launchpads]
+        case .system: return [.tools, .firewall, .secrets, .providers, .localModels, .mcp, .plugins, .chatAdapters, .media]
+        case .observe: return [.approvals, .auditLog, .usage, .costs, .traces, .benchmarks]
+        case .app: return [.appearance, .settings]
+        }
+    }
+}
+
+enum DashboardTab: String, Identifiable, Hashable {
     case workspace
-    case chat, agents, board, workflows, triggers
+    case chat, voice, generative, agents, board, workflows, triggers
+    case goals, manifesting
     case vault, skills
-    case tools, firewall, providers, localModels, mcp, plugins
-    case approvals, auditLog, benchmarks
+    case wallet, trading, jupiter, defi, launchpads
+    case tools, firewall, secrets, providers, localModels, mcp, plugins, chatAdapters, media, scout, spotlight
+    case approvals, auditLog, usage, costs, traces, benchmarks
     case appearance, settings
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .workspace: return "Workspace"
+        case .chat: return "Chat"
+        case .voice: return "Voice"
+        case .generative: return "Generative UI"
+        case .agents: return "Agents"
+        case .board: return "Board"
+        case .workflows: return "Workflows"
+        case .triggers: return "Triggers"
+        case .goals: return "Goals"
+        case .manifesting: return "Manifesting"
+        case .vault: return "Memory Vault"
+        case .skills: return "Skills"
+        case .wallet: return "Wallet"
+        case .trading: return "Trading"
+        case .jupiter: return "Jupiter"
+        case .defi: return "DeFi"
+        case .launchpads: return "Launchpads"
+        case .tools: return "Tools"
+        case .firewall: return "Firewall"
+        case .secrets: return "Secrets"
+        case .providers: return "Providers"
+        case .localModels: return "Local Models"
+        case .mcp: return "MCP"
+        case .plugins: return "Plugins"
+        case .chatAdapters: return "Chat Adapters"
+        case .media: return "Media"
+        case .scout: return "Scout"
+        case .spotlight: return "Spotlight"
+        case .approvals: return "Approvals"
+        case .auditLog: return "Audit Log"
+        case .usage: return "Usage"
+        case .costs: return "Costs"
+        case .traces: return "Traces"
+        case .benchmarks: return "Benchmarks"
+        case .appearance: return "Appearance"
+        case .settings: return "Settings"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .workspace: return "square.grid.2x2"
+        case .chat: return "bubble.left.and.bubble.right"
+        case .voice: return "mic.circle"
+        case .generative: return "rectangle.on.rectangle.angled"
+        case .agents: return "person.3"
+        case .board: return "square.grid.3x3"
+        case .workflows: return "arrow.triangle.branch"
+        case .triggers: return "bolt"
+        case .goals: return "target"
+        case .manifesting: return "moon.stars"
+        case .vault: return "brain.head.profile"
+        case .skills: return "star"
+        case .wallet: return "creditcard"
+        case .trading: return "arrow.left.arrow.right.circle"
+        case .jupiter: return "sparkles"
+        case .defi: return "point.3.connected.trianglepath.dotted"
+        case .launchpads: return "flag.checkered"
+        case .tools: return "wrench.and.screwdriver"
+        case .firewall: return "shield.checkered"
+        case .secrets: return "key"
+        case .providers: return "cloud"
+        case .localModels: return "cpu"
+        case .mcp: return "cable.connector"
+        case .plugins: return "puzzlepiece"
+        case .chatAdapters: return "bubble.left.and.text.bubble.right"
+        case .media: return "photo.on.rectangle"
+        case .scout: return "binoculars"
+        case .spotlight: return "magnifyingglass"
+        case .approvals: return "hand.raised"
+        case .auditLog: return "list.bullet.rectangle"
+        case .usage: return "chart.bar.xaxis"
+        case .costs: return "dollarsign.circle"
+        case .traces: return "point.3.connected.trianglepath.dotted"
+        case .benchmarks: return "chart.bar"
+        case .appearance: return "paintbrush"
+        case .settings: return "gear"
+        }
+    }
 }
 
 // MARK: - Runtime panes
@@ -302,7 +473,7 @@ extension RuntimeRow.Level {
     }
 }
 
-struct DashboardRuntimeSnapshot: Sendable {
+public struct DashboardRuntimeSnapshot: Sendable {
     var status: AgentStatusResponse?
     var providers: [ProviderSummary]
     var boardCards: [BoardCardSummary]
@@ -310,6 +481,8 @@ struct DashboardRuntimeSnapshot: Sendable {
     var usage: UsageResponse?
     var skills: [SkillSummary]
     var readiness: SwooshReadinessReport
+    var records: RecordsResponse?
+    var approvals: ApprovalsResponse?
     var runtimeConfig: SwooshRuntimeConfig?
     var local: LocalRuntimeCounts
     var daemonReachable: Bool
@@ -322,6 +495,8 @@ struct DashboardRuntimeSnapshot: Sendable {
         usage: nil,
         skills: [],
         readiness: SwooshReadinessDetector().report(inputs: SwooshReadinessInputs(daemonReachable: false)),
+        records: nil,
+        approvals: nil,
         runtimeConfig: try? SwooshConfigStore().load(SwooshRuntimeConfig.self),
         local: LocalRuntimeCounts.load(),
         daemonReachable: false
@@ -340,12 +515,15 @@ struct DashboardRuntimeSnapshot: Sendable {
             async let usage = client.usage()
             async let skills = client.skills()
             async let readiness = client.readiness()
+            async let records = client.records()
             let providerResponse = try await providers
             let cardResponse = try await cards
             let metricResponse = try await metrics
             let usageResponse = try await usage
             let skillResponse = try await skills
             let readinessResponse = try await readiness
+            let recordsResponse = try await records
+            let approvalsResponse = try? await client.approvals()
             return DashboardRuntimeSnapshot(
                 status: try await status,
                 providers: providerResponse.providers,
@@ -354,6 +532,8 @@ struct DashboardRuntimeSnapshot: Sendable {
                 usage: usageResponse,
                 skills: skillResponse.skills,
                 readiness: readinessResponse,
+                records: recordsResponse,
+                approvals: approvalsResponse,
                 runtimeConfig: local.runtimeConfig,
                 local: local,
                 daemonReachable: true
@@ -400,6 +580,7 @@ struct DashboardRuntimeSnapshot: Sendable {
     var approvalRows: [RuntimeRow] { [RuntimeRow("Local approval queue", "Human-only gated", systemImage: "hand.raised", level: .good)] }
     var auditRows: [RuntimeRow] { [RuntimeRow("Log files", "\(local.logFiles)", systemImage: "list.bullet.rectangle")] }
     var benchmarkRows: [RuntimeRow] { [RuntimeRow("Artifacts", "\(local.artifacts)", systemImage: "chart.bar")] }
+    var pendingApprovalCount: Int { approvals?.pending.count ?? 0 }
     var settingsRows: [RuntimeRow] {
         readiness.components.map { component in
             RuntimeRow(component.title, component.detail, systemImage: "gear", level: RuntimeRow.Level(component.status))
@@ -420,14 +601,7 @@ struct DashboardRuntimeSnapshot: Sendable {
 
 private enum SwooshDashboardClient {
     static func make() -> SwooshAPIClient? {
-        let config = SwooshConfigStore()
-        let runtime = try? config.load(SwooshRuntimeConfig.self)
-        let fileToken = (try? String(contentsOf: config.apiTokenFile, encoding: .utf8))?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let token = TokenStore.load() ?? fileToken
-        let configuredBase = URL(string: "http://\(runtime?.daemonHost ?? "127.0.0.1"):\(runtime?.daemonPort ?? 8787)")!
-        let base = HostStore.current ?? configuredBase
-        return SwooshAPIClient(baseURL: base, token: token)
+        SwooshDaemonClient.client()
     }
 }
 

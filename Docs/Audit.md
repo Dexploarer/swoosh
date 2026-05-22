@@ -167,19 +167,17 @@ exercise it was never connected.
   is no code that performs the MCP `initialize`/`tools/list`
   handshake. `SwooshBridge` is intentionally inert (every operation
   throws `transportUnavailable`) and is instantiated nowhere.
-- **`SwooshObservability` is a built, unused module.** 1036 LoC of
-  spans/traces/cost tracking with **zero importers** anywhere in the
-  codebase. The daemon hand-rolls its metrics instead.
-- **The `@SwooshTool` macro is abandoned.** It has zero usages, zero
-  tests, and would not even compile against the current `SwooshTool`
-  protocol (it generates the wrong member shapes). All ~131 tools
-  hand-write their conformance.
+- **Cleanup note (2026-05-22):** the previously flagged unused
+  observability package, trigger-schema package, and compile-time tool
+  macro have been deleted from the SwiftPM source/test graph. The
+  remaining breadth risk is now live experimental surface area, not
+  dormant package targets.
 - **18 test modules are switched off.** Their files are renamed
   `.swift.disabled` — ~655 tests across exactly the riskiest modules
   (firewall, goals, manifesting, toolsets, vault, sandbox, MLX,
   observability, …). The safety net is off where it matters most.
-- **`SwooshTriggers`** is a bare schema (data structures + an
-  in-memory registry) with no event source and no firing engine.
+- Trigger scheduling now routes through the cron/workflow surfaces that
+  still have live importers.
 
 ---
 
@@ -197,9 +195,9 @@ than the one in the tree. Documentation should be reconciled:
 | `SwooshMCP` "import/export MCP tools" | No transport — cannot reach any MCP server |
 | "Level-0 progressive disclosure" skill catalog injection | The injection code path is dead (argument never passed) |
 | Scout `MusicHistorySource` / `ScreenTimeSource` scaffolds | Neither type exists in the codebase |
-| `@SwooshTool` "compile-time tool generation" macro | Abandoned, unused, would not compile |
+| Compile-time tool generation macro | Removed; tools hand-write typed conformance |
 | README quick-start (`FileReadTool()`, `ShellTool()` no-arg) | Real tools require `ToolDependencies` injection |
-| OpenAI / Anthropic / OpenRouter / Ollama adapters | No Anthropic adapter exists; Ollama only via the generic local provider |
+| OpenAI / OpenRouter / Eliza Cloud / local adapters | Current provider set is Codex bridge, OpenAI, OpenRouter, Eliza Cloud, MLX local, Apple Foundation Models, and local OpenAI-compatible |
 | "Every workflow is replayable / trigger-dispatched" | No live entry point; replay re-runs tools rather than a recorded trace |
 
 ---
@@ -212,8 +210,8 @@ than the one in the tree. Documentation should be reconciled:
    were built as code but never connected.
 2. **"Last-mile wiring" is the dominant defect class.** GoalRunner
    never invoked, skill catalog never passed, Manifester fed an empty
-   source, Flow orphaned, MLX never conformed, Observability never
-   imported, crypto never registered. The fixes are often small
+   source, Flow orphaned, local inference once unwired, crypto never
+   registered. The fixes are often small
    (a missing argument, a missing `register*` hook) but they are the
    difference between "feature" and "dead code."
 3. **Quality where wired is high — but "no markers" ≠ "no stubs".**
@@ -266,10 +264,11 @@ than the one in the tree. Documentation should be reconciled:
   unwired modules into an explicit "experimental / not yet wired"
   section. The current gap will mislead contributors and users.
 
-**P2 — decide the fate of dead modules**
-- `SwooshObservability`, `SwooshBridge`, the `@SwooshTool` macro, and
-  `SwooshTriggers` are each either wire-it or delete-it. Carrying built
-  code that nothing imports is ongoing maintenance cost for zero value.
+**P2 — keep deleting dormant package targets**
+- The unused observability, trigger-schema, browser/media/sandbox/gateway,
+  installer/setup/LSP/integration, worker, and compile-time macro targets
+  were removed on 2026-05-22 after reference-graph and build verification.
+  Keep future package targets tied to a live importer or delete them.
 
 **Packaging**
 - The storage path depends on a hand-built **debug** `actantdb` binary
@@ -378,9 +377,8 @@ kept green at every band boundary.
 ### Remaining
 - Wire the crypto toolsets + EVM/Solana RPC clients.
 - Implement the MCP client transport.
-- Decide wire-or-delete for `SwooshObservability` / `SwooshBridge` /
-  `@SwooshTool` macro / `SwooshTriggers` (now flagged *experimental* in
-  the README pending that decision).
+- Keep the package graph narrow: do not reintroduce targets unless a live
+  daemon, CLI, app, or test path imports them.
 - The broader CLI/iOS QoL/UX/DX backlog (error-message quality, iOS
   loading/error/empty states, integration test coverage, perf, security
   hardening).

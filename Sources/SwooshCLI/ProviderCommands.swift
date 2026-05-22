@@ -9,6 +9,7 @@
 import ArgumentParser
 import SwooshProviders
 import SwooshProviderBridge
+import SwooshModels
 import SwooshSecrets
 import SwooshTools
 import Foundation
@@ -44,9 +45,9 @@ struct ProviderListCommand: AsyncParsableCommand {
         print("\n─── Model Providers ───────────────────────────\n")
 
         let providers: [(String, String, String, SecretRef)] = [
-            ("OpenAI", "openai", "gpt-4.1", SecretRef("openai", "api_key")),
-            ("OpenRouter", "openrouter", "openai/gpt-4.1", SecretRef("openrouter", "api_key")),
-            ("Eliza Cloud", "eliza-cloud", "auto", SecretRef("eliza-cloud", "api_key")),
+            ("OpenAI", ModelDefaults.openAIProviderID, ModelDefaults.openAIModelID, SecretRef(ModelDefaults.openAIProviderID, "api_key")),
+            ("OpenRouter", ModelDefaults.openRouterProviderID, ModelDefaults.openRouterModelID, SecretRef(ModelDefaults.openRouterProviderID, "api_key")),
+            ("Eliza Cloud", ModelDefaults.elizaCloudProviderID, ModelDefaults.elizaCloudModelID, SecretRef(ModelDefaults.elizaCloudProviderID, "api_key")),
         ]
 
         for (name, _, model, ref) in providers {
@@ -183,7 +184,7 @@ func runProviderTests(provider: String?) async throws {
                 ChatMessage(role: .user, content: "Say 'ok' and nothing else.")
             ]
             let testRequest = ModelRequest(
-                model: name == "openrouter" ? "openai/gpt-4.1-mini" : "gpt-4.1-mini",
+                model: UnifiedModelCatalog.defaultModel(providerID: name) ?? ModelDefaults.openAIModelID,
                 messages: testMessages
             )
 
@@ -224,10 +225,10 @@ private func suggestFix(for error: Error, provider: String) -> String? {
         switch provider {
         case "openai":
             return "Run: swoosh provider auth openai --api-key <key>"
-        case "anthropic":
-            return "Run: swoosh provider auth anthropic --api-key <key>"
         case "openrouter":
             return "Run: swoosh provider auth openrouter (opens browser for PKCE flow)"
+        case "eliza-cloud":
+            return "Run: swoosh provider auth eliza-cloud --api-key <key>"
         default:
             return "Run: swoosh provider auth \(provider) --api-key <key>"
         }

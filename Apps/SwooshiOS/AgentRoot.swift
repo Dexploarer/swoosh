@@ -4,8 +4,19 @@
 // AgentShellModel + AgentShellView, plumbs the iOS pairing client into
 // `shell.send`, and renders a compact voice pill as a bottom sheet
 // (iOS doesn't have floating windows the way macOS does).
+//
+// Composer attachments: the `+` button in AgentShellView opens an
+// AttachmentSheet that calls back into the host. Files / Photos /
+// Camera are wired here because the system pickers are iOS-only and
+// SwooshUI is cross-platform. Each picker, on success, appends an
+// `[Attached … name]` token to the chat input so the user gets a
+// visible record of what they attached. A real upload endpoint on
+// the daemon side will replace the token wiring later.
 
 import SwiftUI
+import PhotosUI
+import UIKit
+import UniformTypeIdentifiers
 import SwooshClient
 import SwooshGenerativeUI
 import SwooshUI
@@ -18,6 +29,12 @@ struct AgentRoot: View {
     @State private var voice: VoiceMode? = nil
     @State private var wiredExecutor = false
     @State private var showVoicePill = false
+
+    // Attachment pickers
+    @State private var showingFileImporter = false
+    @State private var photoPickerItem: PhotosPickerItem?
+    @State private var showingPhotoPicker = false
+    @State private var showingCamera = false
 
     let onOpenDrawer: () -> Void
     /// Push a drawer destination onto RootView's NavigationStack. Used by
@@ -44,6 +61,32 @@ struct AgentRoot: View {
         }
         .toolbar { toolbarContent }
         .animation(.spring(duration: 0.3), value: showVoicePill)
+        // Attachment pickers — declared once at the AgentRoot level so the
+        // bindings stay stable across body re-renders.
+        .fileImporter(
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.item],
+            allowsMultipleSelection: false
+        ) { result in
+            handleFileImport(result)
+        }
+        .photosPicker(
+            isPresented: $showingPhotoPicker,
+            selection: $photoPickerItem,
+            matching: .images
+        )
+        .onChange(of: photoPickerItem) { _, newItem in
+            handlePhotoPick(newItem)
+        }
+        .sheet(isPresented: $showingCamera) {
+            CameraCaptureSheet { image in
+                handleCameraCapture(image)
+                showingCamera = false
+            } onCancel: {
+                showingCamera = false
+            }
+            .ignoresSafeArea()
+        }
     }
 
     // MARK: - Shell
@@ -53,8 +96,11 @@ struct AgentRoot: View {
             shell: shell,
             mode: .phone,
             attachmentActions: AttachmentActions(
-                openSkills: { onNavigate(.connections) },
-                openMCP:    { onNavigate(.mcpServers) }
+                attachFile:   { showingFileImporter = true },
+                attachPhoto:  { showingPhotoPicker = true },
+                attachCamera: { showingCamera = true },
+                openSkills:   { onNavigate(.connections) },
+                openMCP:      { onNavigate(.mcpServers) }
             )
         )
     }
@@ -75,6 +121,60 @@ struct AgentRoot: View {
                     .foregroundStyle(SwooshNeonTokens.Accent.cyan)
             }
         }
+    }
+
+    // MARK: - Attachment handlers
+
+    private func handleFileImport(_ result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            let name = url.lastPathComponent
+            appendAttachment("file", name: name)
+        case .failure(let error):
+            shell.messages.append(.init(
+                role: .agent,
+                text: "Couldn't open that file: \(error.localizedDescription)"
+            ))
+        }
+    }
+
+    private func handlePhotoPick(_ item: PhotosPickerItem?) {
+        guard let item else { return }
+        Task { @MainActor in
+            // Pull image data to confirm the asset is loadable; surface
+            // failures clearly. The image bytes themselves stay on-device
+            // until a real upload endpoint exists daemon-side.
+            do {
+                if let data = try await item.loadTransferable(type: Data.self) {
+                    let kb = max(1, data.count / 1024)
+                    appendAttachment("photo", name: "image (\(kb) KB)")
+                } else {
+                    appendAttachment("photo", name: "image")
+                }
+            } catch {
+                shell.messages.append(.init(
+                    role: .agent,
+                    text: "Couldn't read the photo: \(error.localizedDescription)"
+                ))
+            }
+            photoPickerItem = nil
+        }
+    }
+
+    private func handleCameraCapture(_ image: UIImage?) {
+        guard let image else { return }
+        let bytes = image.jpegData(compressionQuality: 0.85)?.count ?? 0
+        let kb = max(1, bytes / 1024)
+        appendAttachment("camera", name: "snapshot (\(kb) KB)")
+    }
+
+    /// Append a tagged attachment marker to the chat input so the user
+    /// sees what they attached. Real upload routing lands when the daemon
+    /// exposes `/api/agent/attachments`.
+    private func appendAttachment(_ kind: String, name: String) {
+        let token = "[\(kind): \(name)] "
+        shell.input = token + shell.input
     }
 
     // MARK: - Wiring
@@ -129,5 +229,50 @@ struct AgentRoot: View {
     private func closePill() {
         voice?.stop()
         showVoicePill = false
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MARK: - Camera capture
+// ═══════════════════════════════════════════════════════════════════
+
+/// Thin UIViewControllerRepresentable around UIImagePickerController for
+/// camera capture. SwiftUI doesn't have a first-party camera view as of
+/// iOS 26, so this is the canonical way to invoke the system camera.
+private struct CameraCaptureSheet: UIViewControllerRepresentable {
+    let onCapture: (UIImage?) -> Void
+    let onCancel: () -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.sourceType = UIImagePickerController.isSourceTypeAvailable(.camera) ? .camera : .photoLibrary
+        picker.allowsEditing = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onCapture: onCapture, onCancel: onCancel)
+    }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onCapture: (UIImage?) -> Void
+        let onCancel: () -> Void
+
+        init(onCapture: @escaping (UIImage?) -> Void, onCancel: @escaping () -> Void) {
+            self.onCapture = onCapture
+            self.onCancel = onCancel
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            onCapture(info[.originalImage] as? UIImage)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            onCancel()
+        }
     }
 }

@@ -1,10 +1,9 @@
 // SwooshToolsets/JupiterSwapTools.swift
-// Jupiter DEX swap tools powered by JupSwift.
+// Jupiter DEX swap tools.
 // Hard rules: NO private key ingestion — signing flows through WalletBridge only.
 
 import Foundation
 import SwooshTools
-import JupSwift
 
 // MARK: - Input/Output types
 
@@ -134,7 +133,7 @@ public struct JupiterQuoteTool: SwooshTool {
             inputMint: result.inputMint, outputMint: result.outputMint,
             inAmount: result.inAmount, outAmount: result.outAmount,
             priceImpactPct: result.priceImpactPct, slippageBps: result.slippageBps,
-            routeLabel: result.routePlan.first?.swapInfo.label ?? "Jupiter",
+            routeLabel: result.routePlan.first?.swapInfo.label ?? result.router ?? "Jupiter",
             feeLamports: result.prioritizationFeeLamports
         )
     }
@@ -173,7 +172,8 @@ public struct JupiterSwapTool: SwooshTool {
             amount: input.amountLamports, taker: taker.base58
         )
         guard let unsignedTx = order.transaction else {
-            throw ToolError.executionFailed("Jupiter returned no transaction — taker address may be invalid")
+            let detail = order.errorMessage.map { ": \($0)" } ?? ""
+            throw ToolError.executionFailed("Jupiter returned no transaction\(detail)")
         }
 
         // 3. Build a human-readable risk summary for the approval prompt
@@ -184,7 +184,7 @@ public struct JupiterSwapTool: SwooshTool {
             amountHuman: "\(input.amountLamports) lamports → ~\(order.outAmount)",
             estimatedFeeHuman: "\(order.prioritizationFeeLamports) lamports",
             warnings: Double(order.priceImpactPct) ?? 0 > 1.0
-                ? ["⚠️ Price impact \(order.priceImpactPct)%"] : [],
+                ? ["Price impact \(order.priceImpactPct)%"] : [],
             requiresExplicitUserConfirmation: true
         )
 
@@ -248,7 +248,8 @@ public struct JupiterBuildOrderTool: SwooshTool {
             amount: input.amountLamports, taker: input.takerAddress.base58
         )
         guard let tx = result.transaction else {
-            throw ToolError.executionFailed("Jupiter order returned no transaction — taker address required")
+            let detail = result.errorMessage.map { ": \($0)" } ?? ""
+            throw ToolError.executionFailed("Jupiter order returned no transaction\(detail)")
         }
         return JupiterOrderOutput(
             requestId: result.requestId, unsignedTransactionBase64: tx,

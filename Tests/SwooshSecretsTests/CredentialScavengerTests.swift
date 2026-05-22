@@ -21,15 +21,15 @@ final class CredentialScavengerTests: XCTestCase {
     func testEnvironmentScanFindsMultipleProviders() {
         let env = [
             "OPENAI_API_KEY": "sk-test",
-            "ANTHROPIC_API_KEY": "sk-ant-test",
-            "GROQ_API_KEY": "gsk-test",
+            "OPENROUTER_API_KEY": "sk-or-test",
+            "ELIZA_CLOUD_API_KEY": "sk-eliza-test",
         ]
         let results = EnvironmentScavenger.scan(environment: env)
         XCTAssertEqual(results.count, 3)
         let providers = Set(results.map { $0.provider })
         XCTAssertTrue(providers.contains(.openAI))
-        XCTAssertTrue(providers.contains(.anthropic))
-        XCTAssertTrue(providers.contains(.groq))
+        XCTAssertTrue(providers.contains(.openRouter))
+        XCTAssertTrue(providers.contains(.elizaCloud))
     }
 
     func testEnvironmentScanStripsQuotes() {
@@ -124,28 +124,24 @@ final class CredentialScavengerTests: XCTestCase {
     // ═══════════════════════════════════════════════════════════════
 
     func testKeychainScavengerSources() {
-        // Verify known keychain sources are populated
-        XCTAssertFalse(KeychainScavenger.sources.isEmpty)
-        for source in KeychainScavenger.sources {
-            XCTAssertFalse(source.service.isEmpty)
-        }
+        XCTAssertTrue(KeychainScavenger.sources.isEmpty)
     }
 
     func testKeychainScavengerTokenExtraction() {
         // JSON blob with token
         let json = #"{"token": "test-token", "expiry": 12345}"#
-        let result = KeychainScavenger.extractToken(from: json, provider: .anthropic)
+        let result = KeychainScavenger.extractToken(from: json, provider: .openAI)
         XCTAssertEqual(result, "test-token")
     }
 
     func testKeychainScavengerTokenExtractionPlainString() {
-        let result = KeychainScavenger.extractToken(from: "plain-token-123", provider: .copilot)
+        let result = KeychainScavenger.extractToken(from: "plain-token-123", provider: .openRouter)
         XCTAssertEqual(result, "plain-token-123")
     }
 
     func testKeychainScavengerTokenExtractionNestedJSON() {
         let json = #"{"credentials": {"access_token": "nested-tk"}}"#
-        let result = KeychainScavenger.extractToken(from: json, provider: .gemini)
+        let result = KeychainScavenger.extractToken(from: json, provider: .elizaCloud)
         XCTAssertEqual(result, "nested-tk")
     }
 

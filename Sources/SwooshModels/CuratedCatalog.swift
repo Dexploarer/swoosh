@@ -16,12 +16,17 @@ extension ModelCatalog {
         sources: [ModelSource] = [.ollama],
         install: [ModelSource: String] = [:]
     ) -> CatalogEntry {
-        CatalogEntry(
+        var installCommands = install
+        if installCommands.isEmpty {
+            if let ollama { installCommands[.ollama] = "ollama pull \(ollama)" }
+            if let hf { installCommands[.huggingFace] = "huggingface-cli download \(hf)" }
+        }
+        return CatalogEntry(
             id: id, name: name, family: family, version: "latest",
             parameterCount: params, sizeTier: tier, estimatedMemoryGB: mem,
             capabilities: caps, formats: formats, sources: sources,
             defaultRoles: roles, license: license,
-            installCommands: install.isEmpty ? (ollama.map { [.ollama: "ollama pull \($0)"] } ?? [:]) : install,
+            installCommands: installCommands,
             description: desc, huggingFaceID: hf, ollamaTag: ollama
         )
     }
@@ -35,6 +40,56 @@ extension ModelCatalog {
     // ── Text / Reasoning ────────────────────────────────────────────
 
     static let textModels: [CatalogEntry] = [
+        entry("gemma4-e2b", "Gemma 4 E2B", family: "Gemma 4", params: "E2B",
+              tier: .large, mem: 7.2, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Gemma 4 edge fallback for tight memory budgets. 128K context, vision/audio-capable weights.",
+              ollama: "gemma4:e2b", hf: "google/gemma-4-E2B-it", sources: [.ollama, .huggingFace]),
+        entry("gemma4-e4b", "Gemma 4 E4B", family: "Gemma 4", params: "E4B",
+              tier: .large, mem: 9.6, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Default Gemma 4 local agent for 16GB Macs with more RAM headroom.",
+              ollama: "gemma4:e4b", hf: "google/gemma-4-E4B-it", sources: [.ollama, .huggingFace]),
+        entry("gemma4-26b", "Gemma 4 26B A4B", family: "Gemma 4", params: "26B A4B",
+              tier: .xlarge, mem: 18.0, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Gemma 4 MoE workstation model for local agent and coding workflows.",
+              ollama: "gemma4:26b", sources: [.ollama]),
+        entry("gemma4-31b", "Gemma 4 31B", family: "Gemma 4", params: "31B",
+              tier: .xlarge, mem: 20.0, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Dense Gemma 4 workstation model for maximum local quality.",
+              ollama: "gemma4:31b", sources: [.ollama]),
+        entry("qwen3.6-35b", "Qwen3.6 35B A3B", family: "Qwen3.6", params: "35B A3B",
+              tier: .xlarge, mem: 24.0, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Open-weight Qwen3.6 MoE model for agentic coding and long context.",
+              ollama: "qwen3.6:35b", hf: "Qwen/Qwen3.6-35B-A3B", sources: [.ollama, .huggingFace]),
+        entry("qwen3.6-27b", "Qwen3.6 27B", family: "Qwen3.6", params: "27B",
+              tier: .xlarge, mem: 17.0, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Open-weight Qwen3.6 dense model with 256K native context.",
+              ollama: "qwen3.6:27b", hf: "Qwen/Qwen3.6-27B", sources: [.ollama, .huggingFace]),
+        entry("qwen3.5-9b", "Qwen3.5 9B", family: "Qwen3.5", params: "9B",
+              tier: .medium, mem: 6.6, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Best current Qwen fit for 16GB Macs. 256K context, multimodal.",
+              ollama: "qwen3.5:9b", hf: "Qwen/Qwen3.5-9B", sources: [.ollama, .huggingFace]),
+        entry("qwen3.5-4b", "Qwen3.5 4B", family: "Qwen3.5", params: "4B",
+              tier: .small, mem: 3.4, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .vision, .ocr],
+              roles: [.agent, .coder, .vision], license: "Apache 2.0",
+              desc: "Fast Qwen3.5 option for tighter memory budgets.",
+              ollama: "qwen3.5:4b", hf: "Qwen/Qwen3.5-4B", sources: [.ollama, .huggingFace]),
+        entry("qwen3.5-2b", "Qwen3.5 2B", family: "Qwen3.5", params: "2B",
+              tier: .small, mem: 2.7, caps: [.textGeneration, .toolCalling, .structuredOutput, .vision],
+              roles: [.agent, .router, .extractor], license: "Apache 2.0",
+              desc: "Small current Qwen with 256K context.",
+              ollama: "qwen3.5:2b", hf: "Qwen/Qwen3.5-2B", sources: [.ollama, .huggingFace]),
+        entry("qwen3.5-0.8b", "Qwen3.5 0.8B", family: "Qwen3.5", params: "0.8B",
+              tier: .micro, mem: 1.0, caps: [.textGeneration, .classification, .structuredOutput],
+              roles: [.router, .extractor], license: "Apache 2.0",
+              desc: "Tiny Qwen3.5 router/extractor with 256K context.",
+              ollama: "qwen3.5:0.8b", hf: "Qwen/Qwen3.5-0.8B", sources: [.ollama, .huggingFace]),
         entry("qwen3-14b", "Qwen3 14B", family: "Qwen3", params: "14B",
               tier: .large, mem: 9.0, caps: [.textGeneration, .coding, .toolCalling, .structuredOutput, .translation],
               roles: [.agent, .coder, .translator], license: "Apache 2.0",
@@ -51,18 +106,6 @@ extension ModelCatalog {
               tier: .small, mem: 1.5, caps: [.textGeneration, .toolCalling],
               roles: [.agent, .router], license: "Apache 2.0",
               desc: "Ultra-light agent or router.", ollama: "qwen3:1.7b"),
-        entry("gemma4-e4b", "Gemma 4 E4B", family: "Gemma", params: "4B",
-              tier: .small, mem: 3.0, caps: [.textGeneration, .coding],
-              roles: [.agent], license: "Apache 2.0",
-              desc: "Google's efficiency champ.", ollama: "gemma3:4b"),
-        entry("gemma3-12b", "Gemma 3 12B", family: "Gemma", params: "12B",
-              tier: .large, mem: 8.0, caps: [.textGeneration, .coding, .vision],
-              roles: [.agent, .vision], license: "Apache 2.0",
-              desc: "Strong reasoning, multimodal.", ollama: "gemma3:12b"),
-        entry("llama3.1-8b", "Llama 3.1 8B", family: "Llama", params: "8B",
-              tier: .medium, mem: 5.0, caps: [.textGeneration, .coding, .toolCalling],
-              roles: [.agent, .coder], license: "Community",
-              desc: "Solid baseline.", ollama: "llama3.1:8b"),
         entry("phi4-mini", "Phi-4 Mini", family: "Phi", params: "3.8B",
               tier: .small, mem: 2.5, caps: [.textGeneration, .coding, .structuredOutput],
               roles: [.agent, .extractor], license: "MIT",
@@ -76,14 +119,15 @@ extension ModelCatalog {
     // ── Coding / Autocomplete ───────────────────────────────────────
 
     static let codingModels: [CatalogEntry] = [
+        entry("qwen3-coder-next", "Qwen3 Coder Next", family: "Qwen3 Coder", params: "80B A3B",
+              tier: .massive, mem: 52.0, caps: [.textGeneration, .coding, .toolCalling, .codeCompletion],
+              roles: [.coder, .autocomplete], license: "Apache 2.0",
+              desc: "Large Qwen coding model for high-memory local workstations.",
+              ollama: "qwen3-coder-next", sources: [.ollama]),
         entry("codestral-25", "Codestral 25.12", family: "Codestral", params: "7B",
               tier: .medium, mem: 5.0, caps: [.coding, .codeCompletion],
               roles: [.autocomplete, .coder], license: "Custom",
               desc: "Gold standard for FIM autocomplete.", ollama: "codestral"),
-        entry("qwen3.5-0.8b", "Qwen 3.5 0.8B", family: "Qwen", params: "0.8B",
-              tier: .micro, mem: 0.5, caps: [.textGeneration, .codeCompletion],
-              roles: [.autocomplete, .extractor], license: "Apache 2.0",
-              desc: "Tiny, 262K context, instant FIM.", ollama: "qwen3.5:0.8b"),
     ]
 
     // ── Vision / VLM ────────────────────────────────────────────────
@@ -97,10 +141,6 @@ extension ModelCatalog {
               tier: .micro, mem: 0.6, caps: [.ocr],
               roles: [.ocrEngine], license: "MIT",
               desc: "Best-in-class document OCR, tiny.", ollama: "glm-ocr"),
-        entry("gemma3-4b-vision", "Gemma 3 4B Vision", family: "Gemma", params: "4B",
-              tier: .small, mem: 3.0, caps: [.vision, .ocr, .textGeneration],
-              roles: [.vision], license: "Apache 2.0",
-              desc: "Lightweight vision.", ollama: "gemma3:4b"),
     ]
 
     // ── Speech-to-Text ──────────────────────────────────────────────
@@ -205,14 +245,11 @@ extension ModelCatalog {
               tier: .micro, mem: 0.5, caps: [.textGeneration, .classification, .structuredOutput],
               roles: [.judge, .router, .extractor], license: "Apache 2.0",
               desc: "Thinking/non-thinking modes. Judge, route, extract.", ollama: "qwen3:0.6b"),
-        entry("gemma3-1b", "Gemma 3 1B", family: "Gemma", params: "1B",
-              tier: .micro, mem: 0.7, caps: [.textGeneration, .classification],
-              roles: [.judge, .router], license: "Apache 2.0",
-              desc: "Google's 1B. Strong reasoning floor.", ollama: "gemma3:1b"),
-        entry("llama3.2-1b", "Llama 3.2 1B", family: "Llama", params: "1B",
-              tier: .micro, mem: 0.7, caps: [.textGeneration, .classification],
-              roles: [.judge, .router], license: "Community",
-              desc: "Meta's 1B. Widely supported everywhere.", ollama: "llama3.2:1b"),
+        entry("functiongemma-270m", "FunctionGemma 270M", family: "FunctionGemma", params: "270M",
+              tier: .nano, mem: 0.3, caps: [.textGeneration, .toolCalling, .structuredOutput, .classification],
+              roles: [.router, .extractor], license: "Apache 2.0",
+              desc: "Phone-sized Gemma tool-calling model for fast local function routing.",
+              ollama: "functiongemma:270m", hf: "google/functiongemma-270m-it", sources: [.ollama, .huggingFace]),
         entry("gliguard-0.3b", "GLiGuard 0.3B", family: "GLiGuard", params: "0.3B",
               tier: .nano, mem: 0.2, caps: [.guard_, .classification],
               roles: [.guardrail], license: "Apache 2.0",

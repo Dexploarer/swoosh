@@ -304,3 +304,67 @@ struct ModelCatalogTests {
         }
     }
 }
+
+// MARK: - UnifiedModelCatalog
+
+@Suite("UnifiedModelCatalog")
+struct UnifiedModelCatalogTests {
+
+    @Test("interactive catalog contains cloud and local routes")
+    func interactiveContainsCloudAndLocal() {
+        let models = UnifiedModelCatalog.interactive
+        #expect(models.contains { $0.id == ModelDefaults.routerModelID })
+        #expect(models.contains { $0.modelID == ModelDefaults.openAIModelID && $0.providerID == ModelDefaults.openAIProviderID })
+        #expect(models.contains { $0.modelID == ModelDefaults.localMLXModelID && $0.providerID == ModelDefaults.localMLXProviderID })
+        #expect(models.contains { $0.modelID == ModelDefaults.localOpenAIModelID && $0.providerID == ModelDefaults.localOpenAIProviderID })
+        #expect(UnifiedModelCatalog.all.contains { $0.modelID == ModelDefaults.phoneFunctionCallingModelID && $0.providerID == ModelDefaults.localOpenAIProviderID })
+        #expect(!models.contains { $0.modelID == ModelDefaults.phoneFunctionCallingModelID })
+    }
+
+    @Test("auto route remains router-owned")
+    func autoRoute() {
+        let route = UnifiedModelCatalog.route(forCatalogID: ModelDefaults.routerModelID)
+        #expect(route == nil)
+    }
+
+    @Test("MLX Gemma default routes to the Swift provider")
+    func mlxGemmaRoute() {
+        let route = UnifiedModelCatalog.route(forCatalogID: "\(ModelDefaults.localMLXProviderID):gemma4-e4b")
+        #expect(route?.providerID == ModelDefaults.localMLXProviderID)
+        #expect(route?.modelID == ModelDefaults.localMLXModelID)
+    }
+
+    @Test("modality buckets separate non-chat models")
+    func modalityBuckets() {
+        #expect(UnifiedModelCatalog.embeddings.contains { $0.modelID == "nomic-embed-text" })
+        #expect(UnifiedModelCatalog.speechToText.contains { $0.capabilities.contains(.speechToText) })
+        #expect(UnifiedModelCatalog.textToSpeech.contains { $0.capabilities.contains(.textToSpeech) })
+        #expect(UnifiedModelCatalog.imageGeneration.contains { $0.capabilities.contains(.imageGeneration) })
+    }
+
+    @Test("chat route ignores non-chat catalog entries")
+    func nonChatCatalogEntryHasNoChatRoute() {
+        guard let speech = UnifiedModelCatalog.speechToText.first else {
+            Issue.record("Missing speech-to-text catalog entry")
+            return
+        }
+        guard let embedder = UnifiedModelCatalog.embeddings.first else {
+            Issue.record("Missing embedding catalog entry")
+            return
+        }
+
+        #expect(UnifiedModelCatalog.route(forCatalogID: speech.id) == nil)
+        #expect(UnifiedModelCatalog.route(forCatalogID: embedder.id) == nil)
+    }
+
+    @Test("old Gemma models are not curated")
+    func oldGemmaRemoved() {
+        let oldIDs = ["gemma3:1b", "gemma3:4b", "gemma3:12b", "gemma-3n-E2B-it-int4"]
+        let catalogText = ModelCatalog.curatedModels
+            .flatMap { [$0.id, $0.ollamaTag, $0.huggingFaceID].compactMap { $0 } }
+            .joined(separator: "\n")
+        for id in oldIDs {
+            #expect(!catalogText.contains(id))
+        }
+    }
+}

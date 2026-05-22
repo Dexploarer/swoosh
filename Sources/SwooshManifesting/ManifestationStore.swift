@@ -15,6 +15,7 @@ public protocol ManifestationStoring: Sendable {
     /// Most recent successfully completed pass, if any. Used to compute
     /// the audit window for the next gather phase.
     func mostRecentCompleted() async throws -> Manifestation?
+    func delete(id: String) async throws
 }
 
 public actor InMemoryManifestationStore: ManifestationStoring {
@@ -43,6 +44,10 @@ public actor InMemoryManifestationStore: ManifestationStoring {
             .filter { $0.status == .completed }
             .sorted { ($0.finishedAt ?? .distantPast) > ($1.finishedAt ?? .distantPast) }
             .first
+    }
+
+    public func delete(id: String) async throws {
+        records.removeValue(forKey: id)
     }
 }
 
@@ -84,6 +89,12 @@ public actor FileManifestationStore: ManifestationStoring {
             .filter { $0.status == .completed }
             .sorted { ($0.finishedAt ?? .distantPast) > ($1.finishedAt ?? .distantPast) }
             .first
+    }
+
+    public func delete(id: String) throws {
+        try ensureLoaded()
+        guard records.removeValue(forKey: id) != nil else { return }
+        try persist()
     }
 
     private func ensureLoaded() throws {

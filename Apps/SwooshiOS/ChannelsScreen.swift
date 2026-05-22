@@ -68,6 +68,29 @@ struct ChannelsScreen: View {
         }
         .navigationTitle("Channels")
         .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(for: ChannelDestination.self) { destination in
+            switch destination {
+            case .platform(let id):
+                if let summary = response?.adapters.first(where: { $0.id == id }) {
+                    ChannelDetailScreen(
+                        summary: summary,
+                        meta: ChannelCatalog.entry(id: id),
+                        onToggled: { self.response = $0 }
+                    )
+                } else {
+                    ContentUnavailableView("Adapter not found", systemImage: "questionmark.circle")
+                }
+            case .state(let id):
+                if let summary = response?.stateAdapters.first(where: { $0.id == id }) {
+                    StateAdapterDetailScreen(
+                        summary: summary,
+                        onToggled: { self.response = $0 }
+                    )
+                } else {
+                    ContentUnavailableView("State backend not found", systemImage: "questionmark.circle")
+                }
+            }
+        }
         .task(id: session.host?.absoluteString) { await load() }
         .refreshable { await load() }
         .sensoryFeedback(.error, trigger: errorFeedback)
@@ -112,14 +135,38 @@ struct ChannelsScreen: View {
 
     // MARK: - Live (paired)
 
+    /// Cached grouping for the current `response` + `filter` pair. Recomputed
+    /// in `liveSections` via lazy `let`, but the heavy lifting only happens
+    /// when one of those actually changes — not on every body re-render
+    /// triggered by unrelated state. With 23 platform adapters + 7 state
+    /// backends the un-cached version was triggering visible main-thread
+    /// stalls when SwiftUI re-evaluated the list during navigation push.
+    private struct GroupedAdapters {
+        let platformByCategory: [(ChannelCategory, [ChannelRow])]
+        let stateRows: [ChatStateAdapterSummary]
+        var isEmpty: Bool {
+            platformByCategory.allSatisfy { $0.1.isEmpty } && stateRows.isEmpty
+        }
+    }
+
+    private func group(_ response: ChatAdaptersResponse, by filter: ChannelFilter) -> GroupedAdapters {
+        let rows = response.adapters.compactMap { summary -> ChannelRow? in
+            guard filter.admits(summary.distribution) else { return nil }
+            return ChannelRow(summary: summary, meta: ChannelCatalog.entry(id: summary.id))
+        }
+        let platformByCategory: [(ChannelCategory, [ChannelRow])] = ChannelCategory.allCases.compactMap { category in
+            let bucket = rows.filter { $0.category == category }
+            return bucket.isEmpty ? nil : (category, bucket)
+        }
+        let stateRows = response.stateAdapters.filter { filter.admits($0.distribution) }
+        return GroupedAdapters(platformByCategory: platformByCategory, stateRows: stateRows)
+    }
+
     @ViewBuilder
     private func liveSections(_ response: ChatAdaptersResponse) -> some View {
-        let rows = response.adapters
-            .map { ChannelRow(summary: $0, meta: ChannelCatalog.entry(id: $0.id)) }
-            .filter { filter.admits($0.summary.distribution) }
-        let stateRowsCount = response.stateAdapters.filter { filter.admits($0.distribution) }.count
+        let grouped = group(response, by: filter)
 
-        if rows.isEmpty, stateRowsCount == 0 {
+        if grouped.isEmpty {
             Section {
                 ContentUnavailableView {
                     Label("No \(filter.title.lowercased()) channels", systemImage: "bubble.left.and.bubble.right")
@@ -137,42 +184,32 @@ struct ChannelsScreen: View {
             }
         }
 
-        ForEach(ChannelCategory.allCases) { category in
-            let bucket = rows.filter { $0.category == category }
-            if !bucket.isEmpty {
-                Section(category.title) {
-                    ForEach(bucket) { row in
-                        NavigationLink {
-                            ChannelDetailScreen(
-                                summary: row.summary,
-                                meta: row.meta,
-                                onToggled: { self.response = $0 }
-                            )
-                        } label: {
-                            ChannelRowView(
-                                kindRawValue: row.summary.id,
-                                displayName: row.summary.displayName,
-                                distribution: row.summary.distribution,
-                                enabled: row.summary.enabled,
-                                configured: row.summary.configured,
-                                missingCount: row.summary.missingCredentials.count
-                            )
-                        }
+        // Platform adapters use `NavigationLink(value:)` + the screen-level
+        // `.navigationDestination(for:)` so the destination view isn't built
+        // until the user actually taps a row. The old form built every
+        // ChannelDetailScreen eagerly, which compounded with 30 SVG-backed
+        // logo views to stall the main thread.
+        ForEach(grouped.platformByCategory, id: \.0) { (category, bucket) in
+            Section(category.title) {
+                ForEach(bucket) { row in
+                    NavigationLink(value: ChannelDestination.platform(id: row.id)) {
+                        ChannelRowView(
+                            kindRawValue: row.summary.id,
+                            displayName: row.summary.displayName,
+                            distribution: row.summary.distribution,
+                            enabled: row.summary.enabled,
+                            configured: row.summary.configured,
+                            missingCount: row.summary.missingCredentials.count
+                        )
                     }
                 }
             }
         }
 
-        let stateRows = response.stateAdapters.filter { filter.admits($0.distribution) }
-        if !stateRows.isEmpty {
+        if !grouped.stateRows.isEmpty {
             Section {
-                ForEach(stateRows) { adapter in
-                    NavigationLink {
-                        StateAdapterDetailScreen(
-                            summary: adapter,
-                            onToggled: { self.response = $0 }
-                        )
-                    } label: {
+                ForEach(grouped.stateRows) { adapter in
+                    NavigationLink(value: ChannelDestination.state(id: adapter.id)) {
                         ChannelRowView(
                             kindRawValue: adapter.id,
                             displayName: adapter.displayName,
@@ -276,6 +313,20 @@ private struct ChannelRow: Identifiable {
     let meta: ChannelCatalogEntry?
     var id: String { summary.id }
     var category: ChannelCategory { meta?.category ?? .internalSurface }
+}
+
+/// Destination value the NavigationStack pushes when the user taps a
+/// chat-adapter row. We only carry the id+kind (both Hashable) so the
+/// wire types (`ChatAdapterSummary` / `ChatStateAdapterSummary`) don't
+/// need to adopt Hashable in the public SwooshClient surface. The
+/// destination view looks the row up by id from the currently loaded
+/// response. Using `NavigationLink(value:)` + screen-level
+/// `.navigationDestination(for:)` keeps detail screens lazy — building
+/// 30 inline `NavigationLink { destination } label:` views was the
+/// freeze culprit when the list first rendered.
+private enum ChannelDestination: Hashable {
+    case platform(id: String)
+    case state(id: String)
 }
 
 // MARK: - Row view

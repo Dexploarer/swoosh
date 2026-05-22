@@ -62,6 +62,7 @@ public enum DefaultToolRegistrar {
         await registerEVM(into: registry, dependencies: dependencies)
         await registerSolana(into: registry, dependencies: dependencies)
         await registerJupiter(into: registry, dependencies: dependencies)
+        await registerLaunchpads(into: registry)
         await registerHyperliquid(into: registry, dependencies: dependencies)
         await registerUniswap(into: registry, dependencies: dependencies)
         if let skills = selfImprovement.skills {
@@ -270,7 +271,7 @@ public enum DefaultToolRegistrar {
     }
 
     // ── Jupiter (Solana DEX aggregator) ───────────────────────────
-    // Jupiter tools talk to the Jupiter HTTP API directly via JupSwift —
+    // Jupiter tools talk to the Jupiter HTTP API directly.
     // they do not depend on the injected Solana RPC client, so the hook
     // is unconditional. Write paths stay permissioned + trading-gated.
     static func registerJupiter(into registry: ToolRegistry, dependencies: ToolDependencies) async {
@@ -301,6 +302,12 @@ public enum DefaultToolRegistrar {
         await registry.register(TypeErasedTool(JupiterCreateLimitOrderTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(JupiterGetLimitOrdersTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(JupiterCancelLimitOrderTool(dependencies: dependencies)))
+    }
+
+    // ── Launchpads ────────────────────────────────────────────────
+    static func registerLaunchpads(into registry: ToolRegistry) async {
+        await registry.register(TypeErasedTool(LaunchpadListPlatformsTool()))
+        await registry.register(TypeErasedTool(LaunchpadGetPlatformTool()))
     }
 
     // ── Hyperliquid (perps DEX) ───────────────────────────────────

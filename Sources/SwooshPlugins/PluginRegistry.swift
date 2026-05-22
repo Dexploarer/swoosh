@@ -1,4 +1,16 @@
-// SwooshPlugins/PluginRegistry.swift — 0.8A Plugin Registry
+// SwooshPlugins/PluginRegistry.swift — 0.8B Plugin Registry
+//
+// The registry tracks every loaded plugin and the set of tool names each
+// plugin owns. It does *not* register tools with `ToolRegistry` directly —
+// that bridge lives in `SwooshPluginRuntime.PluginHost`, which also handles
+// firewall grants and the AnySwooshTool wrapper. Keeping the registry
+// transport-free is what lets the iOS app link this module for read-only
+// inspection of installed plugins.
+//
+// Audit forwarding: callers may pass an `AuditLogging` impl on init, in
+// which case every `PluginAuditEvent` is also written as an `AuditEntry`
+// with kind `.pluginEvent`. The internal in-memory log is still maintained
+// for callers that don't wire ActantDB (tests, ad-hoc tools).
 
 import Foundation
 import SwooshTools
@@ -7,13 +19,40 @@ import SwooshTools
 // MARK: - Plugin errors
 // ═══════════════════════════════════════════════════════════════════
 
-public enum PluginError: Error, Sendable {
+public enum PluginError: Error, Sendable, CustomStringConvertible {
     case notFound(String)
     case alreadyExists(String)
     case notEnabled(String)
+    /// The plugin breached its sandbox contract — timed out, exceeded
+    /// `maxOutputBytes`, or returned malformed JSON / unexpected exit
+    /// status. Distinct from `toolFailed`, which is the plugin's own
+    /// reported error from a successful round-trip.
     case sandboxViolation(String)
+    /// A well-behaved plugin returned `{"ok": false, "error": "..."}`.
+    /// Routes the message back to the caller as an ordinary tool failure
+    /// without conflating it with sandbox breaches.
+    case toolFailed(String)
     case toolNotRegistered(String)
     case approvalRequired(String)
+    case validationFailed(pluginID: String, errors: [PluginValidationError])
+    case missingEntrypoint(pluginID: String, detail: String)
+
+    public var description: String {
+        switch self {
+        case .notFound(let id): return "plugin not found: \(id)"
+        case .alreadyExists(let id): return "plugin already exists: \(id)"
+        case .notEnabled(let id): return "plugin not enabled: \(id)"
+        case .sandboxViolation(let m): return "sandbox violation: \(m)"
+        case .toolFailed(let m): return "plugin tool failed: \(m)"
+        case .toolNotRegistered(let n): return "plugin tool not registered: \(n)"
+        case .approvalRequired(let id): return "approval required for plugin: \(id)"
+        case .validationFailed(let id, let errs):
+            let joined = errs.map(\.description).joined(separator: "; ")
+            return "plugin \(id) failed validation: \(joined)"
+        case .missingEntrypoint(let id, let detail):
+            return "plugin \(id) entrypoint unavailable: \(detail)"
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -25,44 +64,60 @@ public actor PluginRegistry {
     private var registeredTools: [String: String] = [:]  // toolName → pluginID
     private var auditLog: [PluginAuditEvent] = []
     private let redactor: PluginContentRedactor
+    private let externalAudit: (any AuditLogging)?
 
-    public init(redactor: PluginContentRedactor = PluginContentRedactor()) {
+    public init(
+        redactor: PluginContentRedactor = PluginContentRedactor(),
+        audit: (any AuditLogging)? = nil
+    ) {
         self.redactor = redactor
+        self.externalAudit = audit
     }
 
     // ── Registration ──────────────────────────────────────────────
 
-    public func register(_ manifest: PluginManifest) throws {
+    public func register(_ manifest: PluginManifest) async throws {
         guard plugins[manifest.id] == nil else { throw PluginError.alreadyExists(manifest.id) }
         plugins[manifest.id] = manifest
-        appendAudit(.init(kind: .discovered, pluginID: manifest.id, message: "Plugin registered: \(manifest.name)"))
+        await appendAudit(.init(
+            kind: .discovered, pluginID: manifest.id,
+            message: "Plugin registered: \(manifest.name)"
+        ))
     }
 
-    public func inspect(_ id: String) throws -> PluginManifest {
+    public func inspect(_ id: String) async throws -> PluginManifest {
         guard let p = plugins[id] else { throw PluginError.notFound(id) }
-        appendAudit(.init(kind: .inspected, pluginID: id, message: "Plugin inspected"))
+        await appendAudit(.init(kind: .inspected, pluginID: id, message: "Plugin inspected"))
         return p
     }
 
-    public func enable(_ id: String) throws {
+    public func enable(_ id: String) async throws {
         guard var p = plugins[id] else { throw PluginError.notFound(id) }
         p.enabled = true; p.updatedAt = Date()
         plugins[id] = p
-        // Register plugin tools
         for tool in p.tools {
             registeredTools[tool.swooshToolName] = id
-            appendAudit(.init(kind: .toolRegistered, pluginID: id, message: "Tool registered: \(tool.swooshToolName)"))
+            await appendAudit(.init(
+                kind: .toolRegistered, pluginID: id,
+                message: "Tool registered: \(tool.swooshToolName)"
+            ))
         }
-        appendAudit(.init(kind: .enabled, pluginID: id, message: "Plugin enabled"))
+        await appendAudit(.init(kind: .enabled, pluginID: id, message: "Plugin enabled"))
     }
 
-    public func disable(_ id: String) throws {
+    public func disable(_ id: String) async throws {
         guard var p = plugins[id] else { throw PluginError.notFound(id) }
         p.enabled = false; p.updatedAt = Date()
         plugins[id] = p
-        // Unregister tools
         for tool in p.tools { registeredTools.removeValue(forKey: tool.swooshToolName) }
-        appendAudit(.init(kind: .disabled, pluginID: id, message: "Plugin disabled"))
+        await appendAudit(.init(kind: .disabled, pluginID: id, message: "Plugin disabled"))
+    }
+
+    /// Replace a previously-registered manifest. Used by the runtime when
+    /// `FilePluginStore.upsert` writes an updated manifest back to disk —
+    /// e.g. after enable/disable mutates the `enabled` flag.
+    public func updateManifest(_ manifest: PluginManifest) {
+        plugins[manifest.id] = manifest
     }
 
     // ── Queries ───────────────────────────────────────────────────
@@ -85,27 +140,27 @@ public actor PluginRegistry {
 
     // ── Sandbox validation ────────────────────────────────────────
 
-    public func validateSandbox(pluginID: String, action: PluginSandboxAction) throws -> Bool {
+    public func validateSandbox(pluginID: String, action: PluginSandboxAction) async throws -> Bool {
         guard let p = plugins[pluginID] else { throw PluginError.notFound(pluginID) }
         switch action {
         case .filesystemRead:
             if !p.sandbox.allowFilesystemRead {
-                appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Filesystem read denied"))
+                await appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Filesystem read denied"))
                 return false
             }
         case .filesystemWrite:
             if !p.sandbox.allowFilesystemWrite {
-                appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Filesystem write denied"))
+                await appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Filesystem write denied"))
                 return false
             }
         case .network:
             if !p.sandbox.allowNetwork {
-                appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Network denied"))
+                await appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Network denied"))
                 return false
             }
         case .processSpawn:
             if !p.sandbox.allowProcessSpawn {
-                appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Process spawn denied"))
+                await appendAudit(.init(kind: .sandboxViolation, pluginID: pluginID, message: "Process spawn denied"))
                 return false
             }
         }
@@ -118,7 +173,31 @@ public actor PluginRegistry {
 
     // ── Audit ─────────────────────────────────────────────────────
 
-    private func appendAudit(_ event: PluginAuditEvent) { auditLog.append(event) }
+    /// Public hook so the runtime can record plugin-tool-call lifecycle
+    /// events (started / completed / failed) without rebuilding its own
+    /// log. Also writes to the external `AuditLogging` if one was injected.
+    public func recordEvent(_ event: PluginAuditEvent) async {
+        await appendAudit(event)
+    }
+
+    private func appendAudit(_ event: PluginAuditEvent) async {
+        auditLog.append(event)
+        if let externalAudit {
+            let success: Bool
+            switch event.kind {
+            case .sandboxViolation, .toolCallFailed: success = false
+            default: success = true
+            }
+            try? await externalAudit.append(AuditEntry(
+                kind: .pluginEvent,
+                toolName: nil,
+                sessionID: nil,
+                detail: "[plugin:\(event.pluginID)] \(event.kind.rawValue): \(event.message)",
+                success: success
+            ))
+        }
+    }
+
     public func getAuditLog(pluginID: String? = nil) -> [PluginAuditEvent] {
         if let id = pluginID { return auditLog.filter { $0.pluginID == id } }
         return auditLog

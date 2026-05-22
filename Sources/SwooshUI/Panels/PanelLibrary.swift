@@ -44,6 +44,9 @@ public enum PanelLibrary {
         case .walletAssets:         WalletAssetsPanelView()
         case .walletInsights:       WalletInsightsPanelView()
         case .tradingCapabilities:  TradingCapabilitiesPanelView()
+        case .jupiterDocs:          JupiterDocsPanelView()
+        case .defiDocs:             DeFiDocsPanelView()
+        case .launchpadDocs:        LaunchpadDocsPanelView()
 
         // Providers + models
         case .providerStatus:       ProviderStatusPanelView()

@@ -1,9 +1,9 @@
 // SwooshMLX/MLXModelProvider.swift — MLX local inference as a ModelProvider — 0.9P
 //
 // Bridges the on-device `MLXInferenceEngine` to `SwooshCore.ModelProvider`
-// so the agent kernel can run a full turn entirely locally — no cloud
-// key, no network. The daemon selects this provider when
-// `SWOOSH_MLX_MODEL` names a model directory under `~/.swoosh/models`.
+// so the agent kernel can run a full turn without a cloud API key. The
+// daemon selects this provider when `SWOOSH_MLX_MODEL` names a local
+// model directory or MLX Hub ID.
 //
 // Without this bridge `MLXInferenceEngine` has no call site — the
 // "MLX-capable, Apple-first" runtime is unreachable. This file is the
@@ -24,7 +24,7 @@ public actor MLXModelProvider: ModelProvider {
     private let temperature: Double
 
     /// - Parameters:
-    ///   - modelID: directory name of the model under `modelsDir`.
+    ///   - modelID: directory name under `modelsDir`, or an MLX Hub ID.
     ///   - modelsDir: model root (default `~/.swoosh/models`).
     public init(
         modelID: String,

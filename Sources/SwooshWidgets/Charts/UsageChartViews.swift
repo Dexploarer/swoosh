@@ -79,10 +79,9 @@ public struct UsageOverTimeChart: View {
             }
             .chartForegroundStyleScale([
                 "OpenAI": Color.cyan,
-                "Anthropic": Color.orange,
-                "Gemini": Color.blue,
-                "DeepSeek": Color.green,
-                "Groq": Color.purple,
+                "OpenRouter": Color.orange,
+                "Eliza Cloud": Color.blue,
+                "MLX Local": Color.green,
             ])
             .chartXAxis {
                 AxisMarks(values: .automatic(desiredCount: 5)) {
@@ -235,14 +234,14 @@ public struct ProviderUsageBarChart: View {
 public enum SampleChartData {
     /// Generate sample usage-over-time data.
     public static func usageOverTime() -> [UsageDataPoint] {
-        let providers = ["OpenAI", "Anthropic", "Gemini"]
+        let providers = ["OpenAI", "OpenRouter", "Eliza Cloud"]
         let now = Date()
         var points: [UsageDataPoint] = []
 
         for provider in providers {
             for i in stride(from: -24, through: 0, by: 1) {
                 let ts = now.addingTimeInterval(TimeInterval(i * 3600))
-                let base: Double = provider == "OpenAI" ? 45 : provider == "Anthropic" ? 30 : 15
+                let base: Double = provider == "OpenAI" ? 45 : provider == "OpenRouter" ? 30 : 15
                 let jitter = Double.random(in: -10...10)
                 points.append(UsageDataPoint(
                     provider: provider,
@@ -260,10 +259,9 @@ public enum SampleChartData {
     public static func costBreakdown() -> [CostEntry] {
         [
             CostEntry(provider: "OpenAI", amount: 4.23, color: .cyan),
-            CostEntry(provider: "Anthropic", amount: 8.10, color: .orange),
-            CostEntry(provider: "Gemini", amount: 0.95, color: .blue),
-            CostEntry(provider: "DeepSeek", amount: 1.05, color: .green),
-            CostEntry(provider: "Groq", amount: 0.15, color: .purple),
+            CostEntry(provider: "OpenRouter", amount: 8.10, color: .orange),
+            CostEntry(provider: "Eliza Cloud", amount: 0.95, color: .blue),
+            CostEntry(provider: "MLX Local", amount: 0.00, color: .green),
         ]
     }
 
@@ -271,10 +269,9 @@ public enum SampleChartData {
     public static func providerUsage() -> [(provider: String, usage: Double, color: Color)] {
         [
             ("OpenAI", 0.45, .cyan),
-            ("Anthropic", 0.72, .orange),
-            ("Gemini", 0.18, .blue),
-            ("DeepSeek", 0.90, .green),
-            ("Groq", 0.30, .purple),
+            ("OpenRouter", 0.72, .orange),
+            ("Eliza Cloud", 0.18, .blue),
+            ("MLX Local", 0.90, .green),
         ]
     }
 }

@@ -11,6 +11,7 @@
 
 import Foundation
 import SwooshGenerativeUI
+import SwooshModels
 import SwooshProviders
 
 // ═══════════════════════════════════════════════════════════════════
@@ -131,7 +132,7 @@ public final class AgentShellModel {
 
     public init(
         surfaceHost: GenerativeSurfaceHost = GenerativeSurfaceHost(),
-        selectedModelID: String = "gpt-5.5",
+        selectedModelID: String = ModelDefaults.defaultInteractiveModelID,
         selectedEffort: ReasoningEffort = .extraHigh
     ) {
         self.surfaceHost = surfaceHost

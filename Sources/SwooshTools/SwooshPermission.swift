@@ -113,6 +113,20 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     // server) stay CLI-only — they are never wired as agent tools.
     case mcpRead                  // list configured servers + their discovered tools
     case mcpExecute               // call a discovered MCP tool (untrusted by default; high-risk gated)
+
+    // ── Plugins ───────────────────────────────────────────────────
+    // Plugin host admin permissions. These gate *plugin lifecycle* —
+    // install / uninstall / enable / disable — and are humanOnly: the
+    // model can never enable a plugin, only request that the user does.
+    // Plugin tools themselves declare ordinary SwooshPermission cases
+    // (fileRead, networkAccess, etc.) which the user grants when they
+    // approve the plugin at enable time. There is no `pluginExecute`
+    // permission — each plugin tool routes through the existing
+    // firewall on its own declared permission, like every other tool.
+    case pluginInstall
+    case pluginUninstall
+    case pluginEnable
+    case pluginDisable
 }
 
 // MARK: - Permission state

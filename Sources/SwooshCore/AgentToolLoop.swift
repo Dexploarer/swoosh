@@ -226,7 +226,12 @@ public actor AgentToolLoop {
                 )
             }
             // Call model
-            let completionRequest = ModelCompletionRequest(messages: transcript, tools: availableTools)
+            let completionRequest = ModelCompletionRequest(
+                messages: transcript,
+                model: request.model,
+                providerID: request.providerID,
+                tools: availableTools
+            )
             let completion = try await modelProvider.complete(completionRequest)
             lastModel = completion.model
 

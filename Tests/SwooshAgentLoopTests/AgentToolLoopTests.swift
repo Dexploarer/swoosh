@@ -10,6 +10,7 @@ import Foundation
 @testable import SwooshTools
 @testable import SwooshFirewall
 @testable import SwooshApprovals
+@testable import SwooshToolsets
 
 // Disambiguate duplicate types between SwooshCore and SwooshTools
 typealias CoreChatMessage = SwooshCore.ChatMessage
@@ -492,6 +493,98 @@ struct AgentToolLoopTests {
         #expect(requests[0].tools.contains { $0.name == "core.status" })
         #expect(requests[0].tools.contains { $0.name == "evm.tx_build_native_transfer" })
         #expect(!requests[0].tools.contains { $0.name == "vault.approve_candidate" })
+    }
+
+    @Test("Agent prompt exposes launchpad tools and skills")
+    func agentPromptExposesLaunchpadToolsAndSkills() async throws {
+        let registry = ToolRegistry(
+            firewall: GrantAllFirewall(),
+            audit: SwooshAuditLog(),
+            approvals: PassthroughApproval()
+        )
+        await DefaultToolRegistrar.registerLaunchpads(into: registry)
+
+        let provider = SequenceModelProvider(responses: [
+            ModelCompletionResponse(content: "Ready.", model: "test-model")
+        ])
+        let loop = AgentToolLoop(
+            memoryLoader: MockMemoryLoader(),
+            reportLoader: MockReportLoader(),
+            permSummarizer: MockPermSummarizer(),
+            sessionStore: MockSessionStore(),
+            auditLogger: MockResponseAuditor(),
+            modelProvider: provider,
+            toolRegistry: registry,
+            skillCatalogProvider: {
+                [
+                    (
+                        id: "bundled.launchpads.pumpportal.SKILL",
+                        title: "pumpportal-launchpad",
+                        description: "Use PumpPortal for Solana token creation and PumpSwap trading flows."
+                    ),
+                    (
+                        id: "bundled.launchpads.bags.SKILL",
+                        title: "bags-launchpad",
+                        description: "Use Bags for Solana launch intents and launch transaction creation."
+                    ),
+                    (
+                        id: "bundled.launchpads.flap.SKILL",
+                        title: "flap-launchpad",
+                        description: "Use Flap for BNB Chain trading and VaultPortal launch flows."
+                    ),
+                    (
+                        id: "bundled.launchpads.four-meme.SKILL",
+                        title: "four-meme-launchpad",
+                        description: "Use Four.meme for BNB Chain meme launches and tax-token planning."
+                    ),
+                ]
+            }
+        )
+
+        _ = try await loop.run(AgentRequest(input: "Show me PumpPortal launchpad capabilities"))
+        let requests = await provider.capturedRequests()
+        let systemPrompt = requests[0].messages.first(where: { $0.role == CoreChatRole.system })?.content ?? ""
+
+        #expect(requests[0].tools.contains { $0.name == "launchpad.list_platforms" })
+        #expect(requests[0].tools.contains { $0.name == "launchpad.get_platform" })
+        #expect(systemPrompt.contains("pumpportal-launchpad"))
+        #expect(systemPrompt.contains("bags-launchpad"))
+        #expect(systemPrompt.contains("flap-launchpad"))
+        #expect(systemPrompt.contains("four-meme-launchpad"))
+        #expect(systemPrompt.contains("Use `skill_get` to load a body."))
+        #expect(systemPrompt.contains("launchpad.get_platform"))
+    }
+
+    @Test("Local diagnostic provider can call explicitly requested tools")
+    func localDiagnosticProviderCanCallExplicitlyRequestedTools() async throws {
+        let registry = ToolRegistry(
+            firewall: GrantAllFirewall(),
+            audit: SwooshAuditLog(),
+            approvals: PassthroughApproval()
+        )
+        await DefaultToolRegistrar.registerLaunchpads(into: registry)
+
+        let sessionStore = MockSessionStore()
+        let loop = AgentToolLoop(
+            memoryLoader: MockMemoryLoader(),
+            reportLoader: MockReportLoader(),
+            permSummarizer: MockPermSummarizer(),
+            sessionStore: sessionStore,
+            auditLogger: MockResponseAuditor(),
+            modelProvider: LocalDiagnosticProvider(),
+            toolRegistry: registry
+        )
+
+        let response = try await loop.run(AgentRequest(
+            sessionID: "launchpad-diagnostic",
+            input: "Use tool launchpad.get_platform with {\"id\":\"bags\"}."
+        ))
+        let transcript = try await sessionStore.loadTranscript(sessionID: "launchpad-diagnostic")
+
+        #expect(response.toolCallCount == 1)
+        #expect(response.message.contains("I used `launchpad.get_platform`"))
+        #expect(transcript.contains { $0.role == CoreChatRole.tool && $0.content.contains("launchpad.get_platform") })
+        #expect(transcript.contains { $0.role == CoreChatRole.tool && $0.content.contains("create-token-launch-transaction") })
     }
 
     @Test("No-tools policy sends no tools and blocks model tool call")

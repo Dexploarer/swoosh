@@ -1,15 +1,6 @@
 {
-  "originHash" : "34d6efe5e26f9af88fdf1b1539d6e53cda96035ed82cf9ba79c585d0c8b64e79",
+  "originHash" : "2d10ac2d3ad8810f203b77e9b7d28f1d6bf342f3c38a79c3d1b83d95695c4852",
   "pins" : [
-    {
-      "identity" : "alamofire",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Alamofire/Alamofire.git",
-      "state" : {
-        "revision" : "7595cbcf59809f9977c5f6378500de2ad73b7ddb",
-        "version" : "5.12.0"
-      }
-    },
     {
       "identity" : "async-http-client",
       "kind" : "remoteSourceControl",
@@ -29,15 +20,6 @@
       }
     },
     {
-      "identity" : "clibsodium",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jauyou/Clibsodium.git",
-      "state" : {
-        "revision" : "1f40d6616cb8040f2fe9f613d57f1674d92bfe2c",
-        "version" : "1.0.0"
-      }
-    },
-    {
       "identity" : "cryptoswift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/krzyzanowskim/CryptoSwift.git",
@@ -53,15 +35,6 @@
       "state" : {
         "revision" : "277e5db5b6d348270088e6ee8e8fa2539bae603d",
         "version" : "2.23.0"
-      }
-    },
-    {
-      "identity" : "jupswift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jauyou/JupSwift.git",
-      "state" : {
-        "revision" : "018253012bcb1ba2ab7c67d8e66f66a8f4668de7",
-        "version" : "1.2.0"
       }
     },
     {
@@ -191,6 +164,24 @@
       }
     },
     {
+      "identity" : "swift-filelock",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DePasqualeOrg/swift-filelock",
+      "state" : {
+        "revision" : "3894dbeea7593724b847f7cff32a3e2b162b70a0",
+        "version" : "0.1.1"
+      }
+    },
+    {
+      "identity" : "swift-hf-api",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DePasqualeOrg/swift-hf-api.git",
+      "state" : {
+        "revision" : "985a673cbe2be9b61e1cbcbf062083ae6d648a8d",
+        "version" : "0.3.2"
+      }
+    },
+    {
       "identity" : "swift-http-structured-headers",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-http-structured-headers.git",
@@ -299,6 +290,15 @@
       }
     },
     {
+      "identity" : "swift-sse",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DePasqualeOrg/swift-sse",
+      "state" : {
+        "revision" : "c8e3f1a5d4cdf708c891bae1f2a975519627b65c",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax",
@@ -332,6 +332,24 @@
       "state" : {
         "revision" : "6fb48051a8b7e36707725d3ef2f876d6ed860250",
         "version" : "0.3.0"
+      }
+    },
+    {
+      "identity" : "swift-xet",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/DePasqualeOrg/swift-xet",
+      "state" : {
+        "revision" : "4395b0900c1d45614d323b9ba1109cd46dc1c1d7",
+        "version" : "0.2.0"
+      }
+    },
+    {
+      "identity" : "wasmkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftwasm/WasmKit.git",
+      "state" : {
+        "revision" : "5c389084423c08136040ab8a41f73d4e76fb7b21",
+        "version" : "0.2.2"
       }
     },
     {

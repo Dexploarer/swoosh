@@ -34,36 +34,14 @@ public enum CredentialSource: String, Sendable, Codable, CaseIterable {
 /// A provider we know how to scavenge credentials for.
 public enum KnownProvider: String, Sendable, CaseIterable, Codable {
     case openAI       = "openai"
-    case anthropic    = "anthropic"
     case openRouter   = "openrouter"
-    case gemini       = "gemini"
-    case copilot      = "copilot"
-    case deepSeek     = "deepseek"
-    case groq         = "groq"
-    case mistral      = "mistral"
-    case xAI          = "xai"
-    case together     = "together"
-    case fireworks    = "fireworks"
-    case perplexity   = "perplexity"
-    case cohere       = "cohere"
-    case ollama       = "ollama"
+    case elizaCloud   = "eliza-cloud"
 
     public var displayName: String {
         switch self {
         case .openAI:     return "OpenAI"
-        case .anthropic:  return "Anthropic"
         case .openRouter: return "OpenRouter"
-        case .gemini:     return "Gemini"
-        case .copilot:    return "GitHub Copilot"
-        case .deepSeek:   return "DeepSeek"
-        case .groq:       return "Groq"
-        case .mistral:    return "Mistral"
-        case .xAI:        return "xAI (Grok)"
-        case .together:   return "Together AI"
-        case .fireworks:  return "Fireworks AI"
-        case .perplexity: return "Perplexity"
-        case .cohere:     return "Cohere"
-        case .ollama:     return "Ollama"
+        case .elizaCloud: return "Eliza Cloud"
         }
     }
 }

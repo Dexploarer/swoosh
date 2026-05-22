@@ -80,8 +80,8 @@ struct ProviderStatusPane: View {
                 GroupBox("Discovery Sources") {
                     VStack(alignment: .leading, spacing: 6) {
                         legendRow("ENV", "Environment variables (OPENAI_API_KEY, etc.)", "terminal.fill")
-                        legendRow("FILE", "Config files (~/.codex/, ~/.claude/, etc.)", "doc.fill")
-                        legendRow("KEY", "Keychain items (Claude Code, Copilot, Gemini CLI)", "key.fill")
+                        legendRow("FILE", "Config files (~/.codex/, .config/openrouter/, etc.)", "doc.fill")
+                        legendRow("KEY", "Swoosh Keychain items", "key.fill")
                         legendRow("COOKIE", "Browser cookies (Chrome, Brave, Edge Safe Storage)", "globe")
                     }
                 }

@@ -96,7 +96,7 @@ public actor ProviderRouter {
     public func complete(
         role: ModelRole, request: ModelRequest
     ) async throws -> ModelResponse {
-        let candidates = await registry.routes(for: role)
+        let candidates = await candidates(for: role, request: request)
 
         guard !candidates.isEmpty else {
             throw ProviderError.allRoutesFailed([])
@@ -110,9 +110,10 @@ public actor ProviderRouter {
             }
 
             do {
-                let routed = request.withModel(route.model)
+                let routedModel = model(for: request, route: route)
+                let routed = request.withModel(routedModel)
                 appendAudit(.init(kind: .callStarted, providerID: route.providerID,
-                                  message: "Calling \(route.model) via \(route.providerID)"))
+                                  message: "Calling \(routedModel) via \(route.providerID)"))
                 let response = try await provider.complete(routed)
                 appendAudit(.init(kind: .callSucceeded, providerID: route.providerID,
                                   message: "Success: \(response.usage?.totalTokens ?? 0) tokens"))
@@ -140,7 +141,7 @@ public actor ProviderRouter {
     public func stream(
         role: ModelRole, request: ModelRequest
     ) async throws -> AsyncThrowingStream<ModelStreamEvent, Error> {
-        let candidates = await registry.routes(for: role)
+        let candidates = await candidates(for: role, request: request)
 
         for route in candidates {
             guard let provider = await registry.provider(for: route.providerID),
@@ -149,9 +150,10 @@ public actor ProviderRouter {
             }
 
             do {
-                let routed = request.withModel(route.model)
+                let routedModel = model(for: request, route: route)
+                let routed = request.withModel(routedModel)
                 appendAudit(.init(kind: .callStreamStarted, providerID: route.providerID,
-                                  message: "Streaming \(route.model) via \(route.providerID)"))
+                                  message: "Streaming \(routedModel) via \(route.providerID)"))
                 return try await streamer.stream(routed)
             } catch {
                 continue
@@ -159,6 +161,91 @@ public actor ProviderRouter {
         }
 
         throw ProviderError.allRoutesFailed([])
+    }
+
+    public func embed(
+        role: ModelRole = .embedding,
+        request: EmbeddingRequest,
+        providerID: ProviderID? = nil
+    ) async throws -> EmbeddingResponse {
+        let metadata = providerID.map { ["providerID": $0.rawValue] } ?? [:]
+        let routingRequest = ModelRequest(
+            model: request.model,
+            messages: [],
+            metadata: metadata
+        )
+        let candidates = await candidates(for: role, request: routingRequest)
+
+        guard !candidates.isEmpty else {
+            throw ProviderError.allRoutesFailed([])
+        }
+
+        var errors: [ProviderAttemptError] = []
+
+        for route in candidates {
+            guard let provider = await registry.provider(for: route.providerID) else {
+                continue
+            }
+            guard let embedder = provider as? any EmbeddingProviding else {
+                errors.append(ProviderAttemptError(
+                    route: route,
+                    error: ProviderError.unsupportedEndpoint(route.providerID, "embeddings")
+                ))
+                continue
+            }
+
+            do {
+                let routedModel = model(for: request.model, route: route)
+                let routed = EmbeddingRequest(model: routedModel, input: request.input)
+                appendAudit(.init(kind: .callStarted, providerID: route.providerID,
+                                  message: "Embedding \(routedModel) via \(route.providerID)"))
+                let response = try await embedder.embed(routed)
+                appendAudit(.init(kind: .callSucceeded, providerID: route.providerID,
+                                  message: "Success: \(response.usage?.totalTokens ?? 0) tokens"))
+                appendAudit(.init(kind: .routeSelected, providerID: route.providerID,
+                                  message: "Route \(route.id) for role \(role.rawValue)"))
+                return response
+            } catch {
+                let attempt = ProviderAttemptError(route: route, error: error)
+                errors.append(attempt)
+                appendAudit(.init(kind: .callFailed, providerID: route.providerID,
+                                  message: "Failed: \(error.localizedDescription)"))
+            }
+        }
+
+        appendAudit(.init(kind: .allRoutesFailed, providerID: ProviderID("router"),
+                          message: "All \(errors.count) routes failed for role \(role.rawValue)"))
+        throw ProviderError.allRoutesFailed(errors)
+    }
+
+    private func candidates(for role: ModelRole, request: ModelRequest) async -> [ProviderRoute] {
+        let routes = await registry.routes(for: role)
+        let scoped: [ProviderRoute]
+        if let providerID = request.metadata["providerID"], !providerID.isEmpty {
+            scoped = routes.filter { $0.providerID.rawValue == providerID }
+        } else {
+            scoped = routes
+        }
+
+        guard role == .embedding else { return scoped }
+        var supported: [ProviderRoute] = []
+        for route in scoped {
+            guard let provider = await registry.provider(for: route.providerID),
+                  provider.capabilities.embeddings else { continue }
+            supported.append(route)
+        }
+        return supported
+    }
+
+    private nonisolated func model(for request: ModelRequest, route: ProviderRoute) -> String {
+        model(for: request.model, route: route)
+    }
+
+    private nonisolated func model(for requestedModel: String, route: ProviderRoute) -> String {
+        guard !requestedModel.isEmpty, requestedModel != "auto" else {
+            return route.model
+        }
+        return requestedModel
     }
 
     /// Complete a request using a specific provider directly (bypass routing).

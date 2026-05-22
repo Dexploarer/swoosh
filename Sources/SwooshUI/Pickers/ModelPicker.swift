@@ -143,7 +143,7 @@ public struct ModelPicker: View {
         Array(models.dropFirst(featuredCount))
     }
 
-    /// "GPT-5.5" → "5.5". Compact trigger glyph matching the Codex picker.
+    /// "GPT-5.5" -> "5.5". Compact trigger glyph matching the Codex picker.
     private func shortLabel(_ name: String) -> String {
         if let dash = name.firstIndex(of: "-") {
             return String(name[name.index(after: dash)...])
@@ -163,12 +163,12 @@ public struct ModelPicker: View {
 }
 
 private struct StatefulPreview: View {
-    @State private var model: String = "gpt-5.5"
+    @State private var model: String = ModelDefaults.openAIModelID
     @State private var effort: ReasoningEffort = .extraHigh
 
     var body: some View {
         ModelPicker(
-            models: CloudCatalog.openAI,
+            models: CloudCatalog.all,
             selectedModelID: $model,
             effort: $effort
         )

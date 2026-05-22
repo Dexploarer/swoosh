@@ -8,7 +8,7 @@
 //   • Music   — music-gen provider (Suno, ElevenLabs Music, Stable Audio)
 //
 // Why a sheet instead of a Menu: on a 6.7" iPhone the input row is tight,
-// and the SOTA pattern (ChatGPT, Gemini, Claude) routes multi-section
+// and the SOTA pattern for mobile assistants routes multi-section
 // configuration into a bottom sheet so the composer stays minimal. The
 // trigger is a single SF Symbol — no model name, no effort glyph, no
 // reflow when the chosen model has a long name. Bottom-sheet selections
@@ -28,7 +28,7 @@ import SwooshProviders
 
 public struct UnifiedAgentPicker: View {
 
-    public let models: [CloudModelEntry]
+    public let models: [UnifiedModelEntry]
     @Binding public var selectedModelID: String
     @Binding public var effort: ReasoningEffort
     public let accent: NeonAccent
@@ -36,7 +36,7 @@ public struct UnifiedAgentPicker: View {
     @State private var isPresented = false
 
     public init(
-        models: [CloudModelEntry],
+        models: [UnifiedModelEntry],
         selectedModelID: Binding<String>,
         effort: Binding<ReasoningEffort>,
         accent: NeonAccent = .cyan
@@ -80,7 +80,7 @@ public struct UnifiedAgentPicker: View {
 
 private struct UnifiedAgentSheet: View {
 
-    let models: [CloudModelEntry]
+    let models: [UnifiedModelEntry]
     @Binding var selectedModelID: String
     @Binding var effort: ReasoningEffort
 
@@ -119,11 +119,11 @@ private struct UnifiedAgentSheet: View {
     // MARK: - Brain
 
     /// Grouped (providerID, models) pairs preserving the catalog's order
-    /// so OpenAI / Anthropic / Google / etc. each show up under their own
-    /// header instead of a single flat list.
-    private var modelsByProvider: [(providerID: String, models: [CloudModelEntry])] {
+    /// so cloud and local runtimes each show up under their own header
+    /// instead of a single flat list.
+    private var modelsByProvider: [(providerID: String, models: [UnifiedModelEntry])] {
         var seen: [String] = []
-        var grouped: [String: [CloudModelEntry]] = [:]
+        var grouped: [String: [UnifiedModelEntry]] = [:]
         for entry in models {
             if grouped[entry.providerID] == nil { seen.append(entry.providerID) }
             grouped[entry.providerID, default: []].append(entry)
@@ -172,7 +172,7 @@ private struct UnifiedAgentSheet: View {
                     .buttonStyle(.plain)
                 }
             } header: {
-                Text(CloudCatalog.providerDisplayName(group.providerID))
+                Text(UnifiedModelCatalog.providerDisplayName(group.providerID))
             }
         }
     }

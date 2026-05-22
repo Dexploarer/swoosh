@@ -11,18 +11,8 @@ public enum EnvironmentScavenger {
     /// Order within each provider array is priority (first match wins).
     static let envMap: [(KnownProvider, [String])] = [
         (.openAI,     ["OPENAI_API_KEY", "OPENAI_KEY"]),
-        (.anthropic,  ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]),
         (.openRouter, ["OPENROUTER_API_KEY", "OPENROUTER_KEY"]),
-        (.gemini,     ["GEMINI_API_KEY", "GOOGLE_API_KEY"]),
-        (.copilot,    ["COPILOT_API_TOKEN", "GITHUB_COPILOT_TOKEN"]),
-        (.deepSeek,   ["DEEPSEEK_API_KEY"]),
-        (.groq,       ["GROQ_API_KEY"]),
-        (.mistral,    ["MISTRAL_API_KEY"]),
-        (.xAI,        ["XAI_API_KEY", "GROK_API_KEY"]),
-        (.together,   ["TOGETHER_API_KEY"]),
-        (.fireworks,  ["FIREWORKS_API_KEY"]),
-        (.perplexity, ["PERPLEXITY_API_KEY", "PPLX_API_KEY"]),
-        (.cohere,     ["COHERE_API_KEY", "CO_API_KEY"]),
+        (.elizaCloud, ["ELIZA_CLOUD_API_KEY", "ELIZACLOUD_API_KEY"]),
     ]
 
     public static func scan(

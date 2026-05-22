@@ -27,6 +27,7 @@ import SwooshActantBackend
 import SwooshAPI
 import SwooshClient
 import SwooshConfig
+import SwooshWallet
 import SwooshKit
 import SwooshScout
 import SwooshSkills
@@ -41,12 +42,16 @@ import SwooshFiles
 import SwooshProcess
 import SwooshProviderBridge
 import SwooshProviders
+import SwooshModels
 import SwooshMLX
 import SwooshFoundation
 import SwooshMCP
 import SwooshCore
 import SwooshSecrets
 import SwooshDaemonSupport
+import SwooshPlugins
+import SwooshPluginRuntime
+import SwooshDemoPlugins
 
 @main
 struct SwooshDaemon {
@@ -153,8 +158,6 @@ struct SwooshDaemon {
         let modelProvider: any SwooshCore.ModelProvider
         let hasMetaModel: Bool
         if let mlxModel = env["SWOOSH_MLX_MODEL"], !mlxModel.trimmingCharacters(in: .whitespaces).isEmpty {
-            // On-device inference via MLX — no cloud key, no network. The
-            // model directory must exist under ~/.swoosh/models.
             modelProvider = MLXModelProvider(modelID: mlxModel.trimmingCharacters(in: .whitespaces))
             hasMetaModel = true
             log("Provider: MLX local (\(mlxModel)) — on-device inference.")
@@ -168,7 +171,12 @@ struct SwooshDaemon {
                 secrets: secrets,
                 preferredProviderID: runtimeConfig?.preferredProviderID
             )
-            modelProvider = ProviderBridgeAdapter(router: router, role: .primaryChat, modelName: info.model)
+            modelProvider = ProviderBridgeAdapter(
+                router: router,
+                role: .primaryChat,
+                modelName: info.model,
+                defaultProviderID: ProviderFactory.providerID(forDetectedProviderName: info.name)
+            )
             hasMetaModel = true
             log("Provider: \(info.name) (\(info.model))")
         } else {
@@ -312,6 +320,65 @@ struct SwooshDaemon {
             mcp: mcpDeps
         )
 
+        // ── Plugin host ─────────────────────────────────────────────
+        // Plugins are user-installed extensions to the agent — Swift,
+        // executable, or wasm. Phase 1 ships the spine + the Swift kind;
+        // executable + wasm come in follow-on phases. Manifests live under
+        // ~/.swoosh/plugins/<id>/manifest.json; plugin tool calls go
+        // through the ordinary ToolRegistry/firewall/audit pipeline. The
+        // host grants requested permissions to the firewall when the user
+        // enables a plugin (humanOnly admin) and revokes them on disable
+        // unless another enabled plugin still needs them.
+        let pluginStore = FilePluginStore(
+            root: swooshDir.appendingPathComponent("plugins", isDirectory: true)
+        )
+        let bundledPluginLoader = BundledPluginLoader(
+            store: pluginStore,
+            directory: BundledPluginLoader.defaultDirectory()
+        )
+        if let outcome = try? await bundledPluginLoader.loadAll() {
+            if !outcome.installed.isEmpty {
+                log("Plugins: bundled installed \(outcome.installed.joined(separator: ", ")).")
+            }
+            if !outcome.failed.isEmpty {
+                log("Plugins: failed to read bundled \(outcome.failed.joined(separator: ", ")).")
+            }
+        }
+        let pluginRegistry = PluginRegistry(audit: toolRuntime.audit)
+        let swiftPlugins = SwiftPluginRegistry()
+        // Register every Swift plugin entrypoint linked into the daemon.
+        // Adding a new SwiftPluginEntrypoint = one extra `register(_:)` here.
+        await swiftPlugins.register(HelloSwiftPlugin())
+        let pluginsRoot = swooshDir.appendingPathComponent("plugins", isDirectory: true)
+        let pluginHost = PluginHost(
+            store: pluginStore,
+            registry: pluginRegistry,
+            toolRegistry: toolRuntime.registry,
+            firewall: toolRuntime.firewall,
+            executors: [
+                SwiftPluginExecutor(registry: swiftPlugins),
+                ExecutablePluginExecutor(pluginsRoot: pluginsRoot),
+                WasmPluginExecutor(pluginsRoot: pluginsRoot),
+                MCPBridgePluginExecutor(registry: mcpRegistry, connector: mcpConnector),
+            ],
+            baselineGrants: toolRuntime.baselineGrants,
+            pluginsRoot: pluginsRoot
+        )
+        do {
+            try await pluginHost.bootstrap()
+            let installed = await pluginHost.listAll()
+            let enabled = installed.filter(\.enabled)
+            log("Plugins: \(installed.count) installed, \(enabled.count) re-enabled from \(swooshDir.appendingPathComponent("plugins").path).")
+        } catch {
+            log("Plugins: bootstrap failed: \(error.localizedDescription). Continuing without plugin tools.")
+        }
+        // Keep `swiftPlugins` and `pluginHost` alive for the daemon's
+        // lifetime so plugin tools registered in ToolRegistry remain
+        // dispatchable. Actor references suffice — no explicit storage
+        // needed since the closures captured by the registry retain them.
+        _ = swiftPlugins
+        _ = pluginHost
+
         // Real judge for the goal runner.
         let judge: GoalRunner.Judge = makeJudge(metaProvider: metaProvider)
         let goalRunner = GoalRunner(
@@ -436,6 +503,7 @@ struct SwooshDaemon {
             activeProvider: providerInfo,
             preferredProviderID: runtimeConfig?.preferredProviderID
         )
+        let codexAuth = CodexAuthManager(workingDirectory: swooshDir)
         let skillSummaries = loadedSkills
             .filter { SkillTrust.promptable.contains($0.trust) }
             .map(SwooshDaemon.skillSummary)
@@ -530,7 +598,228 @@ struct SwooshDaemon {
                     await SwooshDaemon.walletDashboard(
                         configStore: configStore,
                         secrets: secrets,
-                        dependencies: toolRuntime.dependencies
+                        dependencies: toolRuntime.dependencies,
+                        walletStore: toolRuntime.walletStore
+                    )
+                },
+                tools: {
+                    await SwooshDaemon.toolsResponse(registry: toolRuntime.registry)
+                },
+                mcpServers: {
+                    await SwooshDaemon.mcpServersResponse(registry: mcpRegistry)
+                },
+                audit: {
+                    let events = await toolRuntime.audit.tail(limit: 100)
+                    return AuditEventsResponse(events: events.map(SwooshDaemon.auditSummary))
+                },
+                approvals: {
+                    let pending = await toolRuntime.dependencies.approvals.listPending()
+                    return ApprovalsResponse(pending: pending.map { SwooshDaemon.approvalSummary($0) })
+                },
+                resolveApproval: { id, request in
+                    try await toolRuntime.dependencies.approvals.resolve(
+                        id: id,
+                        decision: SwooshDaemon.approvalDecision(request.decision),
+                        reason: request.reason
+                    )
+                    let pending = await toolRuntime.dependencies.approvals.listPending()
+                    let approval = pending.first { $0.id == id }
+                        ?? ToolApprovalRequest(
+                            id: id,
+                            toolName: "Resolved approval",
+                            risk: .medium,
+                            inputPreview: request.reason ?? "Resolved",
+                            sessionID: "default"
+                        )
+                    return ApprovalResolveResponse(
+                        approval: SwooshDaemon.approvalSummary(approval, status: request.decision == .deny ? "denied" : "approved"),
+                        message: "Approval resolved."
+                    )
+                },
+                startCodexAuth: {
+                    do {
+                        let status = try await codexAuth.start()
+                        return CodexAuthStatus(
+                            state: .init(rawValue: status.state.rawValue) ?? .pending,
+                            message: status.message,
+                            startedAt: status.startedAt,
+                            url: status.url
+                        )
+                    } catch {
+                        throw APIError.internalError(error.localizedDescription)
+                    }
+                },
+                codexAuthStatus: {
+                    let status = await codexAuth.snapshot()
+                    return CodexAuthStatus(
+                        state: .init(rawValue: status.state.rawValue) ?? .idle,
+                        message: status.message,
+                        startedAt: status.startedAt,
+                        url: status.url
+                    )
+                },
+                cancelCodexAuth: {
+                    await codexAuth.cancel()
+                    let status = await codexAuth.snapshot()
+                    return CodexAuthStatus(
+                        state: .init(rawValue: status.state.rawValue) ?? .cancelled,
+                        message: status.message,
+                        startedAt: status.startedAt,
+                        url: status.url
+                    )
+                },
+                plugins: {
+                    await SwooshDaemon.pluginsResponse(host: pluginHost)
+                },
+                pluginDetail: { id in
+                    try await SwooshDaemon.pluginDetailResponse(host: pluginHost, registry: pluginRegistry, id: id)
+                },
+                enablePlugin: { id in
+                    try await SwooshDaemon.enablePluginResponse(host: pluginHost, registry: pluginRegistry, id: id)
+                },
+                disablePlugin: { id in
+                    try await SwooshDaemon.disablePluginResponse(host: pluginHost, registry: pluginRegistry, id: id)
+                },
+                installPlugin: { request in
+                    try await SwooshDaemon.installPluginResponse(host: pluginHost, request: request)
+                },
+                uninstallPlugin: { id in
+                    try await SwooshDaemon.uninstallPluginResponse(host: pluginHost, id: id)
+                },
+                goals: {
+                    await SwooshDaemon.goalsResponse(store: goalStore)
+                },
+                goalDetail: { id in
+                    try await SwooshDaemon.goalDetailResponse(store: goalStore, id: id)
+                },
+                setGoal: { request in
+                    try await SwooshDaemon.setGoalResponse(store: goalStore, request: request)
+                },
+                abandonGoal: { id in
+                    try await SwooshDaemon.abandonGoalResponse(store: goalStore, id: id)
+                },
+                updateGoal: { id, request in
+                    try await SwooshDaemon.updateGoalResponse(store: goalStore, id: id, request: request)
+                },
+                manifestations: {
+                    await SwooshDaemon.manifestationsResponse(store: manifestStore)
+                },
+                manifestationDetail: { id in
+                    try await SwooshDaemon.manifestationDetailResponse(store: manifestStore, id: id)
+                },
+                runManifestation: { request in
+                    try await SwooshDaemon.runManifestationResponse(manifester: manifester, request: request)
+                },
+                deleteManifestation: { id in
+                    try await SwooshDaemon.deleteManifestationResponse(store: manifestStore, id: id)
+                },
+                skillDetail: { id in
+                    try await SwooshDaemon.skillDetailResponse(store: skillStore, id: id)
+                },
+                searchSkills: { request in
+                    try await SwooshDaemon.searchSkillsResponse(store: skillStore, request: request)
+                },
+                proposeSkill: { request in
+                    try await SwooshDaemon.proposeSkillResponse(store: skillStore, request: request)
+                },
+                approveSkill: { id in
+                    try await SwooshDaemon.approveSkillResponse(store: skillStore, id: id)
+                },
+                rejectSkill: { id in
+                    try await SwooshDaemon.rejectSkillResponse(store: skillStore, id: id)
+                },
+                deleteSkill: { id in
+                    try await SwooshDaemon.deleteSkillResponse(store: skillStore, id: id)
+                },
+                memoryDetail: { id in
+                    try await SwooshDaemon.memoryDetailResponse(backend: agentBackend, id: id)
+                },
+                proposeMemory: { request in
+                    try await SwooshDaemon.proposeMemoryResponse(backend: agentBackend, request: request)
+                },
+                approveMemory: { id in
+                    try await SwooshDaemon.approveMemoryResponse(backend: agentBackend, id: id)
+                },
+                rejectMemory: { id, request in
+                    try await SwooshDaemon.rejectMemoryResponse(backend: agentBackend, id: id, request: request)
+                },
+                executeTool: { name, request in
+                    try await SwooshDaemon.executeToolResponse(
+                        registry: toolRuntime.registry,
+                        name: name,
+                        request: request
+                    )
+                },
+                addMCPServer: { request in
+                    try await SwooshDaemon.addMCPServerResponse(registry: mcpRegistry, request: request)
+                },
+                removeMCPServer: { id in
+                    try await SwooshDaemon.removeMCPServerResponse(registry: mcpRegistry, id: id)
+                },
+                connectMCPServer: { id in
+                    try await SwooshDaemon.connectMCPServerResponse(registry: mcpRegistry, id: id)
+                },
+                disconnectMCPServer: { id in
+                    try await SwooshDaemon.disconnectMCPServerResponse(registry: mcpRegistry, id: id)
+                },
+                mcpServerTools: { id in
+                    try await SwooshDaemon.mcpServerToolsResponse(registry: mcpRegistry, id: id)
+                },
+                firewallGrants: {
+                    await SwooshDaemon.firewallResponse(firewall: toolRuntime.firewall)
+                },
+                updateFirewall: { request in
+                    try await SwooshDaemon.updateFirewallResponse(firewall: toolRuntime.firewall, request: request)
+                },
+                revokeFirewall: { permission in
+                    try await SwooshDaemon.revokeFirewallResponse(firewall: toolRuntime.firewall, permission: permission)
+                },
+                checkFirewall: { request in
+                    try await SwooshDaemon.checkFirewallResponse(firewall: toolRuntime.firewall, request: request)
+                },
+                cronJobs: {
+                    await SwooshDaemon.cronJobsAPIResponse(store: cronStore)
+                },
+                createCronJob: { request in
+                    try await SwooshDaemon.createCronJobResponse(store: cronStore, request: request)
+                },
+                deleteCronJob: { id in
+                    try await SwooshDaemon.deleteCronJobResponse(store: cronStore, id: id)
+                },
+                runCronJob: { id in
+                    try await SwooshDaemon.runCronJobResponse(
+                        scheduler: cronScheduler,
+                        store: cronStore,
+                        executor: cronExecutor,
+                        id: id
+                    )
+                },
+                walletAccounts: {
+                    await SwooshDaemon.walletAccountsResponse(store: toolRuntime.walletStore)
+                },
+                createWalletAccount: { request in
+                    try await SwooshDaemon.createWalletAccountResponse(
+                        store: toolRuntime.walletStore,
+                        request: request
+                    )
+                },
+                deleteWalletAccount: { id in
+                    try await SwooshDaemon.deleteWalletAccountResponse(
+                        store: toolRuntime.walletStore,
+                        id: id
+                    )
+                },
+                renameWalletAccount: { id, request in
+                    try await SwooshDaemon.renameWalletAccountResponse(
+                        store: toolRuntime.walletStore,
+                        id: id,
+                        request: request
+                    )
+                },
+                refreshWalletBalance: { id in
+                    try await SwooshDaemon.refreshWalletBalanceResponse(
+                        store: toolRuntime.walletStore,
+                        id: id
                     )
                 }
             )
@@ -612,54 +901,85 @@ struct SwooshDaemon {
     ) async -> (providers: [ProviderSummary], activeProviderID: String?, preferredProviderID: String?) {
         let openAIConfigured = (try? await secrets.exists(SecretRef("openai", "api_key"))) ?? false
         let openRouterConfigured = (try? await secrets.exists(SecretRef("openrouter", "api_key"))) ?? false
-        let elizaConfigured = (try? await secrets.exists(SecretRef("eliza-cloud", "api_key"))) ?? false
+        let elizaCloudConfigured = (try? await secrets.exists(SecretRef("eliza-cloud", "api_key"))) ?? false
+        let codexConfigured = await CodexBridgeProvider().isAuthenticated()
         let localServers = await LocalProviderDiscovery().discover()
         let localModel = localServers.first?.models.first
 
+        let env = ProcessInfo.processInfo.environment
+        let mlxModelEnv = env["SWOOSH_MLX_MODEL"]?.trimmingCharacters(in: .whitespaces)
+        let mlxModel = (mlxModelEnv?.isEmpty == false) ? mlxModelEnv : ModelDefaults.localMLXModelID
+        let mlxConfigured = MLXInferenceEngine.isAppleSilicon
+        let foundationEnabled = env["SWOOSH_FOUNDATION_MODEL"] == "1"
+
         let activeID: String? = {
             guard let activeProvider else { return "local-diagnostic" }
-            switch activeProvider.name {
-            case "OpenAI": return "openai"
-            case "OpenRouter": return "openrouter"
-            case "Eliza Cloud": return "eliza-cloud"
-            default: return "local-openai"
-            }
+            return ProviderFactory.providerID(forDetectedProviderName: activeProvider.name)
         }()
 
-        var providers = [
+        var providers: [ProviderSummary] = [
             ProviderSummary(
-                id: "openai",
+                id: ModelDefaults.codexProviderID,
+                name: "ChatGPT (via Codex)",
+                model: codexConfigured ? ModelDefaults.codexModelID : nil,
+                configured: codexConfigured,
+                active: activeID == "codex",
+                status: codexConfigured ? "signed_in" : "needs_signin"
+            ),
+            ProviderSummary(
+                id: ModelDefaults.openAIProviderID,
                 name: "OpenAI API",
-                model: "gpt-4.1",
+                model: ModelDefaults.openAIModelID,
                 configured: openAIConfigured,
                 active: activeID == "openai",
                 status: openAIConfigured ? "configured" : "missing_key"
             ),
             ProviderSummary(
-                id: "openrouter",
+                id: ModelDefaults.openRouterProviderID,
                 name: "OpenRouter",
-                model: "openai/gpt-4.1",
+                model: ModelDefaults.openRouterModelID,
                 configured: openRouterConfigured,
                 active: activeID == "openrouter",
                 status: openRouterConfigured ? "configured" : "missing_key"
             ),
             ProviderSummary(
-                id: "eliza-cloud",
+                id: ModelDefaults.elizaCloudProviderID,
                 name: "Eliza Cloud",
-                model: "auto",
-                configured: elizaConfigured,
-                active: activeID == "eliza-cloud",
-                status: elizaConfigured ? "configured" : "missing_key"
-            ),
-            ProviderSummary(
-                id: "local-openai",
-                name: localServers.first?.name ?? "Local OpenAI-Compatible",
-                model: localModel,
-                configured: localModel != nil,
-                active: activeID == "local-openai",
-                status: localModel == nil ? "not_running" : "running"
+                model: ModelDefaults.elizaCloudModelID,
+                configured: elizaCloudConfigured,
+                active: activeID == ModelDefaults.elizaCloudProviderID,
+                status: elizaCloudConfigured ? "configured" : "missing_key"
             ),
         ]
+
+        if foundationEnabled {
+            providers.append(ProviderSummary(
+                id: ModelDefaults.localFoundationProviderID,
+                name: "Apple Foundation Models",
+                model: ModelDefaults.localFoundationModelID,
+                configured: true,
+                active: activeID == ModelDefaults.localFoundationProviderID,
+                status: "running"
+            ))
+        }
+        if mlxConfigured {
+            providers.append(ProviderSummary(
+                id: ModelDefaults.localMLXProviderID,
+                name: "MLX Local",
+                model: mlxModel,
+                configured: true,
+                active: activeID == ModelDefaults.localMLXProviderID,
+                status: (activeID == ModelDefaults.localMLXProviderID) ? "running" : "available"
+            ))
+        }
+        providers.append(ProviderSummary(
+            id: ModelDefaults.localOpenAIProviderID,
+            name: localServers.first?.name ?? "Ollama / Local OpenAI",
+            model: localModel,
+            configured: localModel != nil,
+            active: activeID == ModelDefaults.localOpenAIProviderID,
+            status: localModel == nil ? "not_running" : "running"
+        ))
 
         if activeProvider == nil {
             providers.append(ProviderSummary(
@@ -685,13 +1005,51 @@ struct SwooshDaemon {
         )
     }
 
+    static func auditSummary(_ entry: AuditEntry) -> AuditEventSummary {
+        AuditEventSummary(
+            id: entry.id,
+            timestamp: entry.timestamp,
+            kind: entry.kind.rawValue,
+            toolName: entry.toolName,
+            sessionID: entry.sessionID,
+            detail: entry.detail,
+            success: entry.success
+        )
+    }
+
+    static func approvalSummary(_ request: ToolApprovalRequest, status: String = "pending") -> ApprovalSummary {
+        ApprovalSummary(
+            id: request.id,
+            sessionID: request.sessionID,
+            toolName: request.toolName,
+            risk: request.risk.rawValue,
+            permission: request.permission.rawValue,
+            inputPreview: request.inputPreview,
+            status: status,
+            createdAt: request.createdAt
+        )
+    }
+
+    static func approvalDecision(_ decision: ApprovalResolveRequest.Decision) -> ApprovalDecision {
+        switch decision {
+        case .approveOnce:
+            return .approveOnce
+        case .approveForSession:
+            return .approveForSession
+        case .deny:
+            return .deny
+        }
+    }
+
     static func saveProviderKey(
         _ request: ProviderAuthRequest,
         secrets: KeychainSecretStore,
         configStore: SwooshConfigStore,
         currentProvider: (name: String, model: String)?
     ) async throws -> ProviderMutationResponse {
-        guard ["openai", "openrouter", "eliza-cloud"].contains(request.providerID) else {
+        // Eliza Cloud is intentionally not iOS-accessible — it's an
+        // experimental provider configured server-side via the CLI.
+        guard ["openai", "openrouter"].contains(request.providerID) else {
             throw APIError.badRequest("provider does not accept API keys from the iOS app")
         }
         let key = request.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -714,7 +1072,16 @@ struct SwooshDaemon {
         secrets: KeychainSecretStore,
         currentProvider: (name: String, model: String)?
     ) async throws -> ProviderMutationResponse {
-        guard ["openai", "openrouter", "eliza-cloud", "local-openai"].contains(request.providerID) else {
+        let known = [
+            ModelDefaults.codexProviderID,
+            ModelDefaults.openAIProviderID,
+            ModelDefaults.openRouterProviderID,
+            ModelDefaults.elizaCloudProviderID,
+            ModelDefaults.localOpenAIProviderID,
+            ModelDefaults.localMLXProviderID,
+            ModelDefaults.localFoundationProviderID,
+        ]
+        guard known.contains(request.providerID) else {
             throw APIError.badRequest("unknown provider: \(request.providerID)")
         }
         try savePreferredProvider(request.providerID, configStore: configStore)
@@ -812,6 +1179,80 @@ struct SwooshDaemon {
         )
     }
 
+    static func toolsResponse(registry: ToolRegistry) async -> ToolCatalogResponse {
+        let context = ToolContext(
+            sessionID: "dashboard",
+            isModelInvocation: false,
+            callerIdentity: "dashboard"
+        )
+        let descriptors = await registry.listAvailable(context: context)
+            .sorted { lhs, rhs in
+                if lhs.toolset.rawValue == rhs.toolset.rawValue {
+                    return lhs.name < rhs.name
+                }
+                return lhs.toolset.rawValue < rhs.toolset.rawValue
+            }
+        let tools = descriptors.map { descriptor in
+            ToolCatalogToolSummary(
+                id: descriptor.id,
+                name: descriptor.name,
+                displayName: descriptor.displayName,
+                description: descriptor.description,
+                permission: descriptor.permission.rawValue,
+                risk: descriptor.risk.rawValue,
+                approval: approvalLabel(descriptor.approval),
+                toolset: descriptor.toolset.rawValue,
+                platforms: descriptor.platforms.map(\.rawValue).sorted()
+            )
+        }
+        let toolsets = Dictionary(grouping: descriptors, by: \.toolset.rawValue)
+            .map { id, grouped in
+                ToolsetSummary(
+                    id: id,
+                    toolCount: grouped.count,
+                    readOnlyCount: grouped.filter { $0.risk == .readOnly }.count,
+                    writeCount: grouped.filter { $0.risk != .readOnly }.count,
+                    humanOnlyCount: grouped.filter { $0.approval == .humanOnly }.count
+                )
+            }
+            .sorted { $0.id < $1.id }
+        return ToolCatalogResponse(tools: tools, toolsets: toolsets)
+    }
+
+    static func mcpServersResponse(registry: MCPServerRegistry) async -> MCPServersResponse {
+        let servers = await registry.listServers()
+        var summaries: [MCPServerRuntimeSummary] = []
+        summaries.reserveCapacity(servers.count)
+        for server in servers {
+            let tools = await registry.listTools(serverID: server.id)
+            var toolSummaries: [MCPDiscoveredToolSummary] = []
+            toolSummaries.reserveCapacity(tools.count)
+            for tool in tools {
+                let risk = await registry.classifyToolRisk(serverID: server.id, toolName: tool.name)
+                toolSummaries.append(MCPDiscoveredToolSummary(
+                    id: tool.id,
+                    name: tool.name,
+                    title: tool.title,
+                    description: tool.description,
+                    estimatedRisk: risk.rawValue
+                ))
+            }
+            summaries.append(MCPServerRuntimeSummary(
+                id: server.id,
+                name: server.name,
+                description: server.description,
+                enabled: server.enabled,
+                trustLevel: server.trustLevel.rawValue,
+                state: server.state.rawValue,
+                transport: mcpTransportLabel(server.transport),
+                toolCount: tools.count,
+                importedToolCount: (await registry.importedToolNames(serverID: server.id)).count,
+                tools: toolSummaries.sorted { $0.name < $1.name }
+            ))
+        }
+        return MCPServersResponse(servers: summaries)
+    }
+
     static func updateRuntimeFlags(
         _ request: RuntimeFlagUpdateRequest,
         configStore: SwooshConfigStore
@@ -886,16 +1327,20 @@ struct SwooshDaemon {
     static func walletDashboard(
         configStore: SwooshConfigStore,
         secrets: KeychainSecretStore,
-        dependencies: ToolDependencies
+        dependencies: ToolDependencies,
+        walletStore: WalletStore
     ) async -> WalletDashboardResponse {
         let config = runtimeConfigOrDefault(configStore: configStore)
         let permissions = PermissionProfilePreset(rawValue: config.permissionProfile)?.grantedSwooshPermissions ?? []
         let safety = config.safetyConfig
         let walletBridgeAvailable = dependencies.walletBridge != nil
+        let walletAccounts = await walletStore.accounts()
+        let assets = await walletAssetSummaries(walletStore: walletStore, accounts: walletAccounts)
         let evmRPCConfigured = dependencies.evmClient != nil
         let solanaRPCConfigured = dependencies.solanaClient != nil
         let hyperliquidRefs = (try? await secrets.listRefs(namespace: "hyperliquid")) ?? []
         let hyperliquidSecretConfigured = !hyperliquidRefs.isEmpty
+        let payCLIAvailable = executableAvailable("pay")
         let provider = await ProviderFactory.detectActiveProvider(
             secrets: secrets,
             preferredProviderID: config.preferredProviderID
@@ -908,10 +1353,10 @@ struct SwooshDaemon {
         let capabilities = [
             WalletTradingCapabilitySummary(
                 id: "wallet.bridge",
-                name: "External wallet bridge",
+                name: "Swoosh wallet bridge",
                 enabled: permissions.contains(.evmRequestSignature) || permissions.contains(.solanaRequestSignature),
                 configured: walletBridgeAvailable,
-                status: walletBridgeAvailable ? "available" : "not_connected",
+                status: walletBridgeAvailable ? "local_wallet_available" : "not_connected",
                 risk: "high"
             ),
             WalletTradingCapabilitySummary(
@@ -963,6 +1408,54 @@ struct SwooshDaemon {
                 risk: "high"
             ),
             WalletTradingCapabilitySummary(
+                id: "pay.api_wallet",
+                name: "Pay API wallet",
+                enabled: permissions.contains(.mcpExecute),
+                configured: payCLIAvailable,
+                status: payCLIAvailable ? "pay_cli_available_attach_mcp" : "install_pay_cli",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "pancakeswap.planner",
+                name: "PancakeSwap planner",
+                enabled: true,
+                configured: true,
+                status: "bundled_skill_deeplinks",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "pumpportal.launchpad",
+                name: "PumpPortal launchpad",
+                enabled: permissions.contains(.solanaBuildTransaction),
+                configured: true,
+                status: "local_tx_skill_ready_lightning_requires_api_key",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "bags.launchpad",
+                name: "Bags launchpad",
+                enabled: permissions.contains(.solanaBuildTransaction),
+                configured: true,
+                status: "launch_intent_and_transaction_skill_ready",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "flap.launchpad",
+                name: "Flap launchpad",
+                enabled: permissions.contains(.evmBuildTransaction),
+                configured: evmRPCConfigured,
+                status: evmRPCConfigured ? "vaultportal_skill_ready" : "waiting_for_evm_rpc",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
+                id: "fourmeme.launchpad",
+                name: "Four.meme launchpad",
+                enabled: permissions.contains(.evmBuildTransaction),
+                configured: evmRPCConfigured,
+                status: evmRPCConfigured ? "tokenmanager_skill_ready" : "waiting_for_evm_rpc",
+                risk: "high"
+            ),
+            WalletTradingCapabilitySummary(
                 id: "hyperliquid.market_data",
                 name: "Hyperliquid market data",
                 enabled: permissions.contains(.networkRead),
@@ -989,7 +1482,7 @@ struct SwooshDaemon {
         ]
         return WalletDashboardResponse(
             connected: walletBridgeAvailable,
-            walletLabel: walletBridgeAvailable ? "External wallet bridge" : nil,
+            walletLabel: walletBridgeAvailable ? "Local Swoosh wallet" : nil,
             analytics: WalletAnalyticsSummary(
                 totalValueUSD: nil,
                 realizedPnLUSD: nil,
@@ -998,7 +1491,7 @@ struct SwooshDaemon {
                 dailyChangePercent: nil,
                 openPositions: 0
             ),
-            assets: [],
+            assets: assets,
             insights: walletInsights(
                 safety: safety,
                 walletBridgeAvailable: walletBridgeAvailable,
@@ -1008,6 +1501,41 @@ struct SwooshDaemon {
             ),
             capabilities: capabilities
         )
+    }
+
+    static func walletAssetSummaries(
+        walletStore: WalletStore,
+        accounts: [WalletAccount]
+    ) async -> [WalletAssetSummary] {
+        var assets: [WalletAssetSummary] = []
+        for account in accounts {
+            let balance = try? await walletStore.refreshBalance(for: account)
+            assets.append(WalletAssetSummary(
+                id: account.id.uuidString,
+                chain: account.chain.rawValue,
+                symbol: account.chain.nativeSymbol,
+                name: account.label.isEmpty ? account.address : account.label,
+                quantity: balance?.formatted ?? account.address,
+                valueUSD: nil,
+                costBasisUSD: nil,
+                pnlUSD: nil,
+                pnlPercent: nil
+            ))
+        }
+        return assets
+    }
+
+    private static func executableAvailable(_ name: String) -> Bool {
+        let fm = FileManager.default
+        let pathCandidates = (ProcessInfo.processInfo.environment["PATH"] ?? "")
+            .split(separator: ":")
+            .map { String($0) + "/\(name)" }
+        let commonCandidates = [
+            "/opt/homebrew/bin/\(name)",
+            "/usr/local/bin/\(name)",
+            "/usr/bin/\(name)",
+        ]
+        return (pathCandidates + commonCandidates).contains { fm.isExecutableFile(atPath: $0) }
     }
 
     static func mediaResponse(root: URL) -> MediaGalleryResponse {
@@ -1113,6 +1641,32 @@ struct SwooshDaemon {
         )
     }
 
+    private static func approvalLabel(_ approval: ApprovalPolicy) -> String {
+        switch approval {
+        case .never:
+            return "never"
+        case .askFirstTime:
+            return "askFirstTime"
+        case .askEveryTime:
+            return "askEveryTime"
+        case .askForRiskAtLeast(let risk):
+            return "askForRiskAtLeast:\(risk.rawValue)"
+        case .humanOnly:
+            return "humanOnly"
+        case .disabled:
+            return "disabled"
+        }
+    }
+
+    static func mcpTransportLabel(_ transport: MCPTransportConfiguration) -> String {
+        switch transport {
+        case .stdio:
+            return "stdio"
+        case .http:
+            return "http"
+        }
+    }
+
     private static func runtimeConfigResponse(_ config: SwooshRuntimeConfig) -> RuntimeConfigResponse {
         RuntimeConfigResponse(
             configured: true,
@@ -1171,7 +1725,7 @@ struct SwooshDaemon {
                 id: "wallet.bridge_missing",
                 severity: .warning,
                 title: "No wallet bridge connected",
-                detail: "EVM, Solana, Jupiter, and Uniswap write flows need a wallet bridge before analytics can attach to live accounts.",
+                detail: "EVM, Solana, Jupiter, Uniswap, Pay, and PancakeSwap write or payment flows need wallet or MCP setup before live account actions.",
                 source: "runtime"
             ))
         }
@@ -1225,7 +1779,7 @@ struct SwooshDaemon {
         return insights
     }
 
-    private static func memorySummary(_ memory: ActantDB.ApprovedMemory) -> MemorySummary {
+    static func memorySummary(_ memory: ActantDB.ApprovedMemory) -> MemorySummary {
         MemorySummary(
             id: memory.id,
             text: memory.text,
@@ -1237,7 +1791,7 @@ struct SwooshDaemon {
         )
     }
 
-    private static func memorySummary(_ candidate: ActantDB.MemoryCandidate) -> MemorySummary {
+    static func memorySummary(_ candidate: ActantDB.MemoryCandidate) -> MemorySummary {
         MemorySummary(
             id: candidate.id,
             text: candidate.text,
@@ -1268,6 +1822,10 @@ struct SwooshDaemon {
 private struct DaemonToolRuntime: Sendable {
     let registry: ToolRegistry
     let dependencies: ToolDependencies
+    let firewall: SwooshFirewallActor
+    let audit: any AuditLogging
+    let baselineGrants: Set<SwooshPermission>
+    let walletStore: WalletStore
 }
 
 private func makeDaemonToolRuntime(
@@ -1315,6 +1873,8 @@ private func makeDaemonToolRuntime(
     // fallback); these clients are read/broadcast only — no private keys.
     let evmClient = URLSessionEVMRPCClient(secrets: secretResolver)
     let solanaClient = URLSessionSolanaRPCClient(secrets: secretResolver)
+    let walletStore = WalletStore()
+    let walletBridge = LocalWalletBridge(store: walletStore)
     let dependencies = ToolDependencies(
         firewall: firewall,
         audit: audit,
@@ -1324,14 +1884,21 @@ private func makeDaemonToolRuntime(
         processRunner: StreamingProcessRunner(approvedRoots: [cwd.path, swooshDir.path]),
         evmClient: evmClient,
         solanaClient: solanaClient,
+        walletBridge: walletBridge,
         memoryStore: MemoryStore(backend: backend),
         scoutStore: FileScoutToolStore(url: swooshDir.appendingPathComponent("scout/tool-state.json")),
         workflowStore: FileWorkflowToolStore(url: swooshDir.appendingPathComponent("workflows/tool-drafts.json")),
         workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry),
         secrets: secretResolver
     )
-    await DefaultToolRegistrar.registerAll(into: registry, dependencies: dependencies)
-    return DaemonToolRuntime(registry: registry, dependencies: dependencies)
+    return DaemonToolRuntime(
+        registry: registry,
+        dependencies: dependencies,
+        firewall: firewall,
+        audit: audit,
+        baselineGrants: grantedPermissions,
+        walletStore: walletStore
+    )
 }
 
 // MARK: - Scout autopilot

@@ -3,8 +3,27 @@
 // Looks up a brand SVG in Assets.xcassets keyed by provider id. The SVGs
 // are CC0-licensed marks sourced from simpleicons.org. Providers that
 // aren't in the catalog fall back to a tinted monogram via InitialsTile.
+//
+// Asset-availability cache: `UIImage(named:)` is fast on a warm cache but
+// the *first* lookup per name walks the asset catalog. With 30+ rows
+// (chat adapters screen) repeatedly evaluating their `body` during a
+// navigation push, the cumulative misses for monogram-fallback names
+// produced visible main-thread stalls. We memoize the bool result per
+// asset name so each name only hits the catalog once per app session.
 
 import SwiftUI
+
+@MainActor
+private enum AssetCache {
+    static var lookup: [String: Bool] = [:]
+
+    static func exists(_ name: String) -> Bool {
+        if let cached = lookup[name] { return cached }
+        let found = UIImage(named: name) != nil
+        lookup[name] = found
+        return found
+    }
+}
 
 struct ProviderLogo: View {
     let providerID: String
@@ -13,7 +32,7 @@ struct ProviderLogo: View {
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        if let assetName, UIImage(named: assetName) != nil {
+        if let assetName, AssetCache.exists(assetName) {
             ZStack {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.white)
@@ -36,19 +55,20 @@ struct ProviderLogo: View {
 
     /// Maps each known provider id to its bundled imageset name. Returns
     /// nil for providers without a bundled SVG (they render the monogram).
+    /// Codex reuses the OpenAI mark since it's ChatGPT under the hood.
     private var assetName: String? {
         switch providerID {
+        case "codex":      return "OpenAI"
         case "openai":     return "OpenAI"
         case "openrouter": return "OpenRouter"
-        case "anthropic":  return "Anthropic"
-        case "google":     return "Google"
         default:           return nil
         }
     }
 
     private var initials: String {
         switch providerID {
-        case "eliza-cloud":      return "EZ"
+        case "mlx-local":        return "MLX"
+        case "apple-foundation": return "AI"
         case "local-openai":     return "LO"
         case "local-diagnostic": return "LD"
         default:
@@ -63,8 +83,9 @@ struct ProviderLogo: View {
 
     private var monogramBackground: Color {
         switch providerID {
-        case "openai":           return Color(red: 0.06, green: 0.06, blue: 0.06)
-        case "eliza-cloud":      return Color(red: 0.18, green: 0.65, blue: 0.55)
+        case "openai", "codex":  return Color(red: 0.06, green: 0.06, blue: 0.06)
+        case "mlx-local":        return Color(red: 0.20, green: 0.40, blue: 0.85)
+        case "apple-foundation": return Color(red: 0.55, green: 0.30, blue: 0.85)
         case "local-openai":     return Color(red: 0.32, green: 0.38, blue: 0.46)
         case "local-diagnostic": return Color(red: 0.42, green: 0.42, blue: 0.48)
         default:                 return Color(red: 0.30, green: 0.30, blue: 0.36)
@@ -84,7 +105,7 @@ struct ChannelLogo: View {
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        if let assetName, UIImage(named: assetName) != nil {
+        if let assetName, AssetCache.exists(assetName) {
             ZStack {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.white)
@@ -162,7 +183,7 @@ struct ChainLogo: View {
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        if let assetName, UIImage(named: assetName) != nil {
+        if let assetName, AssetCache.exists(assetName) {
             ZStack {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(.white)

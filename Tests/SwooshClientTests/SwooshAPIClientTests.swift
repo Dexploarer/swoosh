@@ -80,10 +80,49 @@ struct SwooshAPIClientTests {
                 trust: "promoted"
             ),
         ])
+        let launchpads = SwooshLaunchpadCatalog.platformsResponse(
+            generatedAt: Date(timeIntervalSince1970: 1_800_000_200)
+        )
+        let tools = ToolCatalogResponse(
+            tools: [
+                ToolCatalogToolSummary(
+                    id: "jupiter.price",
+                    name: "jupiter.price",
+                    displayName: "Jupiter Price",
+                    description: "Get token prices.",
+                    permission: "solana.read",
+                    risk: "readOnly",
+                    approval: "never",
+                    toolset: "solana",
+                    platforms: ["macOS"]
+                ),
+            ],
+            toolsets: [
+                ToolsetSummary(id: "solana", toolCount: 1, readOnlyCount: 1, writeCount: 0, humanOnlyCount: 0),
+            ],
+            generatedAt: Date(timeIntervalSince1970: 1_800_000_210)
+        )
+        let mcp = MCPServersResponse(servers: [
+            MCPServerRuntimeSummary(
+                id: "pay",
+                name: "Pay",
+                description: "Paid API wallet",
+                enabled: true,
+                trustLevel: "userApproved",
+                state: "connected",
+                transport: "stdio",
+                toolCount: 2,
+                importedToolCount: 2,
+                tools: []
+            ),
+        ])
         let encoded: [String: Data] = [
             "/api/agent/status": try JSONEncoder.swooshDefault.encode(status),
             "/api/providers": try JSONEncoder.swooshDefault.encode(providers),
             "/api/skills": try JSONEncoder.swooshDefault.encode(skills),
+            "/api/tools": try JSONEncoder.swooshDefault.encode(tools),
+            "/api/mcp/servers": try JSONEncoder.swooshDefault.encode(mcp),
+            "/api/launchpads": try JSONEncoder.swooshDefault.encode(launchpads),
         ]
 
         try await MockURLProtocol.with({ request in
@@ -102,6 +141,37 @@ struct SwooshAPIClientTests {
             #expect(decodedProviders.activeProviderID == "local-diagnostic")
             let decodedSkills = try await client.skills()
             #expect(decodedSkills.skills.first?.id == "bundled.review")
+            let decodedTools = try await client.toolCatalog()
+            #expect(decodedTools.tools.first?.name == "jupiter.price")
+            let decodedMCP = try await client.mcpServers()
+            #expect(decodedMCP.servers.first?.id == "pay")
+            let decodedLaunchpads = try await client.launchpads()
+            #expect(decodedLaunchpads.platforms.map(\.id).contains("pumpportal"))
+            #expect(decodedLaunchpads.platforms.map(\.id).contains("four-meme"))
+        }
+    }
+
+    @Test("Launchpad detail endpoint decodes typed response")
+    func launchpadDetailDecodesTypedResponse() async throws {
+        let detail = try #require(SwooshLaunchpadCatalog.detail(
+            id: "flap",
+            generatedAt: Date(timeIntervalSince1970: 1_800_000_300)
+        ))
+        let responseBody = try JSONEncoder.swooshDefault.encode(detail)
+
+        try await MockURLProtocol.with({ request in
+            #expect(request.url?.path == "/api/launchpads/flap")
+            #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer pair-token")
+            return (200, ["Content-Type": "application/json"], responseBody)
+        }) {
+            let client = SwooshAPIClient(
+                baseURL: baseURL(),
+                token: "pair-token",
+                session: MockURLProtocol.makeSession()
+            )
+            let decoded = try await client.launchpad(id: "flap")
+            #expect(decoded.detail.platform.name == "Flap")
+            #expect(decoded.detail.requiredPermissions.contains("evmBuildTransaction"))
         }
     }
 

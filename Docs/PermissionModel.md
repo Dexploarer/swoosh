@@ -57,3 +57,18 @@ Swoosh has two independent controls:
 `askFirstTime` can be approved for the session. `askEveryTime` always creates a new approval request, even after a session approval. `humanOnly` blocks model-origin calls unless both the runtime tool policy and safety config explicitly opt into autonomous behavior.
 
 Every tool call still passes through `SwooshFirewallActor`, is audited, and records approval state when approval is required.
+
+## Plugin admin permissions
+
+The plugin host (`SwooshPluginRuntime.PluginHost`) gates its lifecycle through four `humanOnly` admin permissions. None of them are ever requested by a plugin manifest — `PluginManifest.validate()` refuses any manifest that tries — and none of them can be invoked by the model. They exist so the user can explicitly opt into installing or running a plugin from the CLI or daemon API.
+
+| Permission | Gates |
+|------------|-------|
+| `pluginInstall` | Adding a manifest to `~/.swoosh/plugins/`. Plugins start disabled after install. |
+| `pluginUninstall` | Removing the plugin directory and dropping the manifest from the registry. |
+| `pluginEnable` | Approving the plugin's requested permissions, granting them on the firewall, and bridging the plugin's tools into the `ToolRegistry`. |
+| `pluginDisable` | Removing the plugin's tools from the registry and revoking any permissions only this plugin held (baseline grants and grants needed by other enabled plugins are preserved). |
+
+Plugin **tools** declare ordinary `SwooshPermission` cases (`fileRead`, `networkAccess`, etc.) which the user grants when they enable the plugin. Each tool call still routes through `ToolRegistry.execute` → `firewall.require(descriptor.permission)`. There is no `pluginExecute` permission — the per-tool permission is the gate.
+
+The user-facing surfaces for these admin permissions are `swoosh plugin {install,uninstall,enable,disable,list,status}` and the bearer-gated `/api/plugins/*` HTTP routes. The model has no path to either — these routes aren't reachable from inside an agent tool call, and the four admin permissions are excluded from any `PluginManifest.requestedPermissions` by `validate()` so a plugin can't grant itself the right to install other plugins.

@@ -56,17 +56,23 @@ public struct OutboxItem: Codable, Sendable, Identifiable, Equatable {
     public let id: UUID
     public let sessionID: String
     public let input: String
+    public let model: String?
+    public let providerID: String?
     public let queuedAt: Date
 
     public init(
         id: UUID = UUID(),
         sessionID: String,
         input: String,
+        model: String? = nil,
+        providerID: String? = nil,
         queuedAt: Date = .now
     ) {
         self.id = id
         self.sessionID = sessionID
         self.input = input
+        self.model = model
+        self.providerID = providerID
         self.queuedAt = queuedAt
     }
 }
@@ -159,7 +165,12 @@ public actor OfflineMessageCache {
         for item in queue {
             do {
                 let response = try await executor.run(
-                    ChatRequest(sessionID: item.sessionID, input: item.input)
+                    ChatRequest(
+                        sessionID: item.sessionID,
+                        input: item.input,
+                        model: item.model,
+                        providerID: item.providerID
+                    )
                 )
                 // Both sides land in the ledger so the transcript reads
                 // naturally on next launch.

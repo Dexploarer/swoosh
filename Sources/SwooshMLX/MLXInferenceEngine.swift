@@ -1,7 +1,10 @@
 // SwooshMLX/MLXInferenceEngine.swift — Local inference via MLX
 import Foundation
+import HFAPI
+import MLXLLM
 import MLXLMCommon
 import MLXLMTokenizers
+import MLXVLM
 
 public actor MLXInferenceEngine {
     public enum EngineState: Sendable, Equatable {
@@ -31,20 +34,34 @@ public actor MLXInferenceEngine {
     public func loadModel(id: String) async throws {
         state = .loading
         let path = modelsDir.appendingPathComponent(id)
-        guard FileManager.default.fileExists(atPath: path.path) else {
-            state = .error("Not found"); throw MLXError.modelNotFound(id)
-        }
         do {
-            container = try await loadModelContainer(
-                from: path,
-                using: TokenizersLoader()
-            )
+            if FileManager.default.fileExists(atPath: path.path) {
+                container = try await loadModelContainer(
+                    from: path,
+                    using: TokenizersLoader()
+                )
+            } else if Self.isMLXHubID(id) {
+                container = try await loadModelContainer(
+                    from: HubDownloader(),
+                    using: TokenizersLoader(),
+                    id: id
+                )
+            } else {
+                state = .error("Not found")
+                throw MLXError.modelNotFound(id)
+            }
             loadedModelID = id
             state = .ready
+        } catch let error as MLXError {
+            throw error
         } catch {
             state = .error(error.localizedDescription)
             throw MLXError.loadFailed(id, error.localizedDescription)
         }
+    }
+
+    private static func isMLXHubID(_ id: String) -> Bool {
+        id.hasPrefix("mlx-community/") || id.hasPrefix("mlx-org/")
     }
 
     public func unloadModel() { loadedModelID = nil; container = nil; state = .idle }
@@ -82,4 +99,50 @@ public enum MLXError: Error, Sendable {
     case noModelLoaded
     case loadFailed(String, String)
     case insufficientMemory(required: Double, available: Double)
+}
+
+private struct HubDownloader: Downloader {
+    private let client: HubClient
+
+    init(client: HubClient = .default) {
+        self.client = client
+    }
+
+    func download(
+        id: String,
+        revision: String?,
+        matching patterns: [String],
+        useLatest: Bool,
+        progressHandler: @Sendable @escaping (Progress) -> Void
+    ) async throws -> URL {
+        guard let repoID = Repo.ID(rawValue: id) else {
+            throw HubDownloaderError.invalidRepositoryID(id)
+        }
+        let revision = revision ?? "main"
+        if !useLatest,
+           let cached = client.resolveCachedSnapshot(
+            repo: repoID,
+            revision: revision,
+            matching: patterns
+           ) {
+            return cached
+        }
+        return try await client.downloadSnapshot(
+            of: repoID,
+            revision: revision,
+            matching: patterns,
+            progressHandler: progressHandler
+        )
+    }
+}
+
+private enum HubDownloaderError: LocalizedError {
+    case invalidRepositoryID(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidRepositoryID(let id):
+            return "Invalid Hugging Face repository ID: \(id)"
+        }
+    }
 }

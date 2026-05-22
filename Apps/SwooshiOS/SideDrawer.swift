@@ -56,6 +56,16 @@ struct SideDrawer: View {
 
     // MARK: - Header / footer
 
+    /// Close the drawer first, then push the destination on the next
+    /// runloop. Picking from the dropdown without closing the drawer
+    /// left the drawer covering the new screen — the user couldn't see
+    /// they had navigated, then tapped the same destination via the
+    /// drawer's Surfaces row, double-stacking the destination.
+    private func pick(_ destination: DrawerDestination) {
+        withAnimation(.easeOut(duration: 0.22)) { isOpen = false }
+        onSelect(destination)
+    }
+
     private var header: some View {
         HStack(alignment: .center) {
             Menu {
@@ -67,19 +77,19 @@ struct SideDrawer: View {
                         Label("New Chat", systemImage: "square.and.pencil")
                     }
                     Button {
-                        onSelect(.connections)
+                        pick(.connections)
                     } label: {
                         Label("Connections", systemImage: "slider.horizontal.3")
                     }
                     Button {
-                        onSelect(.mcpServers)
+                        pick(.mcpServers)
                     } label: {
                         Label("MCP Servers", systemImage: "puzzlepiece.extension")
                     }
                 }
                 Section {
                     Button {
-                        onSelect(.settings)
+                        pick(.settings)
                     } label: {
                         Label("Settings", systemImage: "gear")
                     }

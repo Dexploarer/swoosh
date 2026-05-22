@@ -26,9 +26,9 @@ struct MLXModelProviderTests {
 
     @Test("conforms to ModelProvider with a stable identity")
     func identity() {
-        let provider = MLXModelProvider(modelID: "llama-3.2-3b-instruct")
+        let provider = MLXModelProvider(modelID: "mlx-community/gemma-4-e4b-it-4bit")
         #expect(provider.providerID == "mlx-local")
-        #expect(provider.modelName == "llama-3.2-3b-instruct")
+        #expect(provider.modelName == "mlx-community/gemma-4-e4b-it-4bit")
         // Statically assert protocol conformance.
         let asProvider: any ModelProvider = provider
         #expect(asProvider.providerID == "mlx-local")

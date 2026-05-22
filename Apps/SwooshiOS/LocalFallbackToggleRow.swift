@@ -1,7 +1,7 @@
 // Apps/SwooshiOS/LocalFallbackToggleRow.swift — Local-model fallback toggle
 //
 // When the user is offline or the Mac daemon is unreachable, route the
-// chat to the on-device LiteRT model (Gemma 3n E2B Int4 by default).
+// chat to the on-device LiteRT model (Gemma 4 E4B by default).
 // The toggle lives in Settings → Local model.
 
 import SwiftUI
@@ -37,7 +37,7 @@ struct LocalFallbackToggleRow: View {
 
     private var footnote: String {
         #if os(iOS)
-        return "Falls back to Gemma 3n E2B (~1.3 GB) when the Mac daemon is unreachable."
+        return "Falls back to Gemma 4 E4B (~3.65 GB) when the Mac daemon is unreachable."
         #else
         return "iOS only."
         #endif

@@ -5,7 +5,6 @@
 
 import Foundation
 import SwooshTools
-import JupSwift
 
 // MARK: - Price DCA deposit
 
@@ -32,7 +31,7 @@ public struct JupiterPriceDepositTool: SwooshTool {
     public typealias Output = JupiterPriceDepositOutput
     public static let name: ToolName = "jupiter.dca.price_deposit"
     public static let displayName = "Jupiter DCA Price Deposit"
-    public static let description = "Deposit additional collateral into a Jupiter price-DCA order"
+    public static let description = "Deprecated Jupiter price-DCA collateral deposit; prefer time-based recurring orders"
     public static let permission = SwooshPermission.solanaBuildTransaction
     public static let risk = ToolRisk.high
     public static let approval = ApprovalPolicy.askEveryTime
@@ -84,7 +83,7 @@ public struct JupiterPriceWithdrawTool: SwooshTool {
     public typealias Output = JupiterPriceWithdrawOutput
     public static let name: ToolName = "jupiter.dca.price_withdraw"
     public static let displayName = "Jupiter DCA Price Withdraw"
-    public static let description = "Withdraw collateral from a Jupiter price-DCA order"
+    public static let description = "Deprecated Jupiter price-DCA collateral withdrawal; prefer time-based recurring orders"
     public static let permission = SwooshPermission.solanaBuildTransaction
     public static let risk = ToolRisk.high
     public static let approval = ApprovalPolicy.askEveryTime

@@ -1,6 +1,5 @@
 // swift-tools-version: 6.3
 import PackageDescription
-import CompilerPluginSupport
 
 let package = Package(
     name: "Swoosh",
@@ -25,7 +24,6 @@ let package = Package(
         .library(name: "SwooshFirewall",  targets: ["SwooshFirewall"]),
         .library(name: "SwooshFlow",      targets: ["SwooshFlow"]),
         .library(name: "SwooshBoard",     targets: ["SwooshBoard"]),
-        .library(name: "SwooshTriggers",  targets: ["SwooshTriggers"]),
         .library(name: "SwooshMLX",       targets: ["SwooshMLX"]),
         .library(name: "SwooshFoundation",targets: ["SwooshFoundation"]),
         .library(name: "SwooshSecrets",   targets: ["SwooshSecrets"]),
@@ -56,19 +54,15 @@ let package = Package(
         .package(url: "https://github.com/ml-explore/mlx-swift-lm", from: "3.0.0"),
         .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers-mlx", exact: "0.3.0"),
         .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers.git", exact: "0.5.0"),
+        .package(url: "https://github.com/DePasqualeOrg/swift-hf-api.git", from: "0.3.2"),
         // Database
         .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
         // HTTP server
         .package(url: "https://github.com/hummingbird-project/hummingbird", from: "2.0.0"),
-        // Logging
-        .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
-        // Macros infrastructure
-        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.0"),
-        // Blockchain — Jupiter DEX aggregator + Solana wallet primitives
-        .package(url: "https://github.com/jauyou/JupSwift.git", from: "1.2.0"),
+        // Blockchain primitives and DEX integrations
         // BigInt — arbitrary-precision integers for EVM/Solana quantities
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
-        // secp256k1 — EVM key signing for the iOS in-app wallet
+        // secp256k1 - EVM key signing for wallet primitives
         .package(url: "https://github.com/GigaBitcoin/secp256k1.swift", from: "0.16.0"),
         // CryptoSwift — keccak256 for EVM address derivation in the iOS wallet
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.0"),
@@ -78,6 +72,10 @@ let package = Package(
         .package(path: "../actantDB/sdks/swift"),
         // WhisperKit — Apple Silicon-optimised speech-to-text via Core ML
         .package(url: "https://github.com/argmaxinc/WhisperKit", from: "1.0.0"),
+        // WasmKit — embeddable WebAssembly runtime for the wasm-kind plugin
+        // executor. Includes the `WAT` package so the bundled .wat demo can
+        // be compiled at runtime without shipping a precompiled .wasm.
+        .package(url: "https://github.com/swiftwasm/WasmKit.git", from: "0.2.0"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -91,6 +89,7 @@ let package = Package(
                 "SwooshConfig",
                 "SwooshScout",
                 "SwooshTUI",
+                "SwooshModels",
                 "SwooshProviders",
                 "SwooshProviderBridge",
                 "SwooshCron",
@@ -115,8 +114,6 @@ let package = Package(
                 "SwooshKit",
                 "SwooshConfig",
                 "SwooshAPI",
-                "SwooshGateway",
-                "SwooshTriggers",
                 "SwooshScout",
                 "SwooshSkills",
                 "SwooshGoals",
@@ -124,6 +121,7 @@ let package = Package(
                 "SwooshCron",
                 "SwooshProviderBridge",
                 "SwooshSecrets",
+                "SwooshModels",
                 "SwooshProviders",
                 "SwooshDaemonSupport",
                 "SwooshToolsets",
@@ -135,7 +133,13 @@ let package = Package(
                 "SwooshMLX",
                 "SwooshFoundation",
                 "SwooshActantBackend",
+                "SwooshPlugins",
+                "SwooshPluginRuntime",
+                "SwooshDemoPlugins",
+                "SwooshWallet",
                 .product(name: "ActantAgent", package: "swift"),
+                .product(name: "BigInt", package: "BigInt"),
+                .product(name: "secp256k1", package: "secp256k1.swift"),
             ]
         ),
         .target(
@@ -159,22 +163,6 @@ let package = Package(
         ),
 
         // ══════════════════════════════════════════════════════════════
-        // MARK: - @SwooshTool macro
-        // ══════════════════════════════════════════════════════════════
-        .macro(
-            name: "SwooshMacroPlugin",
-            dependencies: [
-                .product(name: "SwiftSyntax", package: "swift-syntax"),
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
-        ),
-        .target(
-            name: "SwooshMacros",
-            dependencies: ["SwooshMacroPlugin", "SwooshTools"]
-        ),
-
-        // ══════════════════════════════════════════════════════════════
         // MARK: - Core runtime
         // ══════════════════════════════════════════════════════════════
         .target(
@@ -189,10 +177,6 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(name: "SwooshConfig", dependencies: ["SwooshClient", "SwooshTools"]),
         .target(name: "SwooshTUI", dependencies: ["SwooshTools"]),
-        .target(
-            name: "SwooshObservability",
-            dependencies: [.product(name: "Logging", package: "swift-log")]
-        ),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Scout — personalization scanner
@@ -215,15 +199,16 @@ let package = Package(
                 .product(name: "MLXVLM",        package: "mlx-swift-lm"),
                 .product(name: "MLXLMCommon",   package: "mlx-swift-lm"),
                 .product(name: "MLXLMTokenizers", package: "swift-tokenizers-mlx"),
+                .product(name: "HFAPI", package: "swift-hf-api"),
                 .product(name: "Tokenizers", package: "swift-tokenizers"),
             ]
         ),
         .target(name: "SwooshFoundation", dependencies: ["SwooshCore", "SwooshClient"]),   // Apple Foundation Models adapter
         .target(name: "SwooshSecrets",    dependencies: ["SwooshTools"]),   // Keychain + SecretRef + SecretResolving
-        .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets"]),
+        .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets", "SwooshModels"]),
         .target(
             name: "SwooshProviderBridge",
-            dependencies: ["SwooshCore", "SwooshProviders", "SwooshSecrets", "SwooshTools"]
+            dependencies: ["SwooshCore", "SwooshProviders", "SwooshSecrets", "SwooshTools", "SwooshModels", "SwooshMLX"]
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -241,7 +226,7 @@ let package = Package(
             "SwooshManifesting",
             "SwooshCron",
             "SwooshMCP",
-            .product(name: "JupSwift", package: "JupSwift"),
+            "SwooshClient",
             .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
         ]),
 
@@ -272,11 +257,6 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift"),
             ]
         ),
-        .target(name: "SwooshTriggers", dependencies: []),
-        .target(
-            name: "SwooshWorkers",
-            dependencies: ["SwooshTools"]
-        ),
         .target(
             name: "SwooshApprovals",
             dependencies: ["SwooshTools"]
@@ -293,20 +273,32 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Infrastructure
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshGateway",  dependencies: []),
         .target(name: "SwooshMCP",      dependencies: ["SwooshTools"]),
-        .target(name: "SwooshSandbox",  dependencies: []),
-        .target(name: "SwooshBrowser",  dependencies: []),
-        .target(name: "SwooshMedia",    dependencies: []),
         .target(name: "SwooshPlugins",  dependencies: ["SwooshTools"]),
-        .target(name: "SwooshMCPAuth",  dependencies: ["SwooshTools"]),
-        .target(name: "SwooshNetworkPolicy", dependencies: ["SwooshTools"]),
-        .target(name: "SwooshIntegrations",  dependencies: ["SwooshTools"]),
-        .target(name: "SwooshSetup",         dependencies: ["SwooshTools"]),
+        // SwooshPluginRuntime — server-side plugin host. Owns the lifecycle
+        // (enable/disable/install/uninstall), the bridge that turns plugin
+        // tools into AnySwooshTool instances inside ToolRegistry, and the
+        // per-kind executors. macOS/Linux only — iOS never links this.
+        .target(
+            name: "SwooshPluginRuntime",
+            dependencies: [
+                "SwooshPlugins",
+                "SwooshTools",
+                "SwooshFirewall",
+                "SwooshMCP",
+                .product(name: "WasmKit", package: "WasmKit"),
+                .product(name: "WAT", package: "WasmKit"),
+                .product(name: "WasmKitWASI", package: "WasmKit"),
+            ]
+        ),
+        // SwooshDemoPlugins — reference Swift plugins linked into swooshd.
+        // Authors copy this target's shape when writing their own Swift
+        // plugin. Empty on iOS (the iOS app never loads plugins).
+        .target(
+            name: "SwooshDemoPlugins",
+            dependencies: ["SwooshPlugins", "SwooshTools"]
+        ),
         .target(name: "SwooshDoctor",        dependencies: ["SwooshTools", "SwooshConfig", "SwooshClient"]),
-        .target(name: "SwooshInstaller",     dependencies: ["SwooshTools"]),
-        .target(name: "SwooshLSP",      dependencies: []),
-        .target(name: "SwooshBench",    dependencies: ["SwooshTools"]),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - API server + transport-agnostic client
@@ -379,6 +371,7 @@ let package = Package(
             name: "SwooshLocalLLM",
             dependencies: [
                 "SwooshClient",
+                "SwooshModels",
                 "LiteRTLM",
             ],
             swiftSettings: [
@@ -405,7 +398,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(
             name: "SwooshVoiceProviders",
-            dependencies: ["SwooshSecrets", "SwooshMusic"]
+            dependencies: ["SwooshSecrets", "SwooshMusic", "SwooshSTT"]
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -459,10 +452,6 @@ let package = Package(
             dependencies: ["SwooshBoard", "SwooshTools"]
         ),
         .testTarget(
-            name: "SwooshWorkersTests",
-            dependencies: ["SwooshWorkers", "SwooshTools"]
-        ),
-        .testTarget(
             name: "SwooshMCPTests",
             dependencies: ["SwooshMCP", "SwooshTools"]
         ),
@@ -471,28 +460,12 @@ let package = Package(
             dependencies: ["SwooshPlugins", "SwooshTools"]
         ),
         .testTarget(
-            name: "SwooshMCPAuthTests",
-            dependencies: ["SwooshMCPAuth", "SwooshTools"]
-        ),
-        .testTarget(
-            name: "SwooshNetworkPolicyTests",
-            dependencies: ["SwooshNetworkPolicy", "SwooshTools"]
-        ),
-        .testTarget(
-            name: "SwooshIntegrationsTests",
-            dependencies: ["SwooshIntegrations", "SwooshTools"]
-        ),
-        .testTarget(
-            name: "SwooshSetupTests",
-            dependencies: ["SwooshSetup", "SwooshTools"]
+            name: "SwooshPluginRuntimeTests",
+            dependencies: ["SwooshPluginRuntime", "SwooshPlugins", "SwooshTools", "SwooshFirewall"]
         ),
         .testTarget(
             name: "SwooshDoctorTests",
             dependencies: ["SwooshDoctor", "SwooshTools"]
-        ),
-        .testTarget(
-            name: "SwooshInstallerTests",
-            dependencies: ["SwooshInstaller", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshTUITests",
@@ -528,7 +501,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshProvidersTests",
-            dependencies: ["SwooshProviders", "SwooshSecrets", "SwooshTools", "SwooshCore"]
+            dependencies: ["SwooshProviders", "SwooshProviderBridge", "SwooshSecrets", "SwooshTools", "SwooshCore", "SwooshModels"]
         ),
         .testTarget(
             name: "SwooshUITests",
@@ -561,6 +534,7 @@ let package = Package(
                 "SwooshTools",
                 "SwooshFirewall",
                 "SwooshApprovals",
+                "SwooshToolsets",
                 .product(name: "HummingbirdTesting", package: "hummingbird"),
             ]
         ),
@@ -589,10 +563,6 @@ let package = Package(
             dependencies: ["SwooshDaemonSupport"]
         ),
         .testTarget(
-            name: "SwooshBrowserTests",
-            dependencies: ["SwooshBrowser"]
-        ),
-        .testTarget(
             name: "SwooshMLXTests",
             dependencies: ["SwooshMLX", "SwooshCore"]
         ),
@@ -605,10 +575,6 @@ let package = Package(
             dependencies: ["SwooshManifesting", "SwooshTools"]
         ),
         .testTarget(
-            name: "SwooshObservabilityTests",
-            dependencies: ["SwooshObservability"]
-        ),
-        .testTarget(
             name: "SwooshConfigTests",
             dependencies: ["SwooshConfig"]
         ),
@@ -617,28 +583,8 @@ let package = Package(
             dependencies: ["SwooshFirewall", "SwooshTools"]
         ),
         .testTarget(
-            name: "SwooshSandboxTests",
-            dependencies: ["SwooshSandbox"]
-        ),
-        .testTarget(
             name: "SwooshVaultTests",
             dependencies: ["SwooshVault", "SwooshFirewall", "SwooshTools"]
-        ),
-        .testTarget(
-            name: "SwooshTriggersTests",
-            dependencies: ["SwooshTriggers"]
-        ),
-        .testTarget(
-            name: "SwooshGatewayTests",
-            dependencies: ["SwooshGateway"]
-        ),
-        .testTarget(
-            name: "SwooshLSPTests",
-            dependencies: ["SwooshLSP"]
-        ),
-        .testTarget(
-            name: "SwooshMediaTests",
-            dependencies: ["SwooshMedia"]
         ),
         .testTarget(
             name: "SwooshModelsTests",

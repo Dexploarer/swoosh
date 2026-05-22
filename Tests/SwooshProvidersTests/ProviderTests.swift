@@ -3,8 +3,10 @@
 import Testing
 import Foundation
 @testable import SwooshProviders
+@testable import SwooshProviderBridge
 @testable import SwooshSecrets
 @testable import SwooshTools
+@testable import SwooshModels
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - ProviderID Tests
@@ -135,14 +137,14 @@ struct ModelRoleTests {
 
     @Test("All roles available")
     func allRoles() {
-        #expect(ModelRole.allCases.count == 8)
+        #expect(SwooshProviders.ModelRole.allCases.count == 8)
     }
 
     @Test("Primary roles exist")
     func primaryRoles() {
-        #expect(ModelRole.primaryChat.rawValue == "primaryChat")
-        #expect(ModelRole.coding.rawValue == "coding")
-        #expect(ModelRole.fastLocal.rawValue == "fastLocal")
+        #expect(SwooshProviders.ModelRole.primaryChat.rawValue == "primaryChat")
+        #expect(SwooshProviders.ModelRole.coding.rawValue == "coding")
+        #expect(SwooshProviders.ModelRole.fastLocal.rawValue == "fastLocal")
     }
 }
 
@@ -156,7 +158,7 @@ struct ProviderRouteTests {
     @Test("Route creation")
     func routeCreation() {
         let route = ProviderRoute(role: .primaryChat, providerID: "openai",
-                                  model: "gpt-4.1", priority: 100)
+                                  model: ModelDefaults.openAIModelID, priority: 100)
         #expect(route.role == .primaryChat)
         #expect(route.providerID == ProviderID("openai"))
         #expect(route.enabled)
@@ -165,7 +167,7 @@ struct ProviderRouteTests {
     @Test("Route can be disabled")
     func routeDisabled() {
         var route = ProviderRoute(role: .coding, providerID: "openai",
-                                  model: "gpt-4.1", enabled: false)
+                                  model: ModelDefaults.openAIModelID, enabled: false)
         #expect(!route.enabled)
         route.enabled = true
         #expect(route.enabled)
@@ -223,9 +225,9 @@ struct ProviderRegistryTests {
     @Test("Routes filtered by role")
     func routesByRole() async {
         let registry = ProviderRegistry()
-        await registry.addRoute(ProviderRoute(role: .primaryChat, providerID: "openai", model: "gpt-4.1", priority: 100))
-        await registry.addRoute(ProviderRoute(role: .coding, providerID: "openai", model: "gpt-4.1", priority: 90))
-        await registry.addRoute(ProviderRoute(role: .primaryChat, providerID: "openrouter", model: "openai/gpt-4.1", priority: 80))
+        await registry.addRoute(ProviderRoute(role: .primaryChat, providerID: "openai", model: ModelDefaults.openAIModelID, priority: 100))
+        await registry.addRoute(ProviderRoute(role: .coding, providerID: "openai", model: ModelDefaults.openAIModelID, priority: 90))
+        await registry.addRoute(ProviderRoute(role: .primaryChat, providerID: "openrouter", model: ModelDefaults.openRouterModelID, priority: 80))
 
         let chatRoutes = await registry.routes(for: .primaryChat)
         #expect(chatRoutes.count == 2)
@@ -296,6 +298,43 @@ struct ProviderRouterTests {
         let log = await router.getAuditLog()
         #expect(!log.isEmpty)
     }
+
+    @Test("Router routes embedding requests")
+    func routesEmbeddings() async throws {
+        let http = MockHTTPClient()
+        await http.enqueueJSON("""
+        {
+          "object": "list",
+          "data": [
+            { "object": "embedding", "index": 0, "embedding": [0.25, 0.5] }
+          ],
+          "model": "nomic-embed-text",
+          "usage": { "prompt_tokens": 2, "total_tokens": 2 }
+        }
+        """)
+
+        let registry = ProviderRegistry()
+        let provider = LocalOpenAICompatibleProvider(
+            http: http,
+            baseURL: "http://127.0.0.1:11434/v1"
+        )
+        await registry.register(provider, profile: .localOpenAI)
+        await registry.addRoute(ProviderRoute(
+            role: .embedding,
+            providerID: ProviderID(ModelDefaults.localOpenAIProviderID),
+            model: "nomic-embed-text",
+            priority: 100
+        ))
+
+        let router = ProviderRouter(registry: registry)
+        let response = try await router.embed(
+            request: EmbeddingRequest(model: "auto", input: ["hello world"])
+        )
+
+        #expect(response.providerID == ProviderID(ModelDefaults.localOpenAIProviderID))
+        #expect(response.model == "nomic-embed-text")
+        #expect(response.embeddings == [[0.25, 0.5]])
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -325,7 +364,7 @@ struct OpenAIResponsesProviderTests {
     func missingKeyError() async {
         let store = InMemorySecretStore()
         let provider = OpenAIResponsesProvider(secrets: store)
-        let req = ModelRequest(model: "gpt-4.1", messages: [ChatMessage(role: .user, content: "hi")])
+        let req = ModelRequest(model: ModelDefaults.openAIModelID, messages: [ChatMessage(role: .user, content: "hi")])
         do {
             _ = try await provider.complete(req)
             Issue.record("Should throw")
@@ -343,7 +382,7 @@ struct OpenAIResponsesProviderTests {
         let provider = OpenAIResponsesProvider(secrets: store)
         do {
             _ = try await provider.complete(
-                ModelRequest(model: "gpt-4.1", messages: [ChatMessage(role: .user, content: "hi")])
+                ModelRequest(model: ModelDefaults.openAIModelID, messages: [ChatMessage(role: .user, content: "hi")])
             )
         } catch ProviderError.authMissing(_, let msg) {
             #expect(msg.contains("swoosh provider auth openai"))
@@ -379,7 +418,7 @@ struct OpenRouterProviderTests {
         let provider = OpenRouterProvider(secrets: store)
         do {
             _ = try await provider.complete(
-                ModelRequest(model: "openai/gpt-4.1", messages: [ChatMessage(role: .user, content: "hi")])
+                ModelRequest(model: ModelDefaults.openRouterModelID, messages: [ChatMessage(role: .user, content: "hi")])
             )
             Issue.record("Should throw")
         } catch ProviderError.authMissing(let id, let msg) {
@@ -442,7 +481,7 @@ struct LocalProviderTests {
     @Test("Provider rejects non-localhost")
     func rejectsNonLocalhost() async {
         let provider = LocalOpenAICompatibleProvider(baseURL: "https://evil.com/v1")
-        let req = ModelRequest(model: "llama3", messages: [ChatMessage(role: .user, content: "hi")])
+        let req = ModelRequest(model: ModelDefaults.localOpenAIModelID, messages: [ChatMessage(role: .user, content: "hi")])
         do {
             _ = try await provider.complete(req)
             Issue.record("Should throw")
@@ -465,6 +504,89 @@ struct LocalProviderTests {
     func acceptsIPv6Localhost() {
         let provider = LocalOpenAICompatibleProvider(baseURL: "http://[::1]:8080/v1")
         #expect(provider.providerID == ProviderID("local-openai"))
+    }
+
+    @Test("Provider sends and parses chat tool calls")
+    func sendsAndParsesToolCalls() async throws {
+        let http = MockHTTPClient()
+        await http.enqueueJSON("""
+        {
+          "choices": [
+            {
+              "message": {
+                "content": "",
+                "tool_calls": [
+                  {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                      "name": "open_app",
+                      "arguments": "{\\"name\\":\\"Calendar\\"}"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "model": "qwen3:4b"
+        }
+        """)
+
+        let provider = LocalOpenAICompatibleProvider(
+            http: http,
+            baseURL: "http://127.0.0.1:11434/v1"
+        )
+        let response = try await provider.complete(ModelRequest(
+            model: "qwen3:4b",
+            messages: [ChatMessage(role: .user, content: "open calendar")],
+            tools: [
+                ToolDescriptor(
+                    name: "open_app",
+                    description: "Open an app",
+                    inputSchema: .object(["type": .string("object")])
+                ),
+            ]
+        ))
+
+        #expect(response.toolCalls.count == 1)
+        #expect(response.toolCalls.first?.name == "open_app")
+
+        let recorded = await http.getRecordedRequests()
+        let bodyData = try #require(recorded.first?.httpBody)
+        let body = try #require(JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+        let tools = try #require(body["tools"] as? [[String: Any]])
+        let function = try #require(tools.first?["function"] as? [String: Any])
+        #expect(function["name"] as? String == "open_app")
+    }
+
+    @Test("Provider embeds through OpenAI-compatible endpoint")
+    func embeds() async throws {
+        let http = MockHTTPClient()
+        await http.enqueueJSON("""
+        {
+          "object": "list",
+          "data": [
+            { "object": "embedding", "index": 0, "embedding": [0.1, 0.2] }
+          ],
+          "model": "nomic-embed-text",
+          "usage": { "prompt_tokens": 2, "total_tokens": 2 }
+        }
+        """)
+
+        let provider = LocalOpenAICompatibleProvider(
+            http: http,
+            baseURL: "http://127.0.0.1:11434/v1"
+        )
+        let response = try await provider.embed(EmbeddingRequest(
+            model: "nomic-embed-text",
+            input: ["hello"]
+        ))
+
+        #expect(response.providerID == ProviderID(ModelDefaults.localOpenAIProviderID))
+        #expect(response.embeddings == [[0.1, 0.2]])
+
+        let recorded = await http.getRecordedRequests()
+        #expect(recorded.first?.url?.absoluteString == "http://127.0.0.1:11434/v1/embeddings")
     }
 }
 
@@ -530,7 +652,7 @@ struct ProviderAuditTests {
     @Test("Audit event created")
     func eventCreated() {
         let event = ProviderAuditEvent(kind: .callStarted, providerID: "openai",
-                                        message: "Calling gpt-4.1")
+                                        message: "Calling \(ModelDefaults.openAIModelID)")
         #expect(event.kind == .callStarted)
         #expect(event.providerID == ProviderID("openai"))
     }
@@ -625,9 +747,9 @@ struct ModelRequestTests {
 
     @Test("withModel returns copy with new model")
     func withModel() {
-        let req = ModelRequest(model: "gpt-4.1", messages: [ChatMessage(role: .user, content: "hi")])
-        let copy = req.withModel("gpt-5.5")
-        #expect(copy.model == "gpt-5.5")
-        #expect(req.model == "gpt-4.1") // original unchanged
+        let req = ModelRequest(model: ModelDefaults.openAIModelID, messages: [ChatMessage(role: .user, content: "hi")])
+        let copy = req.withModel(ModelDefaults.openAICodingModelID)
+        #expect(copy.model == ModelDefaults.openAICodingModelID)
+        #expect(req.model == ModelDefaults.openAIModelID)
     }
 }

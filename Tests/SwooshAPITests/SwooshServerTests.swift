@@ -10,6 +10,7 @@ import SwooshCore
 import SwooshTools
 import SwooshFirewall
 import SwooshApprovals
+import SwooshToolsets
 
 struct APIMemoryLoader: MemoryContextLoading {
     func loadApprovedMemories() async throws -> [(id: String, text: String, category: String)] { [] }
@@ -142,6 +143,56 @@ struct SwooshServerTests {
                 #expect(response.status == .ok)
             }
             try await client.execute(
+                uri: "/api/tools",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try JSONDecoder.swooshDefault.decode(
+                    ToolCatalogResponse.self,
+                    from: response.body.getData(at: response.body.readerIndex, length: response.body.readableBytes) ?? Data()
+                )
+                #expect(decoded.tools.isEmpty)
+            }
+            try await client.execute(
+                uri: "/api/mcp/servers",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try JSONDecoder.swooshDefault.decode(
+                    MCPServersResponse.self,
+                    from: response.body.getData(at: response.body.readerIndex, length: response.body.readableBytes) ?? Data()
+                )
+                #expect(decoded.servers.isEmpty)
+            }
+            try await client.execute(
+                uri: "/api/launchpads",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try JSONDecoder.swooshDefault.decode(
+                    LaunchpadsResponse.self,
+                    from: response.body.getData(at: response.body.readerIndex, length: response.body.readableBytes) ?? Data()
+                )
+                #expect(decoded.platforms.map(\.id).contains("pumpportal"))
+                #expect(decoded.platforms.map(\.id).contains("four-meme"))
+            }
+            try await client.execute(
+                uri: "/api/launchpads/flap",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try JSONDecoder.swooshDefault.decode(
+                    LaunchpadPlatformResponse.self,
+                    from: response.body.getData(at: response.body.readerIndex, length: response.body.readableBytes) ?? Data()
+                )
+                #expect(decoded.detail.platform.id == "flap")
+                #expect(decoded.detail.requiredPermissions.contains("evmBuildTransaction"))
+            }
+            try await client.execute(
                 uri: "/api/board/cards",
                 method: .get,
                 headers: [.authorization: "Bearer secret"]
@@ -154,6 +205,20 @@ struct SwooshServerTests {
                 headers: [.authorization: "Bearer secret"]
             ) { response in
                 #expect(response.status == .ok)
+            }
+        }
+    }
+
+    @Test("Launchpad detail route rejects unknown platform")
+    func launchpadDetailRouteRejectsUnknownPlatform() async throws {
+        let app = SwooshAPIServer(token: "secret").build()
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/launchpads/unknown",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .notFound)
             }
         }
     }
@@ -517,5 +582,51 @@ struct SwooshServerTests {
         }
         let counts = await provider.capturedToolCounts()
         #expect(counts.first == 1)
+    }
+
+    @Test("Chat route can execute explicitly requested launchpad tool")
+    func chatRouteCanExecuteExplicitlyRequestedLaunchpadTool() async throws {
+        let registry = ToolRegistry(firewall: APIFirewall(), audit: SwooshAuditLog(), approvals: APIApproval())
+        await registry.register(TypeErasedTool(LaunchpadListPlatformsTool()))
+        await registry.register(TypeErasedTool(LaunchpadGetPlatformTool()))
+        let loop = AgentToolLoop(
+            memoryLoader: APIMemoryLoader(),
+            reportLoader: APIReportLoader(),
+            permSummarizer: APIPermissionSummarizer(),
+            sessionStore: APISessionStore(),
+            auditLogger: APIResponseAuditor(),
+            modelProvider: LocalDiagnosticProvider(),
+            toolRegistry: registry
+        )
+        let app = SwooshAPIServer(token: "secret", toolLoop: loop).build()
+        let request = ChatRequest(
+            sessionID: "api-launchpad",
+            input: "Use tool launchpad.get_platform with {\"id\":\"bags\"}."
+        )
+        let data = try JSONEncoder.swooshDefault.encode(request)
+        var buffer = ByteBufferAllocator().buffer(capacity: data.count)
+        buffer.writeBytes(data)
+        let body = buffer
+
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/agent/chat",
+                method: .post,
+                headers: [.authorization: "Bearer secret", .contentType: "application/json"],
+                body: body
+            ) { response in
+                #expect(response.status == .ok)
+                guard let responseData = response.body.getData(
+                    at: response.body.readerIndex,
+                    length: response.body.readableBytes
+                ) else {
+                    Issue.record("Missing response body")
+                    return
+                }
+                let decoded = try JSONDecoder.swooshDefault.decode(ChatResponse.self, from: responseData)
+                #expect(decoded.message.contains("I used `launchpad.get_platform`"))
+                #expect(decoded.message.contains("create-token-launch-transaction"))
+            }
+        }
     }
 }

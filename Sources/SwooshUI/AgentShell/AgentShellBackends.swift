@@ -19,6 +19,7 @@
 
 import Foundation
 import SwooshClient
+import SwooshModels
 
 public enum AgentShellBackends {
 
@@ -29,7 +30,7 @@ public enum AgentShellBackends {
         sessionID: String = "default"
     ) -> AgentSendHandler {
         return { @MainActor text, shell in
-            let request = ChatRequest(sessionID: sessionID, input: text)
+            let request = chatRequest(sessionID: sessionID, input: text, shell: shell)
             do {
                 let response = try await executor.run(request)
                 shell.messages.append(.init(role: .agent, text: response.message))
@@ -62,7 +63,7 @@ public enum AgentShellBackends {
                 .init(sessionID: sessionID, role: .user, text: text)
             )
 
-            let request = ChatRequest(sessionID: sessionID, input: text)
+            let request = chatRequest(sessionID: sessionID, input: text, shell: shell)
             do {
                 let response = try await executor.run(request)
                 shell.messages.append(.init(role: .agent, text: response.message))
@@ -80,7 +81,14 @@ public enum AgentShellBackends {
                 }
             } catch {
                 // Daemon unreachable — queue for later.
-                await cache.queueOutbox(.init(sessionID: sessionID, input: text))
+                await cache.queueOutbox(
+                    .init(
+                        sessionID: sessionID,
+                        input: text,
+                        model: request.model,
+                        providerID: request.providerID
+                    )
+                )
                 let pending = await cache.pendingOutbox(sessionID: sessionID).count
                 shell.syncState = .queued(pending)
                 shell.messages.append(
@@ -124,7 +132,7 @@ public enum AgentShellBackends {
     @MainActor
     public static func bootLocalDaemon(
         shell: AgentShellModel,
-        host: URL = URL(string: "http://127.0.0.1:7777")!,
+        host: URL? = nil,
         bearerToken: String? = nil,
         sessionID: String = "default"
     ) async {
@@ -146,8 +154,10 @@ public enum AgentShellBackends {
         await restore(into: shell, from: cache, sessionID: sessionID)
 
         // Wire executor + cached backend.
-        let token = bearerToken ?? defaultLocalDaemonToken()
-        let client = SwooshAPIClient(baseURL: host, token: token)
+        let endpoint = SwooshDaemonClient.endpoint()
+        let baseURL = host ?? endpoint?.baseURL ?? URL(string: "http://127.0.0.1:8787")!
+        let token = bearerToken ?? endpoint?.token ?? SwooshDaemonClient.token()
+        let client = SwooshAPIClient(baseURL: baseURL, token: token)
         let executor = RemoteKernelExecutor(client: client)
         shell.send = offlineCached(
             executor: executor,
@@ -176,11 +186,17 @@ public enum AgentShellBackends {
         }
     }
 
-    /// Look up the daemon's bearer token from the conventional location.
-    /// macOS: `~/.swoosh/api_token` (written by `swooshd` at startup).
-    private static func defaultLocalDaemonToken() -> String? {
-        let path = ("~/.swoosh/api_token" as NSString).expandingTildeInPath
-        return try? String(contentsOfFile: path, encoding: .utf8)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+}
+
+@MainActor
+private func chatRequest(sessionID: String, input: String, shell: AgentShellModel) -> ChatRequest {
+    guard let route = UnifiedModelCatalog.route(forCatalogID: shell.selectedModelID) else {
+        return ChatRequest(sessionID: sessionID, input: input)
     }
+    return ChatRequest(
+        sessionID: sessionID,
+        input: input,
+        model: route.modelID,
+        providerID: route.providerID
+    )
 }

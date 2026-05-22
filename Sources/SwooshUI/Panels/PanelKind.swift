@@ -25,6 +25,9 @@ public enum PanelKind: Codable, Sendable, Hashable {
     case walletAssets
     case walletInsights
     case tradingCapabilities
+    case jupiterDocs
+    case defiDocs
+    case launchpadDocs
 
     // ── Providers + models
     case providerStatus
@@ -87,6 +90,9 @@ public enum PanelKind: Codable, Sendable, Hashable {
         case .walletAssets:         return "Assets"
         case .walletInsights:       return "Insights"
         case .tradingCapabilities:  return "Trading"
+        case .jupiterDocs:          return "Jupiter"
+        case .defiDocs:             return "DeFi"
+        case .launchpadDocs:        return "Launchpads"
         case .providerStatus:       return "Providers"
         case .localModels:          return "Local Models"
         case .foundationModelStatus:return "Apple Foundation"
@@ -130,6 +136,9 @@ public enum PanelKind: Codable, Sendable, Hashable {
         case .walletAssets:         return "bitcoinsign.circle"
         case .walletInsights:       return "lightbulb"
         case .tradingCapabilities:  return "arrow.left.arrow.right.circle"
+        case .jupiterDocs:          return "sparkles"
+        case .defiDocs:             return "point.3.connected.trianglepath.dotted"
+        case .launchpadDocs:        return "flag.checkered"
         case .providerStatus:       return "cloud"
         case .localModels:          return "memorychip"
         case .foundationModelStatus:return "apple.logo"
@@ -173,6 +182,9 @@ public enum PanelKind: Codable, Sendable, Hashable {
         case .walletAssets:         return "Token-by-token holdings."
         case .walletInsights:       return "Insights the agent has on your portfolio."
         case .tradingCapabilities:  return "Which DEXs and chains are wired up."
+        case .jupiterDocs:          return "Jupiter API coverage, docs, and action status."
+        case .defiDocs:             return "Solana and EVM docs, skills, and wallet action status."
+        case .launchpadDocs:        return "PumpPortal, Bags, Flap, and Four.meme launch coverage."
         case .providerStatus:       return "Provider keys, health, current selection."
         case .localModels:          return "Ollama + MLX inventory + RAM headroom."
         case .foundationModelStatus:return "Apple Foundation Models availability."
@@ -207,7 +219,7 @@ public enum PanelKind: Codable, Sendable, Hashable {
 
     public var defaultAccent: NeonAccent {
         switch self {
-        case .wallet, .walletAnalytics, .walletAssets, .walletInsights, .tradingCapabilities:
+        case .wallet, .walletAnalytics, .walletAssets, .walletInsights, .tradingCapabilities, .jupiterDocs, .defiDocs, .launchpadDocs:
             return .green
         case .approvals, .firewallSummary, .secrets, .manifests:
             return .gold
@@ -222,7 +234,7 @@ public enum PanelKind: Codable, Sendable, Hashable {
         switch self {
         case .agentShell:          return 360
         case .recentChats:         return 240
-        case .auditLog, .workflows, .board, .mediaGallery, .observabilitySpans:
+        case .auditLog, .workflows, .board, .mediaGallery, .observabilitySpans, .jupiterDocs, .defiDocs, .launchpadDocs:
             return 280
         case .modelPicker, .voiceTranscript, .agentOrb, .themePalette, .focusFilter:
             return 96
@@ -237,7 +249,7 @@ public enum PanelKind: Codable, Sendable, Hashable {
     /// listed dynamically based on what the user has saved.
     public static let allBuiltIn: [PanelKind] = [
         .agentShell, .recentChats, .modelPicker, .voiceTranscript,
-        .wallet, .walletAnalytics, .walletAssets, .walletInsights, .tradingCapabilities,
+        .wallet, .walletAnalytics, .walletAssets, .walletInsights, .tradingCapabilities, .jupiterDocs, .defiDocs, .launchpadDocs,
         .providerStatus, .localModels, .foundationModelStatus,
         .skills, .goals, .manifests, .memories,
         .board, .workflows, .triggers, .approvals,

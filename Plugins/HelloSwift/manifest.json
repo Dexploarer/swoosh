@@ -1,0 +1,38 @@
+{
+  "id" : "hello-swift",
+  "name" : "Hello Swift",
+  "version" : "0.1.0",
+  "description" : "Reference Swift plugin shipped with Swoosh. Demonstrates the SwiftPluginEntrypoint contract; not intended for end users.",
+  "author" : "Swoosh",
+  "kind" : "swift",
+  "entrypoint" : {
+    "swiftModule" : {
+      "_0" : "hello-swift"
+    }
+  },
+  "requestedPermissions" : [
+    "toolRead"
+  ],
+  "tools" : [
+    {
+      "id" : "hello-swift.echo",
+      "name" : "hello.echo",
+      "description" : "Return the input message unchanged. Useful as a liveness check that the plugin runtime is wired up.",
+      "permission" : "toolRead",
+      "risk" : "readOnly",
+      "requiresApproval" : false
+    }
+  ],
+  "sandbox" : {
+    "allowFilesystemRead" : false,
+    "allowFilesystemWrite" : false,
+    "allowNetwork" : false,
+    "allowProcessSpawn" : false,
+    "allowedRoots" : [],
+    "maxOutputBytes" : 64000,
+    "timeoutSeconds" : 5
+  },
+  "enabled" : false,
+  "createdAt" : "2026-05-22T00:00:00Z",
+  "updatedAt" : "2026-05-22T00:00:00Z"
+}

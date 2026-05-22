@@ -37,12 +37,14 @@ public enum ToolsetID: String, Codable, Sendable, CaseIterable {
     case cron
     case evm
     case solana
+    case launchpads
     case hyperliquid
     case uniswap
     case mcp
     case skills
     case goals
     case manifesting
+    case plugins
 }
 
 // MARK: - SwooshTool protocol (typed)
@@ -286,6 +288,14 @@ public enum AuditEntryKind: String, Codable, Sendable {
     case workflowStarted
     case workflowCompleted
     case safetyViolation
+    /// Plugin lifecycle or per-tool-call event from `SwooshPlugins`.
+    /// The `detail` field carries the specific `PluginAuditEventKind` and the
+    /// plugin ID. `success` is false for sandbox violations / failed tool
+    /// calls. Plugin tool calls *also* generate ordinary `toolCallStarted` /
+    /// `toolCallSucceeded` entries through the registry — this kind covers
+    /// the lifecycle events the registry doesn't see (discovery, enable,
+    /// disable, sandbox refusals).
+    case pluginEvent
 }
 
 // MARK: - JSONValue extensions

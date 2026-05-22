@@ -11,7 +11,6 @@ in the iOS UI — no claim of ownership is implied.
 |---------------|-------------------|------------------------------|--------------------|
 | OpenAI        | openai            | User-supplied                | per OpenAI brand   |
 | OpenRouter    | openrouter        | simpleicons.org              | CC0                |
-| Anthropic     | anthropic         | simpleicons.org              | CC0                |
 | Google        | google            | simpleicons.org              | CC0                |
 | Solana        | solana chain      | simpleicons.org              | CC0                |
 | Ethereum      | ethereum chain    | simpleicons.org              | CC0                |

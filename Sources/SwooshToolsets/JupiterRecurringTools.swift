@@ -1,11 +1,10 @@
 // SwooshToolsets/JupiterRecurringTools.swift
-// Jupiter DCA (Recurring) tools backed by JupSwift.
+// Jupiter DCA (Recurring) tools.
 // Supports time-based DCA and price-triggered accumulation.
 // Create/cancel = askEveryTime; list = read-only.
 
 import Foundation
 import SwooshTools
-import JupSwift
 
 // MARK: - Create DCA (time-based)
 

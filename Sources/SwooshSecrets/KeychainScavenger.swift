@@ -26,25 +26,7 @@ public enum KeychainScavenger {
         let kind: DiscoveredCredential.CredentialKind
     }
 
-    static let sources: [KeychainSource] = [
-        // Claude Code stores OAuth credentials
-        KeychainSource(provider: .anthropic,
-                       service: "Claude Code-credentials",
-                       account: nil,
-                       kind: .oauthToken),
-
-        // Copilot stores tokens
-        KeychainSource(provider: .copilot,
-                       service: "github-copilot-token",
-                       account: nil,
-                       kind: .oauthToken),
-
-        // Gemini CLI OAuth
-        KeychainSource(provider: .gemini,
-                       service: "gemini-cli",
-                       account: nil,
-                       kind: .oauthToken),
-    ]
+    static let sources: [KeychainSource] = []
 
     #if canImport(Security)
     public static func scan() -> [DiscoveredCredential] {

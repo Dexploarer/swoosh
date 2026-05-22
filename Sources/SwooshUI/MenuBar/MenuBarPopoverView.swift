@@ -5,237 +5,346 @@
 
 import SwiftUI
 import SwooshGenerativeUI
-import SwooshSecrets
+#if os(macOS)
+import AppKit
+#endif
 
 public struct MenuBarPopoverView: View {
     @Bindable var manager: MenuBarManager
     @Environment(\.swooshTheme) var theme
     @Environment(AgentShellModel.self) private var shell
-    @State private var showingCustomizer = false
-    @State private var panelStore = PanelLayoutStore()
-    @State private var editingPanels = false
+    @Environment(\.openWindow) private var openWindow
 
     public init(manager: MenuBarManager) {
         self.manager = manager
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            // ── Header ──
-            headerBar
-
-            Divider().opacity(0.3)
-
-            // ── Panel host (customizable capsules) ──
-            PanelHost(
-                store: panelStore,
-                surface: "tray",
-                context: PanelHostContext(shell: shell),
-                editing: $editingPanels
-            )
-            .environment(shell)
-            .frame(maxHeight: manager.config.popoverMaxHeight - 60)
-
-            Divider().opacity(0.3)
-
-            // ── Footer ──
-            footerBar
+        VStack(alignment: .leading, spacing: 0) {
+            statusHeader
+            Divider().opacity(0.18)
+            quickActions
+            Divider().opacity(0.18)
+            recentSection
+            Divider().opacity(0.18)
+            footerActions
         }
-        .frame(width: manager.config.popoverWidth)
-        .sheet(isPresented: $showingCustomizer) {
-            MenuBarCustomizerView(manager: manager)
+        .frame(width: 320)
+        .background(SwooshNeonTokens.Canvas.bg)
+        .task(id: "popover-health-probe") {
+            await refreshDaemonHealth()
         }
     }
 
-    // ── Header ──
+    private func refreshDaemonHealth() async {
+        let healthy = await SwooshDaemonClient.health()
+        await MainActor.run {
+            switch shell.syncState {
+            case .queued: break
+            default:
+                shell.syncState = healthy ? .online : .offline
+            }
+        }
+    }
 
-    private var headerBar: some View {
-        HStack {
+    // MARK: - Status header
+
+    private var statusHeader: some View {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: "sparkles")
                 .foregroundStyle(theme.accent)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 24, alignment: .leading)
 
-            Text(manager.config.presetName)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(theme.textPrimary)
-
-            Spacer()
-
-            if manager.isRefreshing {
-                ProgressView()
-                    .controlSize(.mini)
-            }
-
-            Button {
-                Task { await manager.refreshCredentials() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 11))
-                    .foregroundStyle(theme.textSecondary)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                withAnimation(.spring(duration: 0.2)) { editingPanels.toggle() }
-            } label: {
-                Image(systemName: editingPanels ? "checkmark.circle.fill" : "slider.horizontal.3")
-                    .font(.system(size: 11))
-                    .foregroundStyle(editingPanels ? SwooshNeonTokens.Accent.cyan : theme.textSecondary)
-            }
-            .buttonStyle(.plain)
-            .help(editingPanels ? "Done editing" : "Edit panels")
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
-
-    // ── Footer ──
-
-    private var footerBar: some View {
-        HStack(spacing: 12) {
-            if let lastTime = manager.lastDiscoveryTime {
-                Text("Updated \(lastTime, style: .relative) ago")
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.textSecondary)
-            }
-
-            Spacer()
-
-            Text("\(manager.providerStatuses.count) providers")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(theme.accent)
-
-            if !manager.accessibleBrowsers.isEmpty {
-                Image(systemName: "globe")
-                    .font(.system(size: 9))
-                    .foregroundStyle(theme.textSecondary)
-                Text("\(manager.accessibleBrowsers.count) browsers")
-                    .font(.system(size: 10))
-                    .foregroundStyle(theme.textSecondary)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MARK: - Section card
-// ═══════════════════════════════════════════════════════════════════
-
-struct MenuBarSectionCard: View {
-    let config: MenuBarSectionConfig
-    @Bindable var manager: MenuBarManager
-    let cardStyle: MenuBarConfiguration.CardStyle
-    let compact: Bool
-
-    @State private var isExpanded: Bool = true
-    @Environment(\.swooshTheme) var theme
-
-    init(config: MenuBarSectionConfig, manager: MenuBarManager,
-         cardStyle: MenuBarConfiguration.CardStyle, compact: Bool) {
-        self.config = config
-        self.manager = manager
-        self.cardStyle = cardStyle
-        self.compact = compact
-        self._isExpanded = State(initialValue: !config.collapsed)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 4 : 8) {
-            // Section header (toggles collapse)
-            if manager.config.showSectionHeaders {
-                Button {
-                    withAnimation(.spring(duration: 0.3, bounce: 0.2)) {
-                        isExpanded.toggle()
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: config.customIcon ?? config.section.defaultIcon)
-                            .font(.system(size: compact ? 10 : 12, weight: .medium))
-                            .foregroundStyle(theme.accent)
-                            .frame(width: 16)
-
-                        Text(config.customTitle ?? config.section.displayName)
-                            .font(.system(size: compact ? 11 : 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(theme.textPrimary)
-
-                        Spacer()
-
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(theme.textSecondary)
-                    }
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Text("Detour")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(theme.textPrimary)
+                    Spacer(minLength: 0)
+                    connectionPill
                 }
-                .buttonStyle(.plain)
-            }
-
-            // Section content
-            if isExpanded {
-                sectionContent
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                Text(activeProviderLabel)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(theme.textPrimary.opacity(0.72))
+                    .lineLimit(1)
             }
         }
-        .padding(compact ? 8 : 12)
-        .modifier(CardStyleModifier(style: cardStyle, theme: theme))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
+
+    private var connectionPill: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(connectionColor)
+                .frame(width: 7, height: 7)
+            Text(shell.syncState.label.capitalized)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(theme.textPrimary.opacity(0.85))
+                .textCase(nil)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(
+            Capsule().fill(connectionColor.opacity(0.14))
+        )
+        .overlay(
+            Capsule().strokeBorder(connectionColor.opacity(0.32), lineWidth: 0.5)
+        )
+    }
+
+    private var connectionColor: Color {
+        switch shell.syncState {
+        case .online: return .green
+        case .offline: return .orange
+        case .queued: return .yellow
+        }
+    }
+
+    private var activeProviderLabel: String {
+        if let active = manager.providerStatuses.first(where: { $0.isHealthy }) {
+            return active.displayName
+        }
+        if !manager.providerStatuses.isEmpty {
+            return "No provider signed in"
+        }
+        return "Loading providers…"
+    }
+
+    // MARK: - Quick actions
+
+    private var quickActions: some View {
+        VStack(spacing: 1) {
+            TrayActionRow(
+                icon: "macwindow",
+                title: "Open Dashboard",
+                accent: theme.accent,
+                shortcut: "⌘1"
+            ) {
+                openWindow(id: "dashboard")
+                dismissPopover()
+            }
+
+            TrayActionRow(
+                icon: "mic.circle",
+                title: "Voice Mode",
+                accent: .cyan,
+                shortcut: "⇧⌥␣"
+            ) {
+                NotificationCenter.default.post(
+                    name: Notification.Name("ai.swoosh.toggleVoiceMode"),
+                    object: nil
+                )
+                dismissPopover()
+            }
+
+            if !hasSignedInLLM {
+                TrayActionRow(
+                    icon: "person.badge.key.fill",
+                    title: "Sign in with ChatGPT",
+                    accent: .green
+                ) {
+                    Task { await startCodexAuth() }
+                }
+            }
+
+            TrayActionRow(
+                icon: "arrow.clockwise",
+                title: "Refresh Providers",
+                accent: theme.textPrimary.opacity(0.7),
+                trailing: manager.isRefreshing ? AnyView(ProgressView().controlSize(.small)) : nil
+            ) {
+                Task { await manager.refreshCredentials() }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var hasSignedInLLM: Bool {
+        manager.providerStatuses.contains { $0.isHealthy }
+    }
+
+    private func startCodexAuth() async {
+        openWindow(id: "dashboard")
+        NotificationCenter.default.post(name: .swooshOpenDashboardTab, object: "providers")
+        dismissPopover()
+    }
+
+    // MARK: - Recent
 
     @ViewBuilder
-    private var sectionContent: some View {
-        switch config.section {
-        case .providerStatus:
-            ProviderStatusSectionView(
-                statuses: manager.providerStatuses,
-                maxItems: config.maxItems,
-                compact: compact
-            )
-        case .quickActions:
-            QuickActionsSectionView(compact: compact)
-        case .usageMeters:
-            UsageMetersSectionView(
-                statuses: manager.providerStatuses,
-                compact: compact
-            )
-        default:
-            // Placeholder for sections being built out
-            HStack {
-                Text(config.section.displayName)
-                    .font(.system(size: compact ? 10 : 11))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("Not enabled")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.tertiary)
+    private var recentSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("RECENT")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1.2)
+                .foregroundStyle(theme.textPrimary.opacity(0.55))
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+
+            let userMessages = shell.messages.filter { $0.role == .user }.suffix(3)
+            if userMessages.isEmpty {
+                Text("No recent chats")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(theme.textPrimary.opacity(0.55))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+            } else {
+                ForEach(Array(userMessages), id: \.id) { msg in
+                    RecentChatRow(text: msg.text, timestamp: msg.timestamp) {
+                        openWindow(id: "dashboard")
+                        NotificationCenter.default.post(name: .swooshOpenDashboardTab, object: "chat")
+                        dismissPopover()
+                    }
+                }
             }
         }
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Footer
+
+    private var footerActions: some View {
+        HStack(spacing: 4) {
+            Button {
+                openWindow(id: "dashboard")
+                NotificationCenter.default.post(name: .swooshOpenDashboardTab, object: "settings")
+                dismissPopover()
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(theme.textPrimary.opacity(0.78))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+
+            Spacer()
+
+            if !manager.providerStatuses.isEmpty {
+                Text("\(manager.providerStatuses.count) providers")
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundStyle(theme.accent)
+                    .padding(.horizontal, 6)
+            }
+
+            #if os(macOS)
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Label("Quit", systemImage: "power")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(theme.textPrimary.opacity(0.78))
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .help("Quit Detour")
+            #endif
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Helpers
+
+    private func dismissPopover() {
+        #if os(macOS)
+        NSApp.deactivate()
+        #endif
     }
 }
 
+public extension Notification.Name {
+    static let swooshOpenDashboardTab = Notification.Name("swoosh.openDashboardTab")
+}
+
 // ═══════════════════════════════════════════════════════════════════
-// MARK: - Card style modifier
+// MARK: - Action row
 // ═══════════════════════════════════════════════════════════════════
 
-struct CardStyleModifier: ViewModifier {
-    let style: MenuBarConfiguration.CardStyle
-    let theme: SwooshTheme
+private struct TrayActionRow: View {
+    @Environment(\.swooshTheme) var theme
+    let icon: String
+    let title: String
+    var accent: Color = .accentColor
+    var shortcut: String? = nil
+    var trailing: AnyView? = nil
+    let action: () -> Void
 
-    func body(content: Content) -> some View {
-        switch style {
-        case .glass:
-            content
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        case .flat:
-            content
-                .background(theme.surface.opacity(0.6), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        case .bordered:
-            content
-                .background(theme.surface.opacity(0.3), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(theme.textSecondary.opacity(0.15), lineWidth: 0.5)
-                )
-        case .minimal:
-            content
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 22)
+
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(theme.textPrimary)
+
+                Spacer()
+
+                if let trailing { trailing }
+
+                if let shortcut {
+                    Text(shortcut)
+                        .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(theme.textPrimary.opacity(0.45))
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+            .background(
+                Rectangle()
+                    .fill(hovering ? theme.textPrimary.opacity(0.06) : Color.clear)
+            )
         }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+}
+
+private struct RecentChatRow: View {
+    @Environment(\.swooshTheme) var theme
+    let text: String
+    let timestamp: Date
+    let action: () -> Void
+
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "bubble.left")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(theme.textPrimary.opacity(0.5))
+                    .frame(width: 22)
+
+                Text(text)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(theme.textPrimary.opacity(0.92))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                Spacer(minLength: 6)
+
+                Text(timestamp, style: .relative)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(theme.textPrimary.opacity(0.5))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+            .background(
+                Rectangle()
+                    .fill(hovering ? theme.textPrimary.opacity(0.06) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }

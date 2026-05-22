@@ -10,7 +10,7 @@ import SwooshTools
 // MARK: - Local OpenAI-Compatible Provider
 // ═══════════════════════════════════════════════════════════════════
 
-public actor LocalOpenAICompatibleProvider: StreamingModelProviding {
+public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingProviding {
     public nonisolated let providerID: ProviderID = "local-openai"
     public nonisolated let displayName: String = "Local OpenAI-Compatible"
     public nonisolated let capabilities = ProviderCapabilities(
@@ -79,6 +79,15 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding {
         }
     }
 
+    // ── Embeddings ─────────────────────────────────────────────────
+
+    public func embed(_ request: EmbeddingRequest) async throws -> EmbeddingResponse {
+        try validateLocalhost()
+        let httpReq = try buildEmbeddingRequest(request)
+        let response = try await http.send(httpReq)
+        return try parseEmbeddingResponse(response.data, model: request.model)
+    }
+
     // ── Model discovery ───────────────────────────────────────────
 
     public func listModels() async throws -> [String] {
@@ -121,7 +130,34 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding {
         if stream { body["stream"] = true }
         if let temp = modelReq.temperature { body["temperature"] = temp }
         if let max = modelReq.maxOutputTokens { body["max_tokens"] = max }
+        if !modelReq.tools.isEmpty {
+            body["tools"] = modelReq.tools.map { tool -> [String: Any] in
+                [
+                    "type": "function",
+                    "function": [
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.inputSchema.toAnyForJSON(),
+                    ],
+                ]
+            }
+            body["tool_choice"] = "auto"
+        }
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return req
+    }
+
+    private func buildEmbeddingRequest(_ embeddingReq: EmbeddingRequest) throws -> URLRequest {
+        guard let url = URL(string: "\(baseURL)/embeddings") else {
+            throw ProviderError.requestFailed(providerID, "Invalid base URL")
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: [
+            "model": embeddingReq.model,
+            "input": embeddingReq.input,
+        ])
         return req
     }
 
@@ -135,6 +171,7 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding {
 
         let text = (message["content"] as? String) ?? ""
         let responseModel = (json["model"] as? String) ?? model
+        let toolCalls = try parseToolCalls(message["tool_calls"])
 
         var usage: ProviderUsage?
         if let u = json["usage"] as? [String: Any] {
@@ -147,8 +184,85 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding {
 
         return ModelResponse(
             providerID: providerID, model: responseModel, text: text,
-            finishReason: "stop", usage: usage
+            toolCalls: toolCalls, finishReason: "stop", usage: usage
         )
+    }
+
+    private func parseToolCalls(_ value: Any?) throws -> [ProviderToolCall] {
+        guard let rawCalls = value else { return [] }
+        guard let calls = rawCalls as? [[String: Any]] else {
+            throw ProviderError.responseParseFailed(providerID, "Invalid tool calls")
+        }
+
+        var parsed: [ProviderToolCall] = []
+        parsed.reserveCapacity(calls.count)
+        for call in calls {
+            guard let id = call["id"] as? String,
+                  let function = call["function"] as? [String: Any],
+                  let name = function["name"] as? String,
+                  let arguments = function["arguments"] as? String else {
+                throw ProviderError.responseParseFailed(providerID, "Invalid tool call")
+            }
+            parsed.append(ProviderToolCall(
+                id: id,
+                name: name,
+                arguments: .string(arguments)
+            ))
+        }
+        return parsed
+    }
+
+    private func parseEmbeddingResponse(_ data: Data, model: String) throws -> EmbeddingResponse {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw ProviderError.responseParseFailed(providerID, "Invalid JSON")
+        }
+
+        if let error = json["error"] as? [String: Any],
+           let message = error["message"] as? String {
+            throw ProviderError.requestFailed(providerID, message)
+        }
+
+        guard let data = json["data"] as? [[String: Any]] else {
+            throw ProviderError.responseParseFailed(providerID, "Missing embedding data")
+        }
+
+        var embeddings: [[Double]] = []
+        embeddings.reserveCapacity(data.count)
+        for item in data {
+            embeddings.append(try parseEmbeddingVector(item["embedding"]))
+        }
+
+        var usageInfo: ProviderUsage?
+        if let rawUsage = json["usage"] {
+            guard let usage = rawUsage as? [String: Any],
+                  let promptTokens = usage["prompt_tokens"] as? Int,
+                  let totalTokens = usage["total_tokens"] as? Int else {
+                throw ProviderError.responseParseFailed(providerID, "Invalid embedding usage")
+            }
+            usageInfo = ProviderUsage(
+                promptTokens: promptTokens,
+                completionTokens: 0,
+                totalTokens: totalTokens
+            )
+        }
+
+        let responseModel = (json["model"] as? String) ?? model
+        return EmbeddingResponse(
+            providerID: providerID,
+            model: responseModel,
+            embeddings: embeddings,
+            usage: usageInfo
+        )
+    }
+
+    private func parseEmbeddingVector(_ value: Any?) throws -> [Double] {
+        if let vector = value as? [Double] {
+            return vector
+        }
+        if let vector = value as? [NSNumber] {
+            return vector.map(\.doubleValue)
+        }
+        throw ProviderError.responseParseFailed(providerID, "Invalid embedding vector")
     }
 
     private func parseStreamDelta(_ json: String) -> String? {
@@ -197,7 +311,23 @@ public struct LocalProviderDiscovery: Sendable {
                 let response = try await http.send(req)
                 if let json = try? JSONSerialization.jsonObject(with: response.data) as? [String: Any],
                    let data = json["data"] as? [[String: Any]] {
-                    let models = data.compactMap { $0["id"] as? String }
+                    // Capability filter only (NOT a model preference): an
+                    // embedding-only / reranker model literally cannot
+                    // serve /chat/completions, so listing it here means
+                    // the auto-picker chooses something that 500s on
+                    // first chat. We keep Ollama's insertion order — the
+                    // user picks what they want via the Providers pane.
+                    let models = data.compactMap { obj -> String? in
+                        guard let id = obj["id"] as? String else { return nil }
+                        let lower = id.lowercased()
+                        guard !lower.contains("embed"),
+                              !lower.contains("rerank"),
+                              !lower.contains("functiongemma") else {
+                            return nil
+                        }
+                        return id
+                    }
+                    guard !models.isEmpty else { continue }
                     found.append(DiscoveredProvider(name: name, baseURL: base, models: models))
                 }
             } catch {

@@ -323,18 +323,28 @@ struct TradingCapabilitiesPanelView: View {
             if loading {
                 PanelLoadingRow()
             } else {
-                ForEach(caps.prefix(6)) { c in
-                    HStack {
-                        MonoChip(text: c.risk.uppercased(),
-                                 accent: c.enabled ? .green : .gold)
-                        Text(c.name)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                        Spacer()
-                        if c.enabled {
-                            Image(systemName: "checkmark")
+                ForEach(caps) { c in
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            MonoChip(text: c.risk.uppercased(),
+                                     accent: c.enabled ? .green : .gold)
+                            Text(c.name)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text1)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: c.enabled ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 10))
-                                .foregroundStyle(SwooshNeonTokens.Accent.green)
+                                .foregroundStyle(c.enabled ? SwooshNeonTokens.Accent.green : SwooshNeonTokens.Canvas.text3)
+                        }
+                        HStack(spacing: 6) {
+                            Text(c.status)
+                                .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+                                .lineLimit(1)
+                            if !c.configured {
+                                MonoChip(text: "setup", accent: .gold)
+                            }
                         }
                     }
                 }
@@ -477,20 +487,51 @@ struct SkillsPanelView: View {
 
 @MainActor
 struct GoalsPanelView: View {
+    @State private var records: RecordsResponse?
+    @State private var loading = true
+
     var body: some View {
-        Text("Active goals view — drive off GoalRunner state. Open in window for details.")
-            .font(.system(size: 11))
-            .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-            .lineLimit(3)
+        VStack(alignment: .leading, spacing: SwooshNeonTokens.Spacing.micro) {
+            if loading {
+                PanelLoadingRow()
+            } else if let r = records {
+                KVRow(key: "total", value: "\(r.goals.count)")
+                KVRow(key: "active", value: "\(r.goals.filter { $0.state == "active" }.count)", accent: .green)
+                if let latest = r.goals.sorted(by: { $0.updatedAt > $1.updatedAt }).first {
+                    KVRow(key: "latest", value: latest.state, accent: latest.state == "active" ? .green : .gold)
+                }
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            records = try? await client.records()
+            loading = false
+        }
     }
 }
 
 @MainActor
 struct ManifestsPanelView: View {
+    @State private var records: RecordsResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "last pass", value: "—")
-            KVRow(key: "proposals", value: "0", accent: .gold)
+            if loading {
+                PanelLoadingRow()
+            } else if let r = records {
+                let proposalCount = r.manifestations.reduce(0) { $0 + $1.proposalCount }
+                KVRow(key: "passes", value: "\(r.manifestations.count)")
+                KVRow(key: "proposals", value: "\(proposalCount)", accent: .gold)
+                if let latest = r.manifestations.max(by: { $0.startedAt < $1.startedAt }) {
+                    KVRow(key: "latest", value: latest.status, accent: latest.status == "completed" ? .green : .cyan)
+                }
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            records = try? await client.records()
+            loading = false
         }
     }
 }
@@ -551,33 +592,74 @@ struct BoardPanelView: View {
     }
 }
 
+@MainActor
 struct WorkflowsPanelView: View {
+    @State private var records: RecordsResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "registered", value: "—")
-            KVRow(key: "recent runs", value: "—")
+            if loading {
+                PanelLoadingRow()
+            } else if let r = records {
+                KVRow(key: "board cards", value: "\(r.boardCards.count)")
+                KVRow(key: "cron jobs", value: "\(r.cronJobs.count)", accent: .gold)
+                KVRow(key: "ready", value: r.readiness.state.rawValue, accent: r.readiness.isReady ? .green : .gold)
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            records = try? await client.records()
+            loading = false
         }
     }
 }
 
+@MainActor
 struct TriggersPanelView: View {
+    @State private var records: RecordsResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "active", value: "—")
-            KVRow(key: "fired today", value: "—")
+            if loading {
+                PanelLoadingRow()
+            } else if let r = records {
+                KVRow(key: "enabled", value: "\(r.cronJobs.filter(\.enabled).count)", accent: .green)
+                KVRow(key: "paused", value: "\(r.cronJobs.filter { !$0.enabled }.count)")
+                if let next = r.cronJobs.compactMap(\.nextRunAt).min() {
+                    KVRow(key: "next", value: panelRelative(next), accent: .gold)
+                }
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            records = try? await client.records()
+            loading = false
         }
     }
 }
 
+@MainActor
 struct ApprovalsPanelView: View {
+    @State private var approvals: ApprovalsResponse?
+    @State private var loading = true
+
     var body: some View {
-        HStack {
-            Image(systemName: "hand.raised.fill")
-                .foregroundStyle(SwooshNeonTokens.Accent.gold)
-            Text("Pending humanOnly approvals will land here.")
-                .font(.system(size: 11))
-                .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                .lineLimit(2)
+        VStack(alignment: .leading, spacing: SwooshNeonTokens.Spacing.micro) {
+            if loading {
+                PanelLoadingRow()
+            } else if let approvals {
+                KVRow(key: "pending", value: "\(approvals.pending.count)", accent: approvals.pending.isEmpty ? .green : .gold)
+                if let first = approvals.pending.first {
+                    KVRow(key: "next", value: first.toolName, accent: .gold)
+                }
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            approvals = try? await client.approvals()
+            loading = false
         }
     }
 }
@@ -709,29 +791,72 @@ struct SpansPanelView: View {
 // MARK: - Tools + integrations
 // ═══════════════════════════════════════════════════════════════════
 
+@MainActor
 struct ToolCatalogPanelView: View {
+    @State private var catalog: ToolCatalogResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "registered", value: "—")
-            KVRow(key: "humanOnly", value: "—", accent: .gold)
+            if loading {
+                PanelLoadingRow()
+            } else if let catalog {
+                KVRow(key: "registered", value: "\(catalog.tools.count)", accent: .green)
+                KVRow(key: "toolsets", value: "\(catalog.toolsets.count)")
+                KVRow(key: "humanOnly", value: "\(catalog.tools.filter { $0.approval == "humanOnly" }.count)", accent: .gold)
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            catalog = try? await client.toolCatalog()
+            loading = false
         }
     }
 }
 
+@MainActor
 struct MCPServersPanelView: View {
+    @State private var mcp: MCPServersResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "connected", value: "—")
-            KVRow(key: "tools exposed", value: "—")
+            if loading {
+                PanelLoadingRow()
+            } else if let mcp {
+                KVRow(key: "servers", value: "\(mcp.servers.count)")
+                KVRow(key: "enabled", value: "\(mcp.servers.filter(\.enabled).count)", accent: .green)
+                KVRow(key: "tools", value: "\(mcp.servers.reduce(0) { $0 + $1.importedToolCount })", accent: .gold)
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            mcp = try? await client.mcpServers()
+            loading = false
         }
     }
 }
 
+@MainActor
 struct PluginsPanelView: View {
+    @State private var plugins: PluginsResponse?
+    @State private var loading = true
+
     var body: some View {
-        Text("Loaded plugins — open Plugins tab for details.")
-            .font(.system(size: 11))
-            .foregroundStyle(SwooshNeonTokens.Canvas.text2)
+        VStack(alignment: .leading, spacing: 4) {
+            if loading {
+                PanelLoadingRow()
+            } else if let plugins {
+                KVRow(key: "installed", value: "\(plugins.plugins.count)")
+                KVRow(key: "enabled", value: "\(plugins.plugins.filter(\.enabled).count)", accent: .green)
+                KVRow(key: "tools", value: "\(plugins.plugins.reduce(0) { $0 + $1.tools.count })", accent: .gold)
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            plugins = try? await client.plugins()
+            loading = false
+        }
     }
 }
 
@@ -837,22 +962,50 @@ struct FocusFilterPanelView: View {
     }
 }
 
+@MainActor
 struct FirewallSummaryPanelView: View {
+    @State private var config: RuntimeConfigResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "grants this session", value: "—", accent: .green)
-            KVRow(key: "denies", value: "—", accent: .gold)
+            if loading {
+                PanelLoadingRow()
+            } else if let config {
+                KVRow(key: "profile", value: config.permissionProfile ?? "unset", accent: .green)
+                KVRow(key: "flags on", value: "\(config.safetyFlags.filter(\.enabled).count)")
+                KVRow(key: "model tools", value: config.toolPolicy?.allowModelToolCalls == true ? "enabled" : "blocked", accent: config.toolPolicy?.allowModelToolCalls == true ? .green : .gold)
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            config = try? await client.runtimeConfig()
+            loading = false
         }
     }
 }
 
+@MainActor
 struct SecretsPanelView: View {
+    @State private var providers: ProvidersResponse?
+    @State private var loading = true
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            KVRow(key: "providers configured", value: "—")
-            Text("Keys stored in Keychain (ai.swoosh.secrets).")
-                .font(.system(size: 10))
-                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+            if loading {
+                PanelLoadingRow()
+            } else if let providers {
+                KVRow(key: "configured", value: "\(providers.providers.filter(\.configured).count)", accent: .green)
+                KVRow(key: "active", value: providers.activeProviderID ?? "none", accent: providers.activeProviderID == nil ? .gold : .cyan)
+                Text("Keys stored in Keychain (ai.swoosh.secrets).")
+                    .font(.system(size: 10))
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+            }
+        }
+        .task {
+            guard let client = makeAPIClient() else { loading = false; return }
+            providers = try? await client.providers()
+            loading = false
         }
     }
 }
@@ -912,13 +1065,11 @@ struct CustomSurfacePanelView: View {
 // MARK: - Shared API client builder
 // ═══════════════════════════════════════════════════════════════════
 
-/// Build a one-shot client to the local daemon. Reads the bearer token
-/// from `~/.swoosh/api_token`. Returns nil if the token isn't there yet.
 @MainActor
 func makeAPIClient() -> SwooshAPIClient? {
-    let path = ("~/.swoosh/api_token" as NSString).expandingTildeInPath
-    let token = try? String(contentsOfFile: path, encoding: .utf8)
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-    guard let host = URL(string: "http://127.0.0.1:7777") else { return nil }
-    return SwooshAPIClient(baseURL: host, token: token)
+    SwooshDaemonClient.client()
+}
+
+func panelRelative(_ date: Date) -> String {
+    RelativeDateTimeFormatter().localizedString(for: date, relativeTo: Date())
 }

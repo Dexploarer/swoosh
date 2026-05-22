@@ -1,6 +1,6 @@
 #if os(iOS)
 
-// SwooshLocalLLM/LiteRTModelCatalog.swift — 0.9R On-device model catalog
+// SwooshLocalLLM/LiteRTModelCatalog.swift — 0.9S On-device model catalog
 //
 // Built-in catalog of LiteRT-LM `.litertlm` models. Each entry records
 // the canonical download URL (HuggingFace), expected byte size for
@@ -8,14 +8,15 @@
 // the model needs the iOS `com.apple.developer.kernel.extended-virtual-
 // addressing` entitlement (models above ~2GB do).
 //
-// Default = Gemma 3n E2B Int4 — 1.3GB, no entitlement required, runs on
-// any iPhone 15 Pro+ / M-series Mac.
+// Default = Gemma 4 E4B — 3.65GB, multimodal, requires extended
+// virtual addressing.
 
 import Foundation
+import SwooshModels
 
 public struct LiteRTModel: Codable, Sendable, Identifiable, Hashable {
-    public let id: String              // e.g. "gemma-3n-E2B-it-int4"
-    public let displayName: String     // e.g. "Gemma 3n E2B (4-bit)"
+    public let id: String
+    public let displayName: String
     public let family: String          // e.g. "Gemma"
     public let downloadURL: URL
     public let estimatedBytes: Int64   // for progress UI
@@ -55,22 +56,7 @@ public struct LiteRTModel: Codable, Sendable, Identifiable, Hashable {
 
 public enum LiteRTModelCatalog {
 
-    /// Default on-device model. Picked for the broadest install base —
-    /// ~1.3 GB, no entitlement, works on iPhone 15 Pro+ and any M-series Mac.
-    public static let defaultModel: LiteRTModel = gemma3nE2BInt4
-
-    public static let gemma3nE2BInt4 = LiteRTModel(
-        id: "gemma-3n-E2B-it-int4",
-        displayName: "Gemma 3n E2B (Int4)",
-        family: "Gemma",
-        downloadURL: URL(string: "https://huggingface.co/litert-community/Gemma-3n-E2B-it-LiteRT-LM/resolve/main/gemma-3n-E2B-it-int4.litertlm")!,
-        estimatedBytes: 1_320_000_000,
-        parameters: "2B",
-        contextWindow: 32_768,
-        supportsVision: false,
-        supportsAudio: false,
-        requiresExtendedAddressing: false
-    )
+    public static let defaultModel: LiteRTModel = gemma4E4B
 
     public static let gemma4E2B = LiteRTModel(
         id: "gemma-4-E2B-it",
@@ -86,7 +72,7 @@ public enum LiteRTModelCatalog {
     )
 
     public static let gemma4E4B = LiteRTModel(
-        id: "gemma-4-E4B-it",
+        id: ModelDefaults.localLiteRTModelID,
         displayName: "Gemma 4 E4B (Higher Quality)",
         family: "Gemma",
         downloadURL: URL(string: "https://huggingface.co/litert-community/Gemma-4-E4B-it-LiteRT-LM/resolve/main/gemma-4-E4B-it.litertlm")!,
@@ -100,9 +86,8 @@ public enum LiteRTModelCatalog {
 
     /// All built-in models, in default-first order.
     public static let all: [LiteRTModel] = [
-        gemma3nE2BInt4,
-        gemma4E2B,
         gemma4E4B,
+        gemma4E2B,
     ]
 
     public static func model(id: String) -> LiteRTModel? {

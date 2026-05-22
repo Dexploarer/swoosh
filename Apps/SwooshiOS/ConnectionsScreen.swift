@@ -547,6 +547,10 @@ struct ProviderDetailScreen: View {
                 }
             }
 
+            if provider.id == "codex" {
+                CodexAuthSection(configured: provider.configured)
+            }
+
             if selectableFromPhone {
                 Section {
                     Button(saving ? "Setting…" : "Make this the preferred provider") {
@@ -582,10 +586,15 @@ struct ProviderDetailScreen: View {
     }
 
     private var acceptsPhoneKey: Bool {
-        ["openai", "openrouter", "eliza-cloud", "anthropic", "google"].contains(provider.id)
+        // Only the providers the daemon's `saveProviderKey` accepts.
+        ["openai", "openrouter"].contains(provider.id)
     }
 
-    private var selectableFromPhone: Bool { provider.id != "local-diagnostic" }
+    private var selectableFromPhone: Bool {
+        // Codex auth needs the dedicated /api/codex/auth flow, not the
+        // generic provider-select. Other providers can be selected here.
+        provider.id != "local-diagnostic" && provider.id != "codex"
+    }
 
     private func saveKey() async {
         guard let client = session.client() else { return }
@@ -626,8 +635,19 @@ struct ProviderDetailScreen: View {
 }
 
 private extension ProviderSummary {
-    var location: String { id == "local-openai" || id == "local-diagnostic" ? "Local" : "Cloud" }
-    var cost: String { id == "local-openai" || id == "local-diagnostic" ? "Free" : "Paid" }
+    var location: String {
+        switch id {
+        case "local-openai", "local-diagnostic", "mlx-local", "apple-foundation": return "Local"
+        default: return "Cloud"
+        }
+    }
+    var cost: String {
+        switch id {
+        case "local-openai", "local-diagnostic", "mlx-local", "apple-foundation": return "Free"
+        case "codex": return "ChatGPT Plus"
+        default: return "Paid"
+        }
+    }
 }
 
 // MARK: - Skills, Memories, Runtime, Automations, Media

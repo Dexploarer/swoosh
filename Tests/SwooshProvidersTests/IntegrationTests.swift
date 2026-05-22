@@ -5,9 +5,11 @@
 import Testing
 import Foundation
 @testable import SwooshProviders
+@testable import SwooshProviderBridge
 @testable import SwooshSecrets
 @testable import SwooshTools
 @testable import SwooshCore
+@testable import SwooshModels
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Bridge Adapter Tests
@@ -203,13 +205,18 @@ struct ProviderFactoryTests {
     @Test("Router created with default routes")
     func testDefaultRoutes() async throws {
         let secrets = InMemorySecretStore()
-        let (_, registry) = await ProviderFactoryTestHelper.buildRouter(secrets: secrets)
+        let (_, registry) = await ProviderFactory.buildRouter(secrets: secrets)
 
-        let chatRoutes = await registry.routes(for: .primaryChat)
-        #expect(chatRoutes.count >= 2) // at least openai + openrouter
+        for role in SwooshProviders.ModelRole.allCases {
+            let routes = await registry.routes(for: role)
+            #expect(!routes.isEmpty, "Missing default routes for \(role.rawValue)")
+        }
 
-        let codingRoutes = await registry.routes(for: .coding)
-        #expect(!codingRoutes.isEmpty)
+        let embeddingRoutes = await registry.routes(for: .embedding)
+        #expect(embeddingRoutes.allSatisfy {
+            $0.providerID == ProviderID(ModelDefaults.localOpenAIProviderID)
+            || $0.providerID == ProviderID(ModelDefaults.openAIProviderID)
+        })
     }
 
     @Test("Provider detection finds OpenAI when key is present")
@@ -287,19 +294,19 @@ enum ProviderFactoryTestHelper {
 
         await registry.addRoute(ProviderRoute(
             role: .primaryChat, providerID: ProviderID("openai"),
-            model: "gpt-4.1", priority: 100
+            model: ModelDefaults.openAIModelID, priority: 100
         ))
         await registry.addRoute(ProviderRoute(
             role: .primaryChat, providerID: ProviderID("openrouter"),
-            model: "openai/gpt-4.1", priority: 90
+            model: ModelDefaults.openRouterModelID, priority: 90
         ))
         await registry.addRoute(ProviderRoute(
             role: .primaryChat, providerID: ProviderID("local-openai"),
-            model: "llama3", priority: 60
+            model: ModelDefaults.localOpenAIModelID, priority: 60
         ))
         await registry.addRoute(ProviderRoute(
             role: .coding, providerID: ProviderID("openai"),
-            model: "gpt-4.1", priority: 100
+            model: ModelDefaults.openAIModelID, priority: 100
         ))
 
         let router = ProviderRouter(registry: registry)
@@ -308,10 +315,10 @@ enum ProviderFactoryTestHelper {
 
     static func detectActiveProvider(secrets: any SecretStoring) async -> (name: String, model: String)? {
         if let _ = try? await secrets.get(SecretRef("openai", "api_key")) {
-            return ("OpenAI", "gpt-4.1")
+            return ("OpenAI", ModelDefaults.openAIModelID)
         }
         if let _ = try? await secrets.get(SecretRef("openrouter", "api_key")) {
-            return ("OpenRouter", "openai/gpt-4.1")
+            return ("OpenRouter", ModelDefaults.openRouterModelID)
         }
 
         let discovery = LocalProviderDiscovery()

@@ -290,8 +290,7 @@ struct ProviderKeyCheck: DoctorCheck {
     let category = DoctorCategory.secrets
 
     func run(context: DoctorContext) async throws -> DoctorCheckResult {
-        let keys = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
-                     "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "GROQ_API_KEY"]
+        let keys = ["OPENAI_API_KEY", "OPENROUTER_API_KEY", "ELIZA_CLOUD_API_KEY"]
         let found = keys.filter { ProcessInfo.processInfo.environment[$0] != nil }
         if found.isEmpty {
             let configPath = NSString(string: context.configPath).expandingTildeInPath
@@ -317,7 +316,7 @@ struct ProviderReachabilityCheck: DoctorCheck {
     let category = DoctorCategory.model
 
     func run(context: DoctorContext) async throws -> DoctorCheckResult {
-        let endpoints = [("OpenAI", "https://api.openai.com"), ("Anthropic", "https://api.anthropic.com"), ("OpenRouter", "https://openrouter.ai")]
+        let endpoints = [("OpenAI", "https://api.openai.com"), ("OpenRouter", "https://openrouter.ai")]
         var reachable: [String] = [], unreachable: [String] = []
 
         for (name, urlStr) in endpoints {

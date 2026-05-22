@@ -1,10 +1,9 @@
 // SwooshToolsets/JupiterTriggerTools.swift
-// Jupiter limit-order (Trigger) tools backed by JupSwift.
+// Jupiter limit-order (Trigger) tools.
 // Create = askEveryTime, cancel = askEveryTime, read = never.
 
 import Foundation
 import SwooshTools
-import JupSwift
 
 // MARK: - Create limit order
 

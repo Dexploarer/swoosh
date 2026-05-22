@@ -165,7 +165,7 @@ public struct StreamingProcessRunner: ProcessRunning, Sendable {
             var env = ProcessInfo.processInfo.environment
             // Remove known secret-like variables
             let secretKeys = ["API_KEY", "SECRET", "TOKEN", "PASSWORD", "PRIVATE_KEY",
-                              "AWS_SECRET", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"]
+                              "AWS_SECRET", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "ELIZA_CLOUD_API_KEY"]
             for key in env.keys {
                 let upper = key.uppercased()
                 if secretKeys.contains(where: { upper.contains($0) }) {

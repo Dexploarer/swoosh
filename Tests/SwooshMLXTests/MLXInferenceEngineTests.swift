@@ -32,9 +32,9 @@ struct MLXErrorTests {
 
     @Test("ModelNotFound stores model ID")
     func modelNotFoundStoresID() {
-        let error = MLXError.modelNotFound("llama-3.1-8b")
+        let error = MLXError.modelNotFound("gemma-4-e4b-it")
         if case .modelNotFound(let id) = error {
-            #expect(id == "llama-3.1-8b")
+            #expect(id == "gemma-4-e4b-it")
         } else {
             Issue.record("Wrong error type")
         }
@@ -70,14 +70,14 @@ struct LocalModelInfoTests {
 
     @Test("LocalModelInfo initializes correctly")
     func initializesCorrectly() {
-        let url = URL(fileURLWithPath: "/models/llama-3.1-8b")
+        let url = URL(fileURLWithPath: "/models/gemma-4-e4b-it")
         let info = LocalModelInfo(
-            id: "llama-3.1-8b",
+            id: "gemma-4-e4b-it",
             path: url,
             sizeBytes: 16_000_000_000
         )
 
-        #expect(info.id == "llama-3.1-8b")
+        #expect(info.id == "gemma-4-e4b-it")
         #expect(info.path == url)
         #expect(info.sizeBytes == 16_000_000_000)
     }
@@ -195,7 +195,7 @@ struct MLXInferenceEngineModelTests {
         try FileManager.default.createDirectory(at: modelDir, withIntermediateDirectories: true)
 
         // Create config.json
-        let config = ["model_type": "llama", "hidden_size": 4096] as [String: Any]
+        let config = ["model_type": "gemma4", "hidden_size": 4096] as [String: Any]
         let configData = try JSONSerialization.data(withJSONObject: config)
         try configData.write(to: modelDir.appendingPathComponent("config.json"))
 

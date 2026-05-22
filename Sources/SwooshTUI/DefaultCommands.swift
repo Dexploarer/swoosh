@@ -78,9 +78,9 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
     ) { ctx in
         let env = ProcessInfo.processInfo.environment
         let providerKeys: [(String, String)] = [
-            ("OPENAI_API_KEY", "openai"), ("ANTHROPIC_API_KEY", "anthropic"),
-            ("OPENROUTER_API_KEY", "openrouter"), ("GEMINI_API_KEY", "gemini"),
-            ("DEEPSEEK_API_KEY", "deepseek"), ("GROQ_API_KEY", "groq"),
+            ("OPENAI_API_KEY", "openai"),
+            ("OPENROUTER_API_KEY", "openrouter"),
+            ("ELIZA_CLOUD_API_KEY", "eliza-cloud"),
         ]
         let active = providerKeys.first { env[$0.0] != nil }
         let providerStr = active.map { "✅ \($0.1)" } ?? "⚠️  none — run `swoosh discover-credentials`"
@@ -106,15 +106,14 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
 
               ─── Providers ────────────────────────────────────
                 Remote:
-                  openai       gpt-4o, o3, o4-mini, codex-mini
-                  anthropic    claude-sonnet-4, claude-3.5-haiku
-                  openrouter   200+ models
-                  gemini       gemini-2.5-pro/flash
-                  deepseek     deepseek-chat/reasoner
-                  groq         llama-4-scout, llama-3.3-70b
+                  codex        ChatGPT account via Codex CLI
+                  openai       GPT-5.x
+                  openrouter   GPT-5.x routes
+                  eliza-cloud  hosted Eliza model
 
                 Local (Apple Silicon):
-                  mlx          ~/.swoosh/models/
+                  mlx-local    Gemma 4 / Qwen through mlx-swift-lm
+                  local-openai Ollama / LM Studio / vLLM
 
                 Use: swoosh config set provider <name>
 
@@ -122,8 +121,9 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
         }
         let env = ProcessInfo.processInfo.environment
         let keys: [(String, String)] = [
-            ("OPENAI_API_KEY", "openai"), ("ANTHROPIC_API_KEY", "anthropic"),
-            ("OPENROUTER_API_KEY", "openrouter"), ("GEMINI_API_KEY", "gemini"),
+            ("OPENAI_API_KEY", "openai"),
+            ("OPENROUTER_API_KEY", "openrouter"),
+            ("ELIZA_CLOUD_API_KEY", "eliza-cloud"),
         ]
         let active = keys.first { env[$0.0] != nil }.map { $0.1 } ?? "not configured"
         return .success("""

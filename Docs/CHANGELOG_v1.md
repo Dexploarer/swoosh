@@ -109,9 +109,8 @@ right API-key dashboard.
 - **`SwooshLocalLLM`** — wraps vendored `LiteRTLM` swift wrapper
   (`google-ai-edge/LiteRT-LM v0.12` — vendored to avoid SwiftPM's
   multi-GB full-repo clone tax).
-- **Catalog**: Gemma 3n E2B Int4 (default, 1.3 GB, no entitlement),
-  Gemma 4 E2B (2.6 GB, multimodal vision + audio), Gemma 4 E4B
-  (3.7 GB, higher quality).
+- **Catalog**: Gemma 4 E4B (default, 3.7 GB, multimodal vision + audio),
+  Gemma 4 E2B (2.6 GB, multimodal vision + audio).
 - **`LiteRTSwooshToolBridge`** — `SwooshDispatchTool` lets the
   on-device model invoke any registered Swoosh tool through the
   same `SwooshFirewall` gate as the cloud path.

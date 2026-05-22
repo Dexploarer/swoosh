@@ -51,6 +51,18 @@ public actor SwooshFirewallActor: SwooshTools.Firewall {
         grantedPermissions.formUnion(permissions)
         deniedPermissions.subtract(permissions)
     }
+
+    public func listGranted() -> Set<SwooshPermission> {
+        grantedPermissions
+    }
+
+    public func listDenied() -> Set<SwooshPermission> {
+        deniedPermissions
+    }
+
+    public func revoke(_ permission: SwooshPermission) {
+        grantedPermissions.remove(permission)
+    }
 }
 
 // MARK: - In-memory audit log

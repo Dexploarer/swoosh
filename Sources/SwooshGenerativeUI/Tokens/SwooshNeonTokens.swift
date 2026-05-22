@@ -83,17 +83,19 @@ public enum SwooshNeonTokens {
     // ── Glow scale (replaces shadow) ────────────────────────────────
 
     public enum Glow {
-        /// Outline of a tile at rest. Barely there.
-        public static let idle: Double = 0.20
+        /// Outline of a tile at rest. Barely there — a thin breath of
+        /// light, not a halo. Was 0.20 / r=18 and read as a heavy aura
+        /// when every tile on a dashboard rendered it at once.
+        public static let idle: Double = 0.10
 
         /// Hover / focus ring.
-        public static let focus: Double = 0.40
+        public static let focus: Double = 0.30
 
         /// Pressed, selected, in-progress.
-        public static let active: Double = 0.60
+        public static let active: Double = 0.50
 
         /// Radius of the diffuse glow, in points.
-        public static let radius: CGFloat = 18
+        public static let radius: CGFloat = 8
     }
 
     // ── Line ────────────────────────────────────────────────────────

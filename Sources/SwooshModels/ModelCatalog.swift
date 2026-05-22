@@ -150,7 +150,7 @@ public enum ModelRole: String, Codable, Sendable, CaseIterable {
     case vadGate           // Voice activity detection
     case speakerIdentifier // Speaker diarization
     case fast              // Quick/cheap tasks (Apple Foundation Models)
-    case fallback          // Cloud fallback (OpenAI, Anthropic, etc.)
+    case fallback          // Cloud fallback
 }
 
 // MARK: - Hardware profile
@@ -239,4 +239,3 @@ public struct HardwareProfile: Codable, Sendable {
         )
     }
 }
-

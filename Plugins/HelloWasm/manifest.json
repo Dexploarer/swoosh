@@ -1,0 +1,38 @@
+{
+  "id" : "hello-wasm",
+  "name" : "Hello Wasm",
+  "version" : "0.1.0",
+  "description" : "Reference WebAssembly plugin. Adds two integers via an exported wasm function. Demonstrates the wasm-kind plugin path with no WASI imports and no precompiled .wasm — the host compiles the bundled .wat at load time.",
+  "author" : "Swoosh",
+  "kind" : "wasm",
+  "entrypoint" : {
+    "wasm" : {
+      "path" : "plugin.wat"
+    }
+  },
+  "requestedPermissions" : [
+    "toolRead"
+  ],
+  "tools" : [
+    {
+      "id" : "hello-wasm.add",
+      "name" : "wasm.add",
+      "description" : "Add two integers via the bundled wasm module. Args: {a: int, b: int} → {sum: int}. Useful as a liveness check that the wasm runtime is wired up.",
+      "permission" : "toolRead",
+      "risk" : "readOnly",
+      "requiresApproval" : false
+    }
+  ],
+  "sandbox" : {
+    "allowFilesystemRead" : false,
+    "allowFilesystemWrite" : false,
+    "allowNetwork" : false,
+    "allowProcessSpawn" : false,
+    "allowedRoots" : [],
+    "maxOutputBytes" : 4000,
+    "timeoutSeconds" : 5
+  },
+  "enabled" : false,
+  "createdAt" : "2026-05-22T00:00:00Z",
+  "updatedAt" : "2026-05-22T00:00:00Z"
+}

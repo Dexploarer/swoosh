@@ -136,6 +136,13 @@ public struct SkillMarkdownParser: Sendable {
                 } else if path.last == "required_environment_variables" {
                     flushEnv()
                     if let pair = parsePair(item) { currentEnv[pair.key] = pair.value }
+                } else if let key = path.last {
+                    let dotted = path.joined(separator: ".")
+                    let value = normalizeScalar(item)
+                    lists[key, default: []].append(value)
+                    if dotted != key {
+                        lists[dotted, default: []].append(value)
+                    }
                 }
                 continue
             }
@@ -177,9 +184,13 @@ public struct SkillMarkdownParser: Sendable {
     private func parseInlineList(_ value: String) -> [String] {
         let inner = value.dropFirst().dropLast()
         return inner.split(separator: ",").map {
-            $0.trimmingCharacters(in: .whitespaces)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            normalizeScalar(String($0))
         }.filter { !$0.isEmpty }
+    }
+
+    private func normalizeScalar(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespaces)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
     }
 
     private func firstLineOf(_ body: String, fallback: String) -> String {

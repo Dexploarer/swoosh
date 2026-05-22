@@ -2,8 +2,8 @@
 //
 // The composer's `+` glyph. Opens a bottom sheet with the actions the
 // user can take to enrich the next turn: attach a file, attach a photo,
-// surface a Skill, or open an MCP connection. Matches the Gemini /
-// ChatGPT pattern documented in the May-2026 SOTA agent UI survey —
+// surface a Skill, or open an MCP connection. Matches the mobile
+// agent pattern documented in the May-2026 SOTA agent UI survey —
 // bottom sheets beat popovers on a 6.7" screen because the thumb can
 // reach every row.
 //
@@ -13,6 +13,15 @@
 // through AgentShellView. Default callbacks are no-ops so the sheet
 // renders the same in previews and on hosts that don't wire a given
 // capability yet.
+//
+// Navigation chaining: tapping a row that wants to push onto a
+// NavigationStack can't fire its handler synchronously — the sheet is
+// still mid-dismiss and UIKit silently swallows the push. The earlier
+// "dismiss + Task.sleep(120 ms) + action" hack helped intermittently
+// but wasn't deterministic. Final pattern: the row stores the chosen
+// action in shared @State, the sheet dismisses, and the `.sheet`'s
+// onDismiss callback runs the pending action exactly once the sheet
+// has fully gone. That's the iOS-blessed sequencing.
 
 import SwiftUI
 import SwooshGenerativeUI
@@ -56,6 +65,9 @@ public struct AttachmentMenu: View {
     public let actions: AttachmentActions
 
     @State private var isPresented = false
+    /// Action selected inside the sheet, run after the sheet has fully
+    /// dismissed. Nil means the user closed the sheet without picking.
+    @State private var pendingAction: PendingAction?
 
     public init(
         accent: NeonAccent = .cyan,
@@ -78,12 +90,44 @@ public struct AttachmentMenu: View {
         .buttonStyle(.plain)
         .help("Attach a file, photo, skill, or MCP connection")
         .accessibilityLabel("Attach")
-        .sheet(isPresented: $isPresented) {
-            AttachmentSheet(actions: actions, dismiss: { isPresented = false })
-                #if os(iOS)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
-                #endif
+        .sheet(isPresented: $isPresented, onDismiss: {
+            // Sheet has fully closed — safe to push onto the host's
+            // NavigationStack now.
+            if let pending = pendingAction {
+                pendingAction = nil
+                pending.run()
+            }
+        }) {
+            AttachmentSheet(
+                actions: actions,
+                onPick: { kind in
+                    pendingAction = PendingAction(kind: kind, actions: actions)
+                    isPresented = false
+                }
+            )
+            #if os(iOS)
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+            #endif
+        }
+    }
+}
+
+/// Concrete action the user picked. Captures the bundle by value so the
+/// pending closure stays valid across the dismiss cycle.
+private struct PendingAction {
+    enum Kind { case file, photo, camera, skills, mcp }
+    let kind: Kind
+    let actions: AttachmentActions
+
+    @MainActor
+    func run() {
+        switch kind {
+        case .file:   actions.attachFile()
+        case .photo:  actions.attachPhoto()
+        case .camera: actions.attachCamera()
+        case .skills: actions.openSkills()
+        case .mcp:    actions.openMCP()
         }
     }
 }
@@ -95,23 +139,24 @@ public struct AttachmentMenu: View {
 private struct AttachmentSheet: View {
 
     let actions: AttachmentActions
-    let dismiss: @MainActor () -> Void
+    let onPick: (PendingAction.Kind) -> Void
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    row(symbol: "doc",     label: "Files",   action: actions.attachFile)
-                    row(symbol: "photo",   label: "Photos",  action: actions.attachPhoto)
+                    row(symbol: "doc",     label: "Files",   kind: .file)
+                    row(symbol: "photo",   label: "Photos",  kind: .photo)
                     #if os(iOS)
-                    row(symbol: "camera",  label: "Camera",  action: actions.attachCamera)
+                    row(symbol: "camera",  label: "Camera",  kind: .camera)
                     #endif
                 } header: {
                     Label("Attach", systemImage: "paperclip")
                 }
                 Section {
-                    row(symbol: "sparkles", label: "Skills", action: actions.openSkills)
-                    row(symbol: "puzzlepiece.extension", label: "MCP Connections", action: actions.openMCP)
+                    row(symbol: "sparkles", label: "Skills", kind: .skills)
+                    row(symbol: "puzzlepiece.extension", label: "MCP Connections", kind: .mcp)
                 } header: {
                     Label("Capabilities", systemImage: "wand.and.stars")
                 } footer: {
@@ -137,17 +182,13 @@ private struct AttachmentSheet: View {
     }
 
     @ViewBuilder
-    private func row(symbol: String, label: String, action: @escaping @MainActor () -> Void) -> some View {
+    private func row(symbol: String, label: String, kind: PendingAction.Kind) -> some View {
         Button {
-            // Dismiss first, then fire the action on the next runloop tick
-            // so a sheet → NavigationStack push doesn't race the dismiss.
-            // Tapping "Skills" was navigating before the sheet finished
-            // closing on iOS 26, which UIKit silently swallowed.
-            dismiss()
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(120))
-                action()
-            }
+            // Stash the user's choice in the host's @State and let the
+            // sheet dismiss — the host's onDismiss callback fires the
+            // action only after the sheet has fully gone, which is the
+            // only reliable moment to push onto a NavigationStack.
+            onPick(kind)
         } label: {
             HStack {
                 Image(systemName: symbol)

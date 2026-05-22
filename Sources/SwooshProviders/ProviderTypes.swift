@@ -6,6 +6,7 @@
 // Reuses ProviderID, ChatRole, ChatMessage, ToolCall, JSONValue from SwooshTools.
 
 import Foundation
+import SwooshModels
 import SwooshTools
 import SwooshSecrets
 import CryptoKit
@@ -93,7 +94,7 @@ public protocol EmbeddingProviding: Sendable {
 // ═══════════════════════════════════════════════════════════════════
 
 /// Reasoning depth for models that expose an effort knob (OpenAI GPT-5.x,
-/// Anthropic extended-thinking, etc.). The Codex picker shows these four
+/// OpenRouter routes that support reasoning controls, etc.). The Codex picker shows these four
 /// levels; Swoosh mirrors the same shape so the UX is portable across
 /// providers. Providers that don't support a knob ignore this field.
 public enum ReasoningEffort: String, Codable, Sendable, CaseIterable {
@@ -271,32 +272,39 @@ public struct ProviderProfile: Codable, Sendable, Identifiable {
         self.enabled = enabled; self.priority = priority
     }
 
+    public static let codex = ProviderProfile(
+        id: ProviderID(ModelDefaults.codexProviderID), kind: .codexCLI, displayName: "ChatGPT (via Codex)",
+        baseURL: nil, auth: .externalCLI(command: "codex"),
+        defaultModel: ModelDefaults.codexModelID, enabled: false, priority: 120
+    )
+
     public static let openAI = ProviderProfile(
-        id: ProviderID("openai"), kind: .openAI, displayName: "OpenAI API",
+        id: ProviderID(ModelDefaults.openAIProviderID), kind: .openAI, displayName: "OpenAI API",
         baseURL: "https://api.openai.com", auth: .apiKey(namespace: "openai", key: "api_key"),
-        defaultModel: "gpt-4.1", enabled: false, priority: 100
+        defaultModel: ModelDefaults.openAIModelID, enabled: false, priority: 100
     )
 
     public static let openRouter = ProviderProfile(
-        id: ProviderID("openrouter"), kind: .openRouter, displayName: "OpenRouter",
+        id: ProviderID(ModelDefaults.openRouterProviderID), kind: .openRouter, displayName: "OpenRouter",
         baseURL: "https://openrouter.ai/api/v1", auth: .apiKey(namespace: "openrouter", key: "api_key"),
-        defaultModel: "openai/gpt-4.1", enabled: false, priority: 90
+        defaultModel: ModelDefaults.openRouterModelID, enabled: false, priority: 90
     )
 
     public static let elizaCloud = ProviderProfile(
-        id: ProviderID("eliza-cloud"), kind: .elizaCloud, displayName: "Eliza Cloud",
+        id: ProviderID(ModelDefaults.elizaCloudProviderID), kind: .elizaCloud, displayName: "Eliza Cloud",
         baseURL: "https://elizacloud.ai/api/v1", auth: .apiKey(namespace: "eliza-cloud", key: "api_key"),
+        defaultModel: ModelDefaults.elizaCloudModelID,
         enabled: false, priority: 70
     )
 
     public static let localOpenAI = ProviderProfile(
-        id: ProviderID("local-openai"), kind: .localOpenAICompatible, displayName: "Local OpenAI-Compatible",
+        id: ProviderID(ModelDefaults.localOpenAIProviderID), kind: .localOpenAICompatible, displayName: "Local OpenAI-Compatible",
         baseURL: "http://127.0.0.1:11434/v1", auth: .none,
-        enabled: false, priority: 60
+        defaultModel: ModelDefaults.localOpenAIModelID, enabled: false, priority: 60
     )
 
     public static let mlxLocal = ProviderProfile(
-        id: ProviderID("mlx-local"), kind: .mlx, displayName: "MLX Local",
+        id: ProviderID(ModelDefaults.localMLXProviderID), kind: .mlx, displayName: "MLX Local",
         auth: .local, enabled: false, priority: 80
     )
 }

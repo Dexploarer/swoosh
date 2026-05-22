@@ -1,5 +1,5 @@
 // Tests/SwooshToolsTests/JupiterCompleteTests.swift
-// Tests for the full JupSwift integration — all 25 API methods covered.
+// Tests for the full Jupiter integration - all 25 API methods covered.
 // All tests are pure unit tests (metadata, input validation, guard clauses).
 // No network calls — network coverage is handled by integration test suite.
 
@@ -225,12 +225,14 @@ struct JupiterRecurringToolTests {
     func depositMeta() {
         #expect(JupiterPriceDepositTool.risk == .high)
         #expect(JupiterPriceDepositTool.approval == .askEveryTime)
+        #expect(JupiterPriceDepositTool.description.contains("Deprecated"))
     }
 
     @Test("PriceWithdraw is high risk + askEveryTime")
     func withdrawMeta() {
         #expect(JupiterPriceWithdrawTool.risk == .high)
         #expect(JupiterPriceWithdrawTool.approval == .askEveryTime)
+        #expect(JupiterPriceWithdrawTool.description.contains("Deprecated"))
     }
 
     @Test("CreateDCA fails without wallet bridge")

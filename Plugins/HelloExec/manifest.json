@@ -1,0 +1,39 @@
+{
+  "id" : "hello-exec",
+  "name" : "Hello Exec",
+  "version" : "0.1.0",
+  "description" : "Reference executable plugin. Spawns main.sh once per call; reads a JSON-RPC request on stdin and emits a JSON response on stdout. Demonstrates the stdio ABI ExecutablePluginExecutor expects.",
+  "author" : "Swoosh",
+  "kind" : "executable",
+  "entrypoint" : {
+    "executable" : {
+      "path" : "main.sh",
+      "arguments" : []
+    }
+  },
+  "requestedPermissions" : [
+    "toolRead"
+  ],
+  "tools" : [
+    {
+      "id" : "hello-exec.echo",
+      "name" : "exec.echo",
+      "description" : "Echo the input back as JSON. Useful as a liveness check that the executable runtime is wired up.",
+      "permission" : "toolRead",
+      "risk" : "readOnly",
+      "requiresApproval" : false
+    }
+  ],
+  "sandbox" : {
+    "allowFilesystemRead" : false,
+    "allowFilesystemWrite" : false,
+    "allowNetwork" : false,
+    "allowProcessSpawn" : false,
+    "allowedRoots" : [],
+    "maxOutputBytes" : 16000,
+    "timeoutSeconds" : 5
+  },
+  "enabled" : false,
+  "createdAt" : "2026-05-22T00:00:00Z",
+  "updatedAt" : "2026-05-22T00:00:00Z"
+}

@@ -1,10 +1,9 @@
 // SwooshToolsets/JupiterMarketTools.swift
 // Jupiter Price + Token market-data tools — all read-only, no approval needed.
-// Backed by JupSwift's Price and Token API groups.
+// Backed by Jupiter's Price and Token API groups.
 
 import Foundation
 import SwooshTools
-import JupSwift
 
 // MARK: - Price tools
 
@@ -44,27 +43,19 @@ public struct JupiterPriceTool: SwooshTool {
     public init(dependencies: ToolDependencies) { self.dependencies = dependencies }
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        // JupSwift's PriceResponse has internal fields — we call the raw API and decode ourselves
-        let tokenIds = input.tokenIds.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? input.tokenIds
-        let extra = input.includeExtraInfo ? "&showExtraInfo=true" : ""
-        guard let url = URL(string: "https://api.jup.ag/price/v2?ids=\(tokenIds)\(extra)") else {
-            throw ToolError.executionFailed("Invalid token IDs")
-        }
-        let (data, _) = try await URLSession.shared.data(from: url)
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let dataDict = json["data"] as? [String: Any] else {
-            throw ToolError.executionFailed("Unexpected price API response")
-        }
+        let response = try await JupiterApi.prices(ids: input.tokenIds)
         var prices: [String: JupiterPriceOutput.TokenPrice] = [:]
-        for (key, val) in dataDict {
-            guard let obj = val as? [String: Any] else { continue }
-            let id = obj["id"] as? String ?? key
-            let price = obj["price"] as? String ?? "0"
-            let confidence = (obj["extraInfo"] as? [String: Any])?["confidenceLevel"] as? String
-            prices[key] = JupiterPriceOutput.TokenPrice(id: id, priceUSD: price, confidenceLevel: confidence)
+        for (key, value) in response {
+            guard let usdPrice = value.usdPrice else {
+                continue
+            }
+            prices[key] = JupiterPriceOutput.TokenPrice(
+                id: key,
+                priceUSD: String(usdPrice),
+                confidenceLevel: nil
+            )
         }
-        let timeTaken = (json["timeTaken"] as? Double) ?? 0
-        return JupiterPriceOutput(prices: prices, timeTakenMs: timeTaken)
+        return JupiterPriceOutput(prices: prices, timeTakenMs: 0)
     }
 }
 

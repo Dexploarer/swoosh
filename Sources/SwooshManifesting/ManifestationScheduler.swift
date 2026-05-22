@@ -6,10 +6,8 @@
 // daemon hands a configured `ManifestationScheduler` a `Manifester`
 // and a `triggers` actor and the scheduler decides when to fire.
 //
-// The wiring through SwooshTriggers is deferred (that module's API is
-// stabilising); the policy types and the `tick()` entry point are
-// already here so the daemon's main loop can call them on whatever
-// cadence we want.
+// The policy types and the `tick()` entry point are already here so the
+// daemon's main loop can call them on whatever cadence we want.
 
 import Foundation
 
@@ -47,8 +45,7 @@ public struct ManifestationPolicy: Sendable, Codable {
 
 /// Decide-and-fire policy wrapper. Holds a `Manifester` and a policy and
 /// answers "should I run right now?" given the current world state.
-/// Callers (the daemon's main loop, a SwooshTriggers handler) poll
-/// `tick(now:idleSeconds:activeFocus:)`.
+/// Callers poll `tick(now:idleSeconds:activeFocus:)`.
 public actor ManifestationScheduler {
     public let policy: ManifestationPolicy
     private let manifester: Manifester

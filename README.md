@@ -13,8 +13,8 @@
 | **Dashboard window** | Responsive 1–4 column grid of panels; density picker; full-screen support |
 | **Voice mode** | Hold-to-talk or always-on. STT: Apple Speech (free) or WhisperKit (4 model sizes). TTS: system voices, ElevenLabs, OpenAI, Cartesia (40 ms first-byte). |
 | **Music generation** | Suno V5.5 (via sunoapi.org), ElevenLabs Music, Stable Audio. Job-based with polling. |
-| **iOS companion** | Same chat surface, same panels, same voice. Push-to-talk, offline-cached transcripts, local LLM fallback (LiteRT-LM Gemma 3n by default) when the Mac daemon is unreachable. |
-| **Local LLM on iOS** | Gemma 3n E2B Int4 (1.3 GB, no entitlement) ships by default. Gemma 4 E2B/E4B and Apple Foundation Models also wired. |
+| **iOS companion** | Same chat surface, same panels, same voice. Push-to-talk, offline-cached transcripts, local LLM fallback (LiteRT-LM Gemma 4 E4B by default) when the Mac daemon is unreachable. |
+| **Local LLM on iOS** | Gemma 4 E4B ships by default, with Gemma 4 E2B as the smaller fallback. |
 | **Cross-device offline** | Append-only JSONL ledger + outbox queue; messages replay automatically when the daemon comes back. |
 | **Provider keys** | One Settings → Voice screen, Keychain-backed, "Get key" deep-links to every provider's dashboard. |
 
@@ -38,8 +38,6 @@ SwooshFirewall     →  user-visible tool permissions and auditability
 SwooshVault        →  transparent, user-governed memory
 SwooshFlow         →  testable, replayable workflow engine
 SwooshBoard        →  executable multi-agent task graph with replay
-SwooshTriggers     →  native event-driven scheduler
-SwooshBench        →  practical agent reliability benchmarks
 SwooshMCP          →  Model Context Protocol client (stdio transport, wired into ToolRegistry)
 ```
 
@@ -50,26 +48,22 @@ SwooshMCP          →  Model Context Protocol client (stdio transport, wired in
 | `SwooshKit` | Public SDK — embed agents in any Swift app |
 | `SwooshCore` | AgentKernel actor, agent loop, runtime context |
 | `SwooshTools` | Typed `Tool` protocol, `Permission` enum, `ToolRegistry` actor |
-| `SwooshMacros` | `@SwooshTool` macro infrastructure |
 | `SwooshFirewall` | Agent Firewall — approval engine, audit log, risk classification |
 | `SwooshVault` | Memory Vault — transparent, editable, auditable, confidence-scored |
 | `SwooshFlow` | Workflow compiler, "Make this repeatable", test fixtures, failure rules |
 | `SwooshBoard` | Executable task graph with typed tasks and replay |
-| `SwooshTriggers` | Trigger + action schema and registry |
 | `SwooshModels` | Model catalog (curated + Hugging Face discovery) + hardware-aware recommendations |
 | `SwooshMLX` | MLX Swift on-device inference (macOS) |
 | `SwooshFoundation` | Apple Foundation Models adapter + `FoundationExecutor` |
-| `SwooshLocalLLM` | LiteRT-LM (Gemma 3n / 4) wrapper, on-device inference for iOS |
+| `SwooshLocalLLM` | LiteRT-LM Gemma 4 wrapper, on-device inference for iOS |
 | `LiteRTLM` | Vendored Google LiteRT-LM Swift wrapper (Apache 2.0) |
 | `SwooshSTT` | Speech-to-text — Apple Speech + WhisperKit + WhisperModelManager |
 | `SwooshVoiceProviders` | Cloud TTS adapters (ElevenLabs, OpenAI, Cartesia) + `VoiceRouter` + `StreamingTTSPlayer` + Keychain helpers |
 | `SwooshMusic` | Cloud music generation (Suno, ElevenLabs Music, Stable Audio) |
 | `SwooshProviders` | Remote LLM adapters (OpenAI, OpenRouter, Eliza Cloud, local OpenAI-compatible) |
-| `SwooshBench` | Reliability benchmarks (tool validity, memory precision, replay determinism) |
 | `SwooshUI` | SwiftUI: AgentShell, PanelHost, voice scenes, neon design tokens, themes |
 | `SwooshClient` | Cross-platform iOS-safe client: `SwooshAPIClient`, `CachedExecutor`, `OfflineMessageCache` |
 | `SwooshMCP` | Model Context Protocol stdio client wired into ToolRegistry |
-| `SwooshLSP` | sourcekit-lsp integration |
 | `SwooshAPI` | Hummingbird HTTP API server |
 | `SwooshActantBackend` | <100-LoC conformance shim wiring `ActantAgent` into `SwooshCore` |
 | `SwooshGenerativeUI` | Agent-emitted UI (A2UI-shaped) + shared `SwooshNeonTokens` |

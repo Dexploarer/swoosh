@@ -20,8 +20,8 @@
 //     ## Procedure
 //     ...
 //
-// Only a tiny subset of YAML is recognised — `key: value` and inline
-// `[a, b]` lists. That's all the frontmatter convention actually uses.
+// Only a tiny subset of YAML is recognised — `key: value`, inline
+// `[a, b]` lists, and block lists.
 
 import Foundation
 
@@ -123,6 +123,17 @@ public actor BundledSkillLoader {
                 : url.lastPathComponent
             files.append(relative)
         }
-        return files.sorted()
+        let siblingCommon = root.deletingLastPathComponent().appendingPathComponent("common", isDirectory: true)
+        if let commonEnumerator = FileManager.default.enumerator(at: siblingCommon, includingPropertiesForKeys: [.isDirectoryKey]) {
+            for case let url as URL in commonEnumerator {
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory), !isDirectory.boolValue else { continue }
+                let relative = url.path.hasPrefix(siblingCommon.path)
+                    ? String(url.path.dropFirst(siblingCommon.path.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                    : url.lastPathComponent
+                files.append("../common/\(relative)")
+            }
+        }
+        return Array(Set(files)).sorted()
     }
 }

@@ -54,7 +54,10 @@ targets:
         INFOPLIST_FILE: App/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: true
-        INFOPLIST_KEY_LSUIElement: true
+        # LSUIElement: false → Mac app has a Dock icon and the Detour
+        # dashboard window opens at launch. MenuBarExtra still shows in
+        # the tray as a secondary surface.
+        INFOPLIST_KEY_LSUIElement: false
         INFOPLIST_KEY_NSMainNibFile: ""
         INFOPLIST_KEY_CFBundleDisplayName: Swoosh
     entitlements:
@@ -167,6 +170,15 @@ targets:
         NSSpeechRecognitionUsageDescription: >-
           Swoosh transcribes your spoken commands into text so you can
           talk to the agent hands-free.
+        # Camera + photo-library attachments from the composer's `+` menu.
+        # Without these strings the picker crashes on iOS 14+ the moment
+        # the user grants the system the permission dialog.
+        NSCameraUsageDescription: >-
+          Detour lets you attach a photo from the camera to your next
+          message. Images stay on your device until you send.
+        NSPhotoLibraryUsageDescription: >-
+          Detour lets you attach a photo from your library to your next
+          message. Selection happens through the system picker.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.swoosh.app.ios

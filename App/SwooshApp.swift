@@ -46,7 +46,22 @@ struct SwooshApp: App {
     }
 
     var body: some Scene {
-        // ── Menu bar icon + popover ──
+        // ── Full dashboard window (primary surface) ──
+        // Declared first so it's the default scene the app opens at
+        // launch — LSUIElement is now false, so the Dock icon + window
+        // are the user's main entry point.
+        Window("Detour", id: "dashboard") {
+            DashboardView(voice: voice)
+                .environment(shell)
+        }
+        .defaultSize(width: 1200, height: 800)
+        .defaultLaunchBehavior(.presented)
+        .commands {
+            SwooshEditCommands()
+            SwooshShellCommands(voice: voice)
+        }
+
+        // ── Menu bar icon + popover (secondary surface) ──
         MenuBarExtra {
             MenuBarRoot(
                 manager: menuBarManager,
@@ -54,12 +69,23 @@ struct SwooshApp: App {
                 shell: shell,
                 voice: voice,
                 onBoot: {
+                    // Install hotkeys synchronously, then fire daemon
+                    // probes and credential refresh off the popover's
+                    // own .task chain so a slow / hung swooshd can't
+                    // freeze the menu bar. The previous code awaited
+                    // bootLocalDaemon inline, and a wedged daemon
+                    // (e.g. actantdb hung in startup) blocked the
+                    // menu-bar view long enough to read as a full hang.
                     if !didBoot {
                         didBoot = true
-                        await AgentShellBackends.bootLocalDaemon(shell: shell)
                         installGlobalHotKeys()
+                        Task { @MainActor in
+                            await AgentShellBackends.bootLocalDaemon(shell: shell)
+                        }
                     }
-                    await menuBarManager.refreshCredentials()
+                    Task { @MainActor in
+                        await menuBarManager.refreshCredentials()
+                    }
                 }
             )
         } label: {
@@ -75,17 +101,6 @@ struct SwooshApp: App {
 
         // ── Desktop generative-UI overlay (voice mode is on) ──
         DesktopOverlayScene(shell: shell)
-
-        // ── Full dashboard window ──
-        Window("Detour", id: "dashboard") {
-            DashboardView()
-                .environment(shell)
-        }
-        .defaultSize(width: 1200, height: 800)
-        .commands {
-            SwooshEditCommands()
-            SwooshShellCommands(voice: voice)
-        }
 
         // ── Settings window ──
         Settings {

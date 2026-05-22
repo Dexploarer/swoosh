@@ -20,15 +20,21 @@ public struct AgentRequest: Sendable {
     public let sessionID: String
     public let input: String
     public let mode: AgentMode
+    public let model: String?
+    public let providerID: String?
 
     public init(
         sessionID: String = "default",
         input: String,
-        mode: AgentMode = .standard
+        mode: AgentMode = .standard,
+        model: String? = nil,
+        providerID: String? = nil
     ) {
         self.sessionID = sessionID
         self.input = input
         self.mode = mode
+        self.model = model
+        self.providerID = providerID
     }
 }
 
@@ -166,15 +172,18 @@ public struct ResponseAuditRecord: Sendable, Codable {
 public struct ModelCompletionRequest: Sendable {
     public let messages: [ChatMessage]
     public let model: String?
+    public let providerID: String?
     public let tools: [SwooshTools.ToolDescriptor]
 
     public init(
         messages: [ChatMessage],
         model: String? = nil,
+        providerID: String? = nil,
         tools: [SwooshTools.ToolDescriptor] = []
     ) {
         self.messages = messages
         self.model = model
+        self.providerID = providerID
         self.tools = tools
     }
 }
@@ -417,7 +426,11 @@ public actor AgentKernel {
         try await sessionStore.appendMessage(sessionID: request.sessionID, message: userMsg)
 
         // 6. Call model
-        let completionRequest = ModelCompletionRequest(messages: transcript)
+        let completionRequest = ModelCompletionRequest(
+            messages: transcript,
+            model: request.model,
+            providerID: request.providerID
+        )
         let completion = try await modelProvider.complete(completionRequest)
 
         // 7. Append assistant response

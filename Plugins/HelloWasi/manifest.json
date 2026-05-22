@@ -1,0 +1,38 @@
+{
+  "id" : "hello-wasi",
+  "name" : "Hello WASI",
+  "version" : "0.1.0",
+  "description" : "Reference WASI plugin. Demonstrates the WASI Preview 1 ABI: WasmPluginExecutor invokes `_start` with argv [pluginID, toolName, argsJSON]; the module writes its response JSON to stdout. No host filesystem, no host env — strictly stdio.",
+  "author" : "Swoosh",
+  "kind" : "wasm",
+  "entrypoint" : {
+    "wasiWasm" : {
+      "path" : "plugin.wat"
+    }
+  },
+  "requestedPermissions" : [
+    "toolRead"
+  ],
+  "tools" : [
+    {
+      "id" : "hello-wasi.greet",
+      "name" : "wasi.greet",
+      "description" : "Return a fixed greeting via the WASI stdout channel. Useful as a liveness check that the WASI bridge is wired up.",
+      "permission" : "toolRead",
+      "risk" : "readOnly",
+      "requiresApproval" : false
+    }
+  ],
+  "sandbox" : {
+    "allowFilesystemRead" : false,
+    "allowFilesystemWrite" : false,
+    "allowNetwork" : false,
+    "allowProcessSpawn" : false,
+    "allowedRoots" : [],
+    "maxOutputBytes" : 4000,
+    "timeoutSeconds" : 5
+  },
+  "enabled" : false,
+  "createdAt" : "2026-05-22T00:00:00Z",
+  "updatedAt" : "2026-05-22T00:00:00Z"
+}

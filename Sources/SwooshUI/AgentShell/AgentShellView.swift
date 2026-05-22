@@ -27,10 +27,9 @@ public struct AgentShellView: View {
     public let mode: AgentShellMode
 
     /// Catalog slice for the model picker. Defaults to **every wired
-    /// provider** — OpenAI, Anthropic, Google, xAI, DeepSeek, Mistral,
-    /// Meta. The picker groups them by provider in the sheet so users
-    /// can see what's available everywhere, not just the OpenAI lineup.
-    public let modelCatalog: [CloudModelEntry]
+    /// provider. The picker groups wired cloud routes and local catalog
+    /// entries by provider so selection maps to an executable route.
+    public let modelCatalog: [UnifiedModelEntry]
 
     /// Callbacks the composer's "+" attachment menu invokes. Host-supplied;
     /// the defaults are no-ops so the sheet still renders when a host
@@ -40,7 +39,7 @@ public struct AgentShellView: View {
     public init(
         shell: AgentShellModel,
         mode: AgentShellMode,
-        modelCatalog: [CloudModelEntry] = CloudCatalog.all,
+        modelCatalog: [UnifiedModelEntry] = UnifiedModelCatalog.interactive,
         attachmentActions: AttachmentActions = AttachmentActions()
     ) {
         self.shell = shell

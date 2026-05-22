@@ -35,6 +35,7 @@
 		81F9802FDDEC5D16ADEFBA3B /* LocalFallbackToggleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */; };
 		87A218A0D7E5686F396C9EDE /* VoicePickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBC979FDDA8EC113A147A084 /* VoicePickerScreen.swift */; };
 		8E6426771BF7AAD4AF34F696 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49A59F596D847BE428C4C8C /* SettingsScreen.swift */; };
+		8E7B6C18331A1D44A71C0025 /* MCPServersScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0805B93272148AA8CC24B4 /* MCPServersScreen.swift */; };
 		8F9C928AE4827949F555D24A /* IOSVoicePill.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */; };
 		930891E34DF50C8A767B6C6E /* SwooshModels in Frameworks */ = {isa = PBXBuildFile; productRef = 75B0CA904E7690F0705D9A0B /* SwooshModels */; };
 		9CA0C70F3E6E19ADFE852634 /* SwooshVoiceProviders in Frameworks */ = {isa = PBXBuildFile; productRef = 64E6792A9ADCB5AEA31F3613 /* SwooshVoiceProviders */; };
@@ -42,6 +43,7 @@
 		A23FBD47D46859CD0B32676B /* ChannelsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F1ABF3C0A11470D895C296 /* ChannelsScreen.swift */; };
 		AD2A5C92FFFA296AFBDA36FA /* WorkspaceScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C7AF14DF4880960A920C26 /* WorkspaceScreen.swift */; };
 		AEAD82FC6FD8A0BC4B6DF103 /* SwooshMusic in Frameworks */ = {isa = PBXBuildFile; productRef = CDAE07E9569AB80547D4CA2E /* SwooshMusic */; };
+		B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */; };
 		D5DCB03232519DF157BF1B89 /* ErrorRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D3555C518013DB31668CC /* ErrorRow.swift */; };
 		E052265C132915BC379E8892 /* WalletAccountDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB83FAB5CF6100402E906B91 /* WalletAccountDetail.swift */; };
 		E233BBA6ACDE68ED0D7B2083 /* SwooshUI in Frameworks */ = {isa = PBXBuildFile; productRef = B1E45E49EB414D4CF83F70E0 /* SwooshUI */; };
@@ -83,7 +85,9 @@
 		E1510341AC6E12EEBAAE316F /* WalletSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletSession.swift; sourceTree = "<group>"; };
 		E1C7AA2E2F507D88558C8D12 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E9C7AF14DF4880960A920C26 /* WorkspaceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceScreen.swift; sourceTree = "<group>"; };
+		F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAuthSection.swift; sourceTree = "<group>"; };
 		F93D3555C518013DB31668CC /* ErrorRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorRow.swift; sourceTree = "<group>"; };
+		FE0805B93272148AA8CC24B4 /* MCPServersScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServersScreen.swift; sourceTree = "<group>"; };
 		FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSVoicePill.swift; sourceTree = "<group>"; };
 		FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFallbackToggleRow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -159,6 +163,7 @@
 				780459384A180543717F7EBB /* ChatScreen.swift */,
 				D9B6EBC4115B28A038220938 /* CLAUDE.md */,
 				DE58002BDA52BB34AE57C6DC /* ClientSession.swift */,
+				F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */,
 				17D656E8BA83FB8FF00A2631 /* ConnectionsScreen.swift */,
 				F93D3555C518013DB31668CC /* ErrorRow.swift */,
 				3F7E64053038BE7A8B8B69C2 /* IconTile.swift */,
@@ -166,6 +171,7 @@
 				FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */,
 				6F82347749598EDE00D671EA /* LoadingRow.swift */,
 				FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */,
+				FE0805B93272148AA8CC24B4 /* MCPServersScreen.swift */,
 				8F54ED13C9EEDEC13082338A /* ProviderLogo.swift */,
 				334614E402A5C0CC7A5CBBDE /* RootView.swift */,
 				C49A59F596D847BE428C4C8C /* SettingsScreen.swift */,
@@ -368,12 +374,14 @@
 				A23FBD47D46859CD0B32676B /* ChannelsScreen.swift in Sources */,
 				1D0A0B622C87AC23C99E4CF2 /* ChatScreen.swift in Sources */,
 				10639EA0A47A2B8333A1706B /* ClientSession.swift in Sources */,
+				B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */,
 				105DA551E8644020D688E312 /* ConnectionsScreen.swift in Sources */,
 				D5DCB03232519DF157BF1B89 /* ErrorRow.swift in Sources */,
 				8F9C928AE4827949F555D24A /* IOSVoicePill.swift in Sources */,
 				4949F574DA32CD5B8C0CAE80 /* IconTile.swift in Sources */,
 				64A86B9FA33C788FF9E609CF /* LoadingRow.swift in Sources */,
 				81F9802FDDEC5D16ADEFBA3B /* LocalFallbackToggleRow.swift in Sources */,
+				8E7B6C18331A1D44A71C0025 /* MCPServersScreen.swift in Sources */,
 				00A364C8BB6E156EB8C55081 /* ProviderLogo.swift in Sources */,
 				EB84A11C241383BEE255E3F7 /* RootView.swift in Sources */,
 				8E6426771BF7AAD4AF34F696 /* SettingsScreen.swift in Sources */,
@@ -571,7 +579,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Swoosh;
-				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_LSUIElement = NO;
 				INFOPLIST_KEY_NSMainNibFile = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -609,7 +617,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Swoosh;
-				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_LSUIElement = NO;
 				INFOPLIST_KEY_NSMainNibFile = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

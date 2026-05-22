@@ -44,6 +44,7 @@ struct SwooshCommand: AsyncParsableCommand {
             CronCommand.self,
             TerminalCommand.self,
             ChatAdaptersCommand.self,
+            PluginCommand.self,
             CompletionsCommand.self,
         ],
         defaultSubcommand: ChatCommand.self
@@ -133,8 +134,8 @@ struct ModelCommand: AsyncParsableCommand {
         print("Recommended:")
         print("  1. Local MLX")
         print("  2. OpenAI")
-        print("  3. Anthropic")
-        print("  4. OpenRouter")
+        print("  3. OpenRouter")
+        print("  4. Eliza Cloud")
         print("\nAlready detected:")
 
         let hardware = HardwareDetector().detect()
@@ -402,7 +403,9 @@ struct DaemonPairCommand: AsyncParsableCommand {
                     var addr = addrPtr.pointee
                     var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
                     getnameinfo(&addr, socklen_t(addr.sa_len), &hostname, socklen_t(hostname.count), nil, socklen_t(0), NI_NUMERICHOST)
-                    let ip = String(cString: hostname)
+                    let ip = hostname.withUnsafeBufferPointer { buf in
+                        String(cString: buf.baseAddress!)
+                    }
                     if !ip.hasPrefix("127.") && !ip.hasPrefix("169.") {
                         address = ip
                         break

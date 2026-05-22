@@ -43,7 +43,12 @@ struct ChatCommand: AsyncParsableCommand {
             status.providerStatus = active.name
 
             let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
-            let bridge = ProviderBridgeAdapter(router: router, role: .primaryChat, modelName: active.model)
+            let bridge = ProviderBridgeAdapter(
+                router: router,
+                role: .primaryChat,
+                modelName: active.model,
+                defaultProviderID: ProviderFactory.providerID(forDetectedProviderName: active.name)
+            )
 
             let swoosh = try await Swoosh.configure {
                 $0.modelProvider = bridge
@@ -103,9 +108,13 @@ struct AskCommand: AsyncParsableCommand {
         let secrets = KeychainSecretStore()
         let modelProvider: SwooshCore.ModelProvider
 
-        if let _ = await ProviderFactory.detectActiveProvider(secrets: secrets) {
+        if let active = await ProviderFactory.detectActiveProvider(secrets: secrets) {
             let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
-            modelProvider = ProviderBridgeAdapter(router: router)
+            modelProvider = ProviderBridgeAdapter(
+                router: router,
+                modelName: active.model,
+                defaultProviderID: ProviderFactory.providerID(forDetectedProviderName: active.name)
+            )
         } else {
             modelProvider = LocalDiagnosticProvider()
         }
