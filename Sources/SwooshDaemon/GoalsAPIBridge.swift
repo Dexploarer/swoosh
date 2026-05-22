@@ -64,13 +64,12 @@ extension SwooshDaemon {
         guard !trimmed.isEmpty else {
             throw APIError.badRequest("goal statement is empty")
         }
-        var goal = Goal(
+        let goal = Goal(
             statement: trimmed,
             parentSessionID: request.parentSessionID,
             maxIterations: request.maxIterations ?? 20,
             state: .pending
         )
-        goal.state = .pending
         try await store.save(goal)
         return GoalMutationResponse(
             goal: goalSummary(goal),
@@ -81,14 +80,17 @@ extension SwooshDaemon {
     static func abandonGoalResponse(
         store: any GoalStoring, id: String
     ) async throws -> GoalMutationResponse {
-        guard var goal = try await store.get(id: id) else {
+        guard try await store.get(id: id) != nil else {
             throw APIError.notFound("goal not found: \(id)")
         }
         try await store.setState(goalID: id, state: .abandoned)
-        goal.state = .abandoned
-        goal.updatedAt = Date()
+        // Re-fetch so the response reflects the store's persisted updatedAt,
+        // not a local Date() that drifts from the on-disk value.
+        guard let refreshed = try await store.get(id: id) else {
+            throw APIError.notFound("goal disappeared after setState: \(id)")
+        }
         return GoalMutationResponse(
-            goal: goalSummary(goal),
+            goal: goalSummary(refreshed),
             message: "Goal abandoned."
         )
     }
@@ -99,14 +101,16 @@ extension SwooshDaemon {
         guard let newState = GoalState(rawValue: request.state) else {
             throw APIError.badRequest("unknown goal state: \(request.state)")
         }
-        guard var goal = try await store.get(id: id) else {
+        guard try await store.get(id: id) != nil else {
             throw APIError.notFound("goal not found: \(id)")
         }
         try await store.setState(goalID: id, state: newState)
-        goal.state = newState
-        goal.updatedAt = Date()
+        // Same as abandon — re-fetch so updatedAt matches the persisted value.
+        guard let refreshed = try await store.get(id: id) else {
+            throw APIError.notFound("goal disappeared after setState: \(id)")
+        }
         return GoalMutationResponse(
-            goal: goalSummary(goal),
+            goal: goalSummary(refreshed),
             message: "Goal state set to \(newState.rawValue)."
         )
     }
