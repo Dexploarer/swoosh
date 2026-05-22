@@ -101,9 +101,9 @@ final class LocalVoiceCloneStoreTests: XCTestCase {
 
         try? FileManager.default.removeItem(at: externalRef)
         let savedRef = try await store.referenceAudioURL(id: record.id)
-        XCTAssertNotNil(savedRef)
+        let savedPath = try XCTUnwrap(savedRef).path
         XCTAssertTrue(
-            FileManager.default.fileExists(atPath: savedRef!.path),
+            FileManager.default.fileExists(atPath: savedPath),
             "Reference audio must survive deletion of the source file"
         )
     }

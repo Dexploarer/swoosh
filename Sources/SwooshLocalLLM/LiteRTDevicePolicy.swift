@@ -50,10 +50,8 @@ public enum LiteRTDevicePolicy {
     ) -> LiteRTModel? {
         guard budget > 0, !candidates.isEmpty else { return nil }
         let sorted = candidates.sorted { $0.estimatedBytes > $1.estimatedBytes }
-        for model in sorted {
-            if model.estimatedBytes + headroomBytes <= budget {
-                return model
-            }
+        for model in sorted where model.estimatedBytes + headroomBytes <= budget {
+            return model
         }
         return nil
     }

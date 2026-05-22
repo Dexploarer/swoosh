@@ -72,50 +72,68 @@ public actor FALThreeDProvider: ThreeDGenProviding {
     }
 
     public func generate(_ request: ThreeDGenRequest) async throws -> ThreeDGenResult {
-        if let firewall {
-            do {
-                try await firewall.require(.threeDGenerate)
-            } catch {
-                await audit(.toolCallDenied, "denied: \(request.modelID)", success: false)
-                throw error
-            }
+        try await requirePermission(for: request)
+        let model = try validateModel(for: request)
+        await auditStart(request)
+        let payloadData = try encodePayload(for: request, model: model)
+        let responseData = try await runQueued(request: request, payload: payloadData)
+        let url = try extractAssetURL(from: responseData)
+        let data = try await downloadAsset(url: url)
+        await audit(.toolCallSucceeded, "model=\(request.modelID) bytes=\(data.count)")
+        return ThreeDGenResult(
+            modelData: data,
+            format: request.outputFormat,
+            providerID: id,
+            modelID: request.modelID
+        )
+    }
+
+    private func requirePermission(for request: ThreeDGenRequest) async throws {
+        guard let firewall else { return }
+        do {
+            try await firewall.require(.threeDGenerate)
+        } catch {
+            await audit(.toolCallDenied, "denied: \(request.modelID)", success: false)
+            throw error
         }
+    }
+
+    private func validateModel(for request: ThreeDGenRequest) throws -> ThreeDGenModel {
         guard let model = Self.supportedFALModels.first(where: { $0.id == request.modelID }) else {
-            await audit(.toolCallFailed, "unsupported model: \(request.modelID)", success: false)
             throw ThreeDGenError.unsupportedModel(request.modelID)
         }
         guard model.outputFormats.contains(request.outputFormat) else {
-            await audit(.toolCallFailed, "unsupported format \(request.outputFormat.rawValue) for \(request.modelID)", success: false)
             throw ThreeDGenError.unsupportedOutputFormat(request.outputFormat)
         }
+        return model
+    }
+
+    private func auditStart(_ request: ThreeDGenRequest) async {
         let promptHash = String((request.prompt ?? "").hash, radix: 16)
+        let hasImage = request.imagePNG != nil
         await audit(
             .toolCallStarted,
-            "model=\(request.modelID) format=\(request.outputFormat.rawValue) promptHash=\(promptHash) hasImage=\(request.imagePNG != nil)"
+            "model=\(request.modelID) format=\(request.outputFormat.rawValue) promptHash=\(promptHash) hasImage=\(hasImage)"
         )
+    }
 
-        var payload: [String: Any] = [
-            "output_format": request.outputFormat.rawValue
-        ]
-        if let prompt = request.prompt, model.supportsTextInput {
-            payload["prompt"] = prompt
-        }
+    private func encodePayload(for request: ThreeDGenRequest, model: ThreeDGenModel) throws -> Data {
+        var payload: [String: Any] = ["output_format": request.outputFormat.rawValue]
+        if let prompt = request.prompt, model.supportsTextInput { payload["prompt"] = prompt }
         if let png = request.imagePNG, model.supportsImageInput {
             payload["image_url"] = "data:image/png;base64,\(png.base64EncodedString())"
         }
-        if request.seed > 0 {
-            payload["seed"] = request.seed
-        }
-
-        let payloadData: Data
+        if request.seed > 0 { payload["seed"] = request.seed }
         do {
-            payloadData = try JSONSerialization.data(withJSONObject: payload)
+            return try JSONSerialization.data(withJSONObject: payload)
         } catch {
             throw ThreeDGenError.generationFailed("Encode failed: \(error)")
         }
-        let responseData: Data
+    }
+
+    private func runQueued(request: ThreeDGenRequest, payload: Data) async throws -> Data {
         do {
-            responseData = try await client.runQueued(modelID: request.modelID, payload: payloadData)
+            return try await client.runQueued(modelID: request.modelID, payload: payload)
         } catch FALClient.FALError.missingAPIKey {
             await audit(.toolCallFailed, "missing FAL key", success: false)
             throw ThreeDGenError.missingAPIKey("fal")
@@ -126,34 +144,23 @@ public actor FALThreeDProvider: ThreeDGenProviding {
             await audit(.toolCallFailed, "failed: \(String(describing: error).prefix(80))", success: false)
             throw ThreeDGenError.generationFailed(String(describing: error))
         }
-        let response = (try? JSONSerialization.jsonObject(with: responseData)) as? [String: Any] ?? [:]
+    }
 
-        // Common shapes across FAL 3D models. Try each in order.
+    private func extractAssetURL(from responseData: Data) throws -> String {
+        let response = (try? JSONSerialization.jsonObject(with: responseData)) as? [String: Any] ?? [:]
         let candidateKeys = ["model_mesh", "glb", "mesh", "output_file"]
-        var assetURL: String?
         for key in candidateKeys {
-            if let dict = response[key] as? [String: Any], let url = dict["url"] as? String {
-                assetURL = url; break
-            }
-            if let url = response[key] as? String {
-                assetURL = url; break
-            }
+            if let dict = response[key] as? [String: Any], let url = dict["url"] as? String { return url }
+            if let url = response[key] as? String { return url }
         }
-        guard let url = assetURL else {
-            throw ThreeDGenError.generationFailed("FAL response missing 3D asset URL")
-        }
-        let data: Data
+        throw ThreeDGenError.generationFailed("FAL response missing 3D asset URL")
+    }
+
+    private func downloadAsset(url: String) async throws -> Data {
         do {
-            data = try await client.download(url)
+            return try await client.download(url)
         } catch {
             throw ThreeDGenError.generationFailed("Download failed: \(error)")
         }
-        await audit(.toolCallSucceeded, "model=\(request.modelID) bytes=\(data.count)")
-        return ThreeDGenResult(
-            modelData: data,
-            format: request.outputFormat,
-            providerID: id,
-            modelID: request.modelID
-        )
     }
 }

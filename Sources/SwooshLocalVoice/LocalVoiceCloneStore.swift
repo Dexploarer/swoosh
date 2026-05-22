@@ -195,20 +195,28 @@ public actor LocalVoiceCloneStore {
         var out = ""
         var lastWasDash = false
         for scalar in lower.unicodeScalars {
-            if (scalar.isASCII && (CharacterSet.alphanumerics.contains(scalar))) {
+            switch classify(scalar) {
+            case .keep:
                 out.append(Character(scalar))
                 lastWasDash = false
-            } else if scalar == " " || scalar == "_" || scalar == "-" {
-                if !lastWasDash, !out.isEmpty {
-                    out.append("-")
-                    lastWasDash = true
-                }
+            case .separator where !lastWasDash && !out.isEmpty:
+                out.append("-")
+                lastWasDash = true
+            default:
+                continue
             }
-            // other characters dropped
         }
         // Trim trailing dash so "trim  spaces  " → "trim-spaces".
         while out.hasSuffix("-") { out.removeLast() }
         if out.isEmpty { return "voice-\(UUID().uuidString.prefix(8).lowercased())" }
         return out
+    }
+
+    private enum SlugClass { case keep, separator, drop }
+
+    private static func classify(_ scalar: Unicode.Scalar) -> SlugClass {
+        if scalar.isASCII && CharacterSet.alphanumerics.contains(scalar) { return .keep }
+        if scalar == " " || scalar == "_" || scalar == "-" { return .separator }
+        return .drop
     }
 }

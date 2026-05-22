@@ -20,6 +20,13 @@
 
 import Foundation
 
+private extension URL {
+    static func staticURL(_ s: StaticString) -> URL {
+        guard let url = URL(string: "\(s)") else { preconditionFailure("Invalid static URL: \(s)") }
+        return url
+    }
+}
+
 public actor LocalOpenAICompatibleEmbeddingProvider: EmbeddingProviding {
 
     public struct Config: Sendable {
@@ -45,7 +52,7 @@ public actor LocalOpenAICompatibleEmbeddingProvider: EmbeddingProviding {
 
         /// Ollama default — assumes `ollama pull nomic-embed-text` has been run.
         public static let ollamaNomicEmbed = Config(
-            baseURL: URL(string: "http://127.0.0.1:11434/v1")!,
+            baseURL: .staticURL("http://127.0.0.1:11434/v1"),
             model: "nomic-embed-text",
             outputDimension: 768,
             providerID: "ollama-nomic-embed",
@@ -54,7 +61,7 @@ public actor LocalOpenAICompatibleEmbeddingProvider: EmbeddingProviding {
 
         /// Ollama mxbai-embed-large — `ollama pull mxbai-embed-large`.
         public static let ollamaMxbaiEmbed = Config(
-            baseURL: URL(string: "http://127.0.0.1:11434/v1")!,
+            baseURL: .staticURL("http://127.0.0.1:11434/v1"),
             model: "mxbai-embed-large",
             outputDimension: 1024,
             providerID: "ollama-mxbai-embed",
@@ -63,7 +70,7 @@ public actor LocalOpenAICompatibleEmbeddingProvider: EmbeddingProviding {
 
         /// Ollama bge-m3 — `ollama pull bge-m3`.
         public static let ollamaBGEM3 = Config(
-            baseURL: URL(string: "http://127.0.0.1:11434/v1")!,
+            baseURL: .staticURL("http://127.0.0.1:11434/v1"),
             model: "bge-m3",
             outputDimension: 1024,
             providerID: "ollama-bge-m3",
@@ -73,7 +80,7 @@ public actor LocalOpenAICompatibleEmbeddingProvider: EmbeddingProviding {
         /// LM Studio default — server runs on port 1234.
         public static func lmStudio(model: String, outputDimension: Int) -> Config {
             Config(
-                baseURL: URL(string: "http://127.0.0.1:1234/v1")!,
+                baseURL: .staticURL("http://127.0.0.1:1234/v1"),
                 model: model,
                 outputDimension: outputDimension,
                 providerID: "lmstudio-\(model)",

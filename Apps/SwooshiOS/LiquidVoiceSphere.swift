@@ -47,51 +47,8 @@ struct LiquidVoiceSphere: View {
         return Canvas { ctx, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let baseRadius = min(size.width, size.height) / 2 * 0.78 * pulse
-
-            // Three offset metaballs around the centre. Each blob's offset
-            // and scale follow its own sine — gives the gelatinous warble.
-            for i in 0..<3 {
-                let phase = time * (0.9 + Double(i) * 0.27)
-                let dx = CGFloat(sin(phase + Double(i) * 1.7)) * baseRadius * (0.10 + level * 0.30)
-                let dy = CGFloat(cos(phase * 1.1 + Double(i) * 0.9)) * baseRadius * (0.10 + level * 0.30)
-                let r = baseRadius * (0.65 + 0.18 * CGFloat(sin(phase * 0.7)))
-                let rect = CGRect(
-                    x: center.x + dx - r, y: center.y + dy - r,
-                    width: r * 2, height: r * 2
-                )
-                let blob = Path(ellipseIn: rect)
-                ctx.fill(
-                    blob,
-                    with: .radialGradient(
-                        Gradient(colors: [
-                            Color.cyan.opacity(0.85),
-                            Color.cyan.opacity(0.20),
-                            Color.cyan.opacity(0.0),
-                        ]),
-                        center: CGPoint(x: rect.midX, y: rect.midY),
-                        startRadius: 0, endRadius: r
-                    )
-                )
-            }
-
-            // Bright inner core — the "highlight".
-            let coreRadius = baseRadius * (0.32 + level * 0.18)
-            let coreRect = CGRect(
-                x: center.x - coreRadius * 0.85, y: center.y - coreRadius,
-                width: coreRadius * 2, height: coreRadius * 2
-            )
-            ctx.fill(
-                Path(ellipseIn: coreRect),
-                with: .radialGradient(
-                    Gradient(colors: [
-                        Color.white.opacity(0.85),
-                        Color.cyan.opacity(0.4),
-                        Color.cyan.opacity(0),
-                    ]),
-                    center: CGPoint(x: coreRect.midX, y: coreRect.midY),
-                    startRadius: 0, endRadius: coreRadius
-                )
-            )
+            Self.drawMetaballs(into: &ctx, center: center, baseRadius: baseRadius, level: level, time: time)
+            Self.drawCore(into: &ctx, center: center, baseRadius: baseRadius, level: level)
         }
         .blur(radius: 1.5 + level * 2.0)
         .shadow(color: Color.cyan.opacity(glowAmt), radius: 24 + level * 14)
@@ -100,6 +57,65 @@ struct LiquidVoiceSphere: View {
                 .fill(Color.cyan.opacity(0.06))
                 .blur(radius: 18)
                 .scaleEffect(pulse * 1.1)
+        )
+    }
+
+    /// Three offset metaballs around the centre. Each blob's offset and
+    /// scale follow its own sine — gives the gelatinous warble.
+    private static func drawMetaballs(
+        into ctx: inout GraphicsContext,
+        center: CGPoint,
+        baseRadius: CGFloat,
+        level: CGFloat,
+        time: TimeInterval
+    ) {
+        for blobIndex in 0..<3 {
+            let phase = time * (0.9 + Double(blobIndex) * 0.27)
+            let dx = CGFloat(sin(phase + Double(blobIndex) * 1.7)) * baseRadius * (0.10 + level * 0.30)
+            let dy = CGFloat(cos(phase * 1.1 + Double(blobIndex) * 0.9)) * baseRadius * (0.10 + level * 0.30)
+            let radius = baseRadius * (0.65 + 0.18 * CGFloat(sin(phase * 0.7)))
+            let rect = CGRect(
+                x: center.x + dx - radius, y: center.y + dy - radius,
+                width: radius * 2, height: radius * 2
+            )
+            ctx.fill(
+                Path(ellipseIn: rect),
+                with: .radialGradient(
+                    Gradient(colors: [
+                        Color.cyan.opacity(0.85),
+                        Color.cyan.opacity(0.20),
+                        Color.cyan.opacity(0.0)
+                    ]),
+                    center: CGPoint(x: rect.midX, y: rect.midY),
+                    startRadius: 0, endRadius: radius
+                )
+            )
+        }
+    }
+
+    /// Bright inner core — the "highlight".
+    private static func drawCore(
+        into ctx: inout GraphicsContext,
+        center: CGPoint,
+        baseRadius: CGFloat,
+        level: CGFloat
+    ) {
+        let coreRadius = baseRadius * (0.32 + level * 0.18)
+        let coreRect = CGRect(
+            x: center.x - coreRadius * 0.85, y: center.y - coreRadius,
+            width: coreRadius * 2, height: coreRadius * 2
+        )
+        ctx.fill(
+            Path(ellipseIn: coreRect),
+            with: .radialGradient(
+                Gradient(colors: [
+                    Color.white.opacity(0.85),
+                    Color.cyan.opacity(0.4),
+                    Color.cyan.opacity(0)
+                ]),
+                center: CGPoint(x: coreRect.midX, y: coreRect.midY),
+                startRadius: 0, endRadius: coreRadius
+            )
         )
     }
 

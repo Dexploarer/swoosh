@@ -9,6 +9,13 @@
 
 import Foundation
 
+private extension URL {
+    static func staticURL(_ s: StaticString) -> URL {
+        guard let url = URL(string: "\(s)") else { preconditionFailure("Invalid static URL: \(s)") }
+        return url
+    }
+}
+
 public enum LocalVoiceCatalog {
 
     /// Default selection — Kokoro is the safest "just works" option:
@@ -29,7 +36,7 @@ public enum LocalVoiceCatalog {
         id: "kokoro-82m-v1",
         displayName: "Kokoro 82M (English + Mandarin)",
         family: "Kokoro",
-        downloadURL: URL(string: "https://huggingface.co/FluidInference/kokoro-82m-coreml")!,
+        downloadURL: .staticURL("https://huggingface.co/FluidInference/kokoro-82m-coreml"),
         estimatedBytes: 80_000_000,
         parameters: "82M",
         license: "Apache-2.0",
@@ -47,7 +54,7 @@ public enum LocalVoiceCatalog {
         id: "omnivoice-v1",
         displayName: "OmniVoice (600+ languages, cloning)",
         family: "OmniVoice",
-        downloadURL: URL(string: "https://huggingface.co/k2-fsa/OmniVoice/resolve/main/model.fp16.onnx")!,
+        downloadURL: .staticURL("https://huggingface.co/k2-fsa/OmniVoice/resolve/main/model.fp16.onnx"),
         estimatedBytes: 3_200_000_000,
         parameters: "~600M",
         license: "Apache-2.0",
@@ -65,7 +72,7 @@ public enum LocalVoiceCatalog {
         id: "styletts2-libri-v1",
         displayName: "StyleTTS2 (zero-shot cloning)",
         family: "StyleTTS2",
-        downloadURL: URL(string: "https://huggingface.co/FluidInference/styletts2-libritts-coreml")!,
+        downloadURL: .staticURL("https://huggingface.co/FluidInference/styletts2-libritts-coreml"),
         estimatedBytes: 220_000_000,
         parameters: "~150M",
         license: "MIT",
@@ -83,7 +90,7 @@ public enum LocalVoiceCatalog {
         id: "pockettts-v1",
         displayName: "PocketTTS (persistent cloning)",
         family: "PocketTTS",
-        downloadURL: URL(string: "https://huggingface.co/FluidInference/pockettts-coreml")!,
+        downloadURL: .staticURL("https://huggingface.co/FluidInference/pockettts-coreml"),
         estimatedBytes: 180_000_000,
         parameters: "~100M",
         license: "Apache-2.0",

@@ -49,17 +49,15 @@ public actor AppleNLEmbeddingProvider: EmbeddingProviding {
             throw EmbeddingProviderError.languageNotSupported(language)
         }
         let tokens = tokenize(text: text)
-        var sum: [Double] = Array(repeating: 0, count: word.dimension)
-        var count = 0
-        for token in tokens {
-            guard let vec = word.vector(for: token) else { continue }
-            for i in 0..<sum.count { sum[i] += vec[i] }
-            count += 1
-        }
-        guard count > 0 else {
+        let vectors = tokens.compactMap { word.vector(for: $0) }
+        guard !vectors.isEmpty else {
             throw EmbeddingProviderError.requestFailed("No embeddable tokens in input")
         }
-        let inv = 1.0 / Double(count)
+        var sum: [Double] = Array(repeating: 0, count: word.dimension)
+        for vec in vectors {
+            for i in 0..<sum.count { sum[i] += vec[i] }
+        }
+        let inv = 1.0 / Double(vectors.count)
         return sum.map { Float($0 * inv) }
         #else
         throw EmbeddingProviderError.unsupportedPlatform

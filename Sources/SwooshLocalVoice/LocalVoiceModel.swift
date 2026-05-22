@@ -41,6 +41,7 @@ public struct LocalVoiceModel: Codable, Sendable, Identifiable, Hashable {
         case appleFallback
     }
 
+    // swiftlint:disable:next function_parameter_count
     public init(
         id: String,
         displayName: String,

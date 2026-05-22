@@ -7,13 +7,21 @@
 
 import Foundation
 
+private extension URL {
+    static func staticURL(_ s: StaticString) -> URL {
+        guard let url = URL(string: "\(s)") else { preconditionFailure("Invalid static URL: \(s)") }
+        return url
+    }
+}
+
 public actor OpenAITranslationProvider: TranslationProviding {
 
     public struct Config: Sendable {
         public let baseURL: URL
         public let model: String
-        public init(baseURL: URL = URL(string: "https://api.openai.com/v1")!, model: String = "gpt-4o-mini") {
-            self.baseURL = baseURL; self.model = model
+        public init(baseURL: URL? = nil, model: String = "gpt-4o-mini") {
+            self.baseURL = baseURL ?? .staticURL("https://api.openai.com/v1")
+            self.model = model
         }
     }
 

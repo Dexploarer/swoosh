@@ -23,6 +23,7 @@ private let logger = Logger(subsystem: "ai.swoosh.capabilities", category: "Capa
 
 @MainActor
 @Observable
+@preconcurrency
 public final class CapabilityRouter {
 
     public static let shared = CapabilityRouter()

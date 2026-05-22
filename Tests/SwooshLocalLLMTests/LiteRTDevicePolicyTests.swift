@@ -89,11 +89,14 @@ final class LiteRTDevicePolicyTests: XCTestCase {
     // MARK: - Helpers
 
     private func makeModel(id: String, bytes: Int64) -> LiteRTModel {
-        LiteRTModel(
+        guard let url = URL(string: "https://example.test/\(id)") else {
+            preconditionFailure("Invalid test URL for \(id)")
+        }
+        return LiteRTModel(
             id: id,
             displayName: id,
             family: "Test",
-            downloadURL: URL(string: "https://example.test/\(id)")!,
+            downloadURL: url,
             estimatedBytes: bytes,
             parameters: "?",
             contextWindow: 0,

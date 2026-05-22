@@ -17,6 +17,7 @@ import Foundation
 
 @MainActor
 @Observable
+@preconcurrency
 public final class LocalVoiceDownloader: NSObject {
 
     public enum State: Sendable, Equatable {

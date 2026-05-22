@@ -17,6 +17,13 @@
 import Foundation
 import SwooshTools
 
+private extension URL {
+    static func staticURL(_ s: StaticString) -> URL {
+        guard let url = URL(string: "\(s)") else { preconditionFailure("Invalid static URL: \(s)") }
+        return url
+    }
+}
+
 public actor FALClient {
 
     public typealias APIKeyProvider = @Sendable () async throws -> String
@@ -27,11 +34,11 @@ public actor FALClient {
         public let maxPollAttempts: Int
 
         public init(
-            baseQueueURL: URL = URL(string: "https://queue.fal.run")!,
+            baseQueueURL: URL? = nil,
             pollIntervalSeconds: Double = 2.0,
             maxPollAttempts: Int = 180  // ~6 minutes at 2s
         ) {
-            self.baseQueueURL = baseQueueURL
+            self.baseQueueURL = baseQueueURL ?? .staticURL("https://queue.fal.run")
             self.pollIntervalSeconds = pollIntervalSeconds
             self.maxPollAttempts = maxPollAttempts
         }
@@ -87,74 +94,85 @@ public actor FALClient {
     /// model-specific fields (e.g. `video.url`, `model_mesh.url`).
     /// Raw Data avoids passing `[String: Any]` across the actor boundary.
     public func runQueued(modelID: String, payload: Data) async throws -> Data {
-        // Firewall: deny callers without `networkAccess`. Cheap actor lookup.
-        if let firewall {
-            do {
-                try await firewall.require(.networkAccess)
-            } catch {
-                await audit(.toolCallDenied, "FAL submit denied: \(modelID)", success: false)
-                throw error
-            }
-        }
+        try await requireNetwork(modelID: modelID)
         await audit(.toolCallStarted, "FAL submit: \(modelID)")
+        let key = try await resolveKey(modelID: modelID)
+        let submitURL = config.baseQueueURL.appendingPathComponent(modelID)
+        let requestID = try await submit(payload: payload, to: submitURL, key: key)
+        return try await pollUntilComplete(modelID: modelID, requestID: requestID, submitURL: submitURL, key: key)
+    }
 
-        let key: String
-        do { key = try await apiKey() } catch {
+    private func requireNetwork(modelID: String) async throws {
+        guard let firewall else { return }
+        do {
+            try await firewall.require(.networkAccess)
+        } catch {
+            await audit(.toolCallDenied, "FAL submit denied: \(modelID)", success: false)
+            throw error
+        }
+    }
+
+    private func resolveKey(modelID: String) async throws -> String {
+        do { return try await apiKey() } catch {
             await audit(.toolCallFailed, "FAL submit: missing API key for \(modelID)", success: false)
             throw FALError.missingAPIKey
         }
+    }
 
-        // Submit
-        let submitURL = config.baseQueueURL.appendingPathComponent(modelID)
-        var submitReq = URLRequest(url: submitURL)
-        submitReq.httpMethod = "POST"
-        submitReq.setValue("Key \(key)", forHTTPHeaderField: "Authorization")
-        submitReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        submitReq.httpBody = payload
-        let (submitData, submitResponse) = try await urlSession.data(for: submitReq)
-        let submitHTTP = submitResponse as? HTTPURLResponse
-        guard let code = submitHTTP?.statusCode, (200..<300).contains(code) else {
-            let snippet = String(data: submitData, encoding: .utf8)?.prefix(200) ?? ""
-            throw FALError.httpError(submitHTTP?.statusCode ?? -1, String(snippet))
-        }
-        let submitJSON = try JSONSerialization.jsonObject(with: submitData) as? [String: Any] ?? [:]
-        guard let requestID = submitJSON["request_id"] as? String else {
+    private func submit(payload: Data, to submitURL: URL, key: String) async throws -> String {
+        var req = URLRequest(url: submitURL)
+        req.httpMethod = "POST"
+        req.setValue("Key \(key)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = payload
+        let (data, response) = try await urlSession.data(for: req)
+        try Self.ensureSuccess(data: data, response: response)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        guard let requestID = json["request_id"] as? String else {
             throw FALError.decodeError("No request_id in submit response")
         }
+        return requestID
+    }
 
-        // Poll status
+    private func pollUntilComplete(modelID: String, requestID: String, submitURL: URL, key: String) async throws -> Data {
         let statusURL = submitURL.appendingPathComponent("requests/\(requestID)/status")
         var statusReq = URLRequest(url: statusURL)
         statusReq.setValue("Key \(key)", forHTTPHeaderField: "Authorization")
-
         for _ in 0..<config.maxPollAttempts {
-            let (statusData, statusResponse) = try await urlSession.data(for: statusReq)
-            let statusHTTP = statusResponse as? HTTPURLResponse
-            if let c = statusHTTP?.statusCode, !(200..<300).contains(c) {
-                let snippet = String(data: statusData, encoding: .utf8)?.prefix(200) ?? ""
-                throw FALError.httpError(c, String(snippet))
-            }
-            let statusJSON = try JSONSerialization.jsonObject(with: statusData) as? [String: Any] ?? [:]
-            let status = (statusJSON["status"] as? String) ?? ""
-            switch status {
-            case "COMPLETED":
-                // Fetch full response
-                let resultURL = submitURL.appendingPathComponent("requests/\(requestID)")
-                var resultReq = URLRequest(url: resultURL)
-                resultReq.setValue("Key \(key)", forHTTPHeaderField: "Authorization")
-                let (resultData, _) = try await urlSession.data(for: resultReq)
+            let (data, response) = try await urlSession.data(for: statusReq)
+            try Self.ensureSuccess(data: data, response: response)
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+            let status = (json["status"] as? String) ?? ""
+            if status == "COMPLETED" {
+                let result = try await fetchResult(submitURL: submitURL, requestID: requestID, key: key)
                 await audit(.toolCallSucceeded, "FAL completed: \(modelID) req=\(requestID)")
-                return resultData
-            case "IN_QUEUE", "IN_PROGRESS":
-                try await Task.sleep(nanoseconds: UInt64(config.pollIntervalSeconds * 1_000_000_000))
-            default:
-                let logs = (statusJSON["logs"] as? [[String: Any]])?.last?["message"] as? String
-                await audit(.toolCallFailed, "FAL failed: \(modelID) status=\(status)", success: false)
-                throw FALError.queueFailed(logs ?? "status=\(status)")
+                return result
             }
+            if status == "IN_QUEUE" || status == "IN_PROGRESS" {
+                try await Task.sleep(nanoseconds: UInt64(config.pollIntervalSeconds * 1_000_000_000))
+                continue
+            }
+            let logs = (json["logs"] as? [[String: Any]])?.last?["message"] as? String
+            await audit(.toolCallFailed, "FAL failed: \(modelID) status=\(status)", success: false)
+            throw FALError.queueFailed(logs ?? "status=\(status)")
         }
         await audit(.toolCallFailed, "FAL timeout: \(modelID)", success: false)
         throw FALError.queueTimeout
+    }
+
+    private func fetchResult(submitURL: URL, requestID: String, key: String) async throws -> Data {
+        var req = URLRequest(url: submitURL.appendingPathComponent("requests/\(requestID)"))
+        req.setValue("Key \(key)", forHTTPHeaderField: "Authorization")
+        let (data, _) = try await urlSession.data(for: req)
+        return data
+    }
+
+    private static func ensureSuccess(data: Data, response: URLResponse) throws {
+        let http = response as? HTTPURLResponse
+        guard let code = http?.statusCode, (200..<300).contains(code) else {
+            let snippet = String(data: data, encoding: .utf8)?.prefix(200) ?? ""
+            throw FALError.httpError(http?.statusCode ?? -1, String(snippet))
+        }
     }
 
     /// Download bytes from a URL returned by FAL (signed CDN URLs).

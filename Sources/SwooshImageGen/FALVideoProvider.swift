@@ -77,50 +77,63 @@ public actor FALVideoProvider: VideoGenProviding {
     }
 
     public func generate(_ request: VideoGenRequest) async throws -> VideoGenResult {
-        if let firewall {
-            do {
-                try await firewall.require(.videoGenerate)
-            } catch {
-                await audit(.toolCallDenied, "denied: \(request.modelID)", success: false)
-                throw error
-            }
+        try await requirePermission(for: request)
+        try validateModel(for: request)
+        await auditStart(request)
+        let payloadData = try encodePayload(for: request)
+        let responseData = try await runQueued(request: request, payload: payloadData)
+        let (url, mime) = try extractVideo(from: responseData)
+        let data = try await downloadVideo(url: url)
+        await audit(.toolCallSucceeded, "model=\(request.modelID) bytes=\(data.count)")
+        return VideoGenResult(videoData: data, mimeType: mime, providerID: id, modelID: request.modelID)
+    }
+
+    private func requirePermission(for request: VideoGenRequest) async throws {
+        guard let firewall else { return }
+        do {
+            try await firewall.require(.videoGenerate)
+        } catch {
+            await audit(.toolCallDenied, "denied: \(request.modelID)", success: false)
+            throw error
         }
+    }
+
+    private func validateModel(for request: VideoGenRequest) throws {
         guard Self.supportedFALModels.contains(where: { $0.id == request.modelID }) else {
-            await audit(.toolCallFailed, "unsupported model: \(request.modelID)", success: false)
             throw VideoGenError.unsupportedModel(request.modelID)
         }
-        // Audit prompt metadata only — never raw image bytes.
+    }
+
+    private func auditStart(_ request: VideoGenRequest) async {
         let promptHash = String(request.prompt.hash, radix: 16)
+        let hasImage = request.imagePNG != nil
         await audit(
             .toolCallStarted,
-            "model=\(request.modelID) duration=\(request.durationSeconds)s promptHash=\(promptHash) hasImage=\(request.imagePNG != nil)"
+            "model=\(request.modelID) duration=\(request.durationSeconds)s promptHash=\(promptHash) hasImage=\(hasImage)"
         )
+    }
 
+    private func encodePayload(for request: VideoGenRequest) throws -> Data {
         var payload: [String: Any] = [
             "prompt": request.prompt,
-            "duration": request.durationSeconds,
+            "duration": request.durationSeconds
         ]
-        if let negative = request.negativePrompt {
-            payload["negative_prompt"] = negative
-        }
-        if request.seed > 0 {
-            payload["seed"] = request.seed
-        }
+        if let negative = request.negativePrompt { payload["negative_prompt"] = negative }
+        if request.seed > 0 { payload["seed"] = request.seed }
         if let png = request.imagePNG {
             payload["image_url"] = "data:image/png;base64,\(png.base64EncodedString())"
         }
-        // Aspect-ratio hint for the picker's width/height pairing.
         payload["aspect_ratio"] = aspectRatio(width: request.width, height: request.height)
-
-        let payloadData: Data
         do {
-            payloadData = try JSONSerialization.data(withJSONObject: payload)
+            return try JSONSerialization.data(withJSONObject: payload)
         } catch {
             throw VideoGenError.generationFailed("Encode failed: \(error)")
         }
-        let responseData: Data
+    }
+
+    private func runQueued(request: VideoGenRequest, payload: Data) async throws -> Data {
         do {
-            responseData = try await client.runQueued(modelID: request.modelID, payload: payloadData)
+            return try await client.runQueued(modelID: request.modelID, payload: payload)
         } catch FALClient.FALError.missingAPIKey {
             await audit(.toolCallFailed, "missing FAL key", success: false)
             throw VideoGenError.missingAPIKey("fal")
@@ -131,20 +144,24 @@ public actor FALVideoProvider: VideoGenProviding {
             await audit(.toolCallFailed, "failed: \(String(describing: error).prefix(80))", success: false)
             throw VideoGenError.generationFailed(String(describing: error))
         }
+    }
+
+    private func extractVideo(from responseData: Data) throws -> (url: String, mime: String) {
         let response = (try? JSONSerialization.jsonObject(with: responseData)) as? [String: Any] ?? [:]
         guard let videoDict = response["video"] as? [String: Any],
               let url = videoDict["url"] as? String else {
             throw VideoGenError.generationFailed("FAL response missing video.url")
         }
         let mime = (videoDict["content_type"] as? String) ?? "video/mp4"
-        let data: Data
+        return (url, mime)
+    }
+
+    private func downloadVideo(url: String) async throws -> Data {
         do {
-            data = try await client.download(url)
+            return try await client.download(url)
         } catch {
             throw VideoGenError.generationFailed("Download failed: \(error)")
         }
-        await audit(.toolCallSucceeded, "model=\(request.modelID) bytes=\(data.count)")
-        return VideoGenResult(videoData: data, mimeType: mime, providerID: id, modelID: request.modelID)
     }
 
     private func aspectRatio(width: Int, height: Int) -> String {

@@ -12,13 +12,21 @@
 import Foundation
 import SwooshTools
 
+private extension URL {
+    static func staticURL(_ s: StaticString) -> URL {
+        guard let url = URL(string: "\(s)") else { preconditionFailure("Invalid static URL: \(s)") }
+        return url
+    }
+}
+
 public actor OpenAIImageProvider: ImageGenProviding {
 
     public struct Config: Sendable {
         public let baseURL: URL
         public let model: String
-        public init(baseURL: URL = URL(string: "https://api.openai.com/v1")!, model: String = "gpt-image-1") {
-            self.baseURL = baseURL; self.model = model
+        public init(baseURL: URL? = nil, model: String = "gpt-image-1") {
+            self.baseURL = baseURL ?? .staticURL("https://api.openai.com/v1")
+            self.model = model
         }
     }
 
@@ -64,41 +72,63 @@ public actor OpenAIImageProvider: ImageGenProviding {
     }
 
     public func generate(_ request: ImageGenRequest) async throws -> ImageGenResult {
-        if let firewall {
-            do {
-                try await firewall.require(.imageGenerate)
-            } catch {
-                await audit(.toolCallDenied, "denied", success: false)
-                throw error
-            }
+        try await requirePermission()
+        await auditStart(request)
+        let key = try await resolveKey()
+        let req = try buildRequest(for: request, key: key)
+        let data = try await sendRequest(req)
+        let png = try await parseImage(from: data)
+        await audit(.toolCallSucceeded, "bytes=\(png.count)")
+        return ImageGenResult(pngData: png, providerID: id, usedStyle: request.style?.id)
+    }
+
+    private func requirePermission() async throws {
+        guard let firewall else { return }
+        do {
+            try await firewall.require(.imageGenerate)
+        } catch {
+            await audit(.toolCallDenied, "denied", success: false)
+            throw error
         }
+    }
+
+    private func auditStart(_ request: ImageGenRequest) async {
         let promptHash = String(request.prompt.hash, radix: 16)
+        let style = request.style?.id ?? "default"
         await audit(
             .toolCallStarted,
-            "model=\(config.model) size=\(request.width)x\(request.height) promptHash=\(promptHash) style=\(request.style?.id ?? "default")"
+            "model=\(config.model) size=\(request.width)x\(request.height) promptHash=\(promptHash) style=\(style)"
         )
-        let key: String
+    }
+
+    private func resolveKey() async throws -> String {
         do {
-            key = try await apiKey()
+            return try await apiKey()
         } catch {
             await audit(.toolCallFailed, "missing API key", success: false)
             throw ImageGenError.missingAPIKey("openai")
         }
+    }
+
+    private func buildRequest(for request: ImageGenRequest, key: String) throws -> URLRequest {
         let url = config.baseURL.appendingPathComponent("images/generations")
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let size = "\(request.width)x\(request.height)"
         var body: [String: Any] = [
             "model": config.model,
             "prompt": request.prompt,
             "n": 1,
-            "size": size,
+            "size": "\(request.width)x\(request.height)",
             "response_format": "b64_json"
         ]
         if let style = request.style { body["style"] = style.id }
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return req
+    }
+
+    private func sendRequest(_ req: URLRequest) async throws -> Data {
         let (data, response) = try await urlSession.data(for: req)
         guard let http = response as? HTTPURLResponse else {
             await audit(.toolCallFailed, "no HTTP response", success: false)
@@ -108,6 +138,10 @@ public actor OpenAIImageProvider: ImageGenProviding {
             await audit(.toolCallFailed, "HTTP \(http.statusCode)", success: false)
             throw ImageGenError.generationFailed("HTTP \(http.statusCode): \(Self.safeErrorSnippet(data))")
         }
+        return data
+    }
+
+    private func parseImage(from data: Data) async throws -> Data {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
         let images = json["data"] as? [[String: Any]] ?? []
         guard let first = images.first,
@@ -116,8 +150,7 @@ public actor OpenAIImageProvider: ImageGenProviding {
             await audit(.toolCallFailed, "unexpected response shape", success: false)
             throw ImageGenError.generationFailed("Unexpected response shape")
         }
-        await audit(.toolCallSucceeded, "bytes=\(png.count)")
-        return ImageGenResult(pngData: png, providerID: id, usedStyle: request.style?.id)
+        return png
     }
 
     /// Truncate to 50 chars, collapse whitespace, and redact common secret
