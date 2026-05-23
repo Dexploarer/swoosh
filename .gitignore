@@ -39,3 +39,6 @@ Backend/SwooshDB/.build
 
 #Ignore windsurf AI rules
 .windsurfrules
+
+# Local-only skill mirror — canonical location is .claude/skills/
+.agents/
