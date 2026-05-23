@@ -39,7 +39,7 @@ struct RootParsingTests {
             "doctor", "--fix", "--json", "--config-dir", "/tmp/foo",
         ])
         let doctor = try #require(command as? DoctorCommand)
-        #expect(doctor.fix == true)
+        #expect(doctor.scaffold == true)
         #expect(doctor.json == true)
         #expect(doctor.configDirectory == "/tmp/foo")
     }

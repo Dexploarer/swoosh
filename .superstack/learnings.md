@@ -117,3 +117,10 @@
 - **Source:** manual
 - **Files:** Docs/
 - **Date:** 2026-05-22
+
+### swift-test-safe-wrapper
+- **Insight:** ALWAYS invoke tests via `./Scripts/swift-test-safe.sh`, not raw `swift test`. The wrapper installs an EXIT/INT/TERM/HUP trap that walks the process tree and SIGKILLs every descendant on signal, so when the Bash tool auto-backgrounds the call and is later cancelled, child `swift-test` + `swiftpm-testing-helper` cannot orphan, reparent to PID 1, and hold the SwiftPM `.build/` lock. Raw `swift test` leaks orphans under SIGTERM; the wrapper does not. Same arg forwarding (`--filter X`, etc.).
+- **Confidence:** 10/10
+- **Source:** manual
+- **Files:** Scripts/swift-test-safe.sh
+- **Date:** 2026-05-23
