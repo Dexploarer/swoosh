@@ -110,12 +110,19 @@ struct WriteSetupReportTests {
             checks: [],
             readiness: SwooshReadinessReport(state: .ready, summary: "ok", components: [])
         )
-        let reportPath = try writeSetupReport(
+        let ctx = CommissioningContext(
             config: config,
             hardware: hardware,
             profile: .developer,
             modelPath: .hybrid,
             mode: "quick",
+            daemonHost: "127.0.0.1",
+            daemonPort: 8787,
+            startDaemon: false,
+            daemonStartTimeout: 1
+        )
+        let reportPath = try writeSetupReport(
+            ctx,
             commissioning: result,
             scoutSummary: nil,
             nextSteps: setupNextSteps

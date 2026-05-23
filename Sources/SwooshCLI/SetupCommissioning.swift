@@ -54,6 +54,25 @@ let setupNextSteps: [String] = [
     "swoosh chat-adapters list",
 ]
 
+// MARK: - Commissioning context
+
+/// Groups the parameter block that flows through the commissioning
+/// pipeline. Replaces a previous 9-argument call chain that triggered
+/// a "too many parameters" review finding and made the call sites hard
+/// to read at a glance. Add fields here rather than threading new
+/// parameters through every function.
+struct CommissioningContext: Sendable {
+    let config: SwooshConfigStore
+    let hardware: HardwareProfile
+    let profile: PermissionProfilePreset
+    let modelPath: SetupModelPath
+    let mode: String
+    let daemonHost: String
+    let daemonPort: Int
+    let startDaemon: Bool
+    let daemonStartTimeout: Double
+}
+
 // MARK: - Public surface used by SetupCommands
 
 /// Shared scaffolding behind `swoosh setup quick` and `swoosh setup full`.
@@ -62,35 +81,13 @@ let setupNextSteps: [String] = [
 /// write) lives here so the two paths can't drift.
 @discardableResult
 func runCommissioning(
-    config: SwooshConfigStore,
-    hardware: HardwareProfile,
-    profile: PermissionProfilePreset,
-    modelPath: SetupModelPath,
-    mode: String,
-    daemonHost: String,
-    daemonPort: Int,
-    startDaemon: Bool,
-    daemonStartTimeout: Double,
+    _ ctx: CommissioningContext,
     scoutSummary: String? = nil
 ) async throws -> (commissioning: SetupCommissioningResult, reportPath: URL) {
-    try config.ensureDirectories()
-    let commissioning = try await commissionLocalRuntime(
-        config: config,
-        hardware: hardware,
-        profile: profile,
-        modelPath: modelPath,
-        mode: mode,
-        daemonHost: daemonHost,
-        daemonPort: daemonPort,
-        startDaemon: startDaemon,
-        daemonStartTimeout: daemonStartTimeout
-    )
+    try ctx.config.ensureDirectories()
+    let commissioning = try await commissionLocalRuntime(ctx)
     let reportPath = try writeSetupReport(
-        config: config,
-        hardware: hardware,
-        profile: profile,
-        modelPath: modelPath,
-        mode: mode,
+        ctx,
         commissioning: commissioning,
         scoutSummary: scoutSummary,
         nextSteps: setupNextSteps
@@ -99,11 +96,7 @@ func runCommissioning(
 }
 
 func writeSetupReport(
-    config: SwooshConfigStore,
-    hardware: HardwareProfile,
-    profile: PermissionProfilePreset,
-    modelPath: SetupModelPath,
-    mode: String,
+    _ ctx: CommissioningContext,
     commissioning: SetupCommissioningResult,
     scoutSummary: String? = nil,
     nextSteps: [String]
@@ -111,34 +104,33 @@ func writeSetupReport(
     let date = ISO8601DateFormatter().string(from: Date())
     let report = SetupCommissioningReport(
         date: date,
-        mode: mode,
-        profile: profile.rawValue,
-        modelPath: modelPath.rawValue,
-        cpu: hardware.cpuName,
-        memoryGB: Int(hardware.totalMemoryGB),
-        appleSilicon: hardware.hasAppleSilicon,
+        mode: ctx.mode,
+        profile: ctx.profile.rawValue,
+        modelPath: ctx.modelPath.rawValue,
+        cpu: ctx.hardware.cpuName,
+        memoryGB: Int(ctx.hardware.totalMemoryGB),
+        appleSilicon: ctx.hardware.hasAppleSilicon,
         commissioning: commissioning,
         scoutSummary: scoutSummary,
         nextSteps: nextSteps
     )
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    let reportPath = config.setupReportsDir.appending(path: "\(date)-\(mode).json")
+    let reportPath = ctx.config.setupReportsDir.appending(path: "\(date)-\(ctx.mode).json")
     try encoder.encode(report).write(to: reportPath, options: .atomic)
     return reportPath
 }
 
-func commissionLocalRuntime(
-    config: SwooshConfigStore,
-    hardware: HardwareProfile,
-    profile: PermissionProfilePreset,
-    modelPath: SetupModelPath,
-    mode: String,
-    daemonHost: String,
-    daemonPort: Int,
-    startDaemon: Bool,
-    daemonStartTimeout: Double
-) async throws -> SetupCommissioningResult {
+func commissionLocalRuntime(_ ctx: CommissioningContext) async throws -> SetupCommissioningResult {
+    let config = ctx.config
+    let hardware = ctx.hardware
+    let profile = ctx.profile
+    let modelPath = ctx.modelPath
+    let mode = ctx.mode
+    let daemonHost = ctx.daemonHost
+    let daemonPort = ctx.daemonPort
+    let startDaemon = ctx.startDaemon
+    let daemonStartTimeout = ctx.daemonStartTimeout
     try config.ensureDirectories()
     let tokenPath = config.apiTokenFile
     _ = try ensureBearerTokenFile(at: tokenPath)
@@ -293,17 +285,28 @@ private func launchSwooshDaemon(config: SwooshConfigStore, host: String, port: I
     environment["SWOOSH_HOST"] = host
     environment["SWOOSH_PORT"] = String(port)
     process.environment = environment
-    process.standardOutput = try FileHandle(forWritingTo: setupLogFile(config: config, name: "swooshd-setup.log"))
-    process.standardError = try FileHandle(forWritingTo: setupLogFile(config: config, name: "swooshd-setup.err.log"))
+    process.standardOutput = try setupLogFileHandle(config: config, name: "swooshd-setup.log")
+    process.standardError = try setupLogFileHandle(config: config, name: "swooshd-setup.err.log")
     try process.run()
 }
 
-private func setupLogFile(config: SwooshConfigStore, name: String) throws -> URL {
+/// Open the named log file for writing, creating it (atomically with
+/// 0o644) if missing, and seeking to the end so concurrent or repeated
+/// runs append rather than overwrite. Returns a `FileHandle` ready for
+/// Process stdio redirection.
+private func setupLogFileHandle(config: SwooshConfigStore, name: String) throws -> FileHandle {
     let url = config.logsDir.appendingPathComponent(name)
-    if !FileManager.default.fileExists(atPath: url.path) {
-        FileManager.default.createFile(atPath: url.path, contents: nil)
+    let fm = FileManager.default
+    if !fm.fileExists(atPath: url.path) {
+        guard fm.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o644]) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
     }
-    return url
+    let handle = try FileHandle(forWritingTo: url)
+    // Skip to EOF so subsequent setup runs don't overwrite prior logs;
+    // operators commonly tail these between attempts.
+    try handle.seekToEnd()
+    return handle
 }
 
 // MARK: - Pretty-printers used by setup subcommands

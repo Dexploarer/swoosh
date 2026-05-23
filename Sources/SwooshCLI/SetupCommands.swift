@@ -106,7 +106,7 @@ struct SetupQuickCommand: AsyncParsableCommand {
         print("✓ Permission profile: \(preset.rawValue)\n")
 
         print("─── Commissioning ─────────────────────────────")
-        let result = try await runCommissioning(
+        let ctx = CommissioningContext(
             config: config,
             hardware: hardware,
             profile: preset,
@@ -117,6 +117,7 @@ struct SetupQuickCommand: AsyncParsableCommand {
             startDaemon: !skipDaemonStart,
             daemonStartTimeout: daemonStartTimeout
         )
+        let result = try await runCommissioning(ctx)
         printReadiness(result.commissioning.readiness)
         print()
         print("Setup report saved to \(result.reportPath.path)\n")
@@ -155,7 +156,7 @@ struct SetupFullCommand: AsyncParsableCommand {
             depth: .recommended,
             options: ScoutPipelineOptions(permissionMode: .skipUnavailable, minimumConfidence: 0.7)
         )
-        let result = try await runCommissioning(
+        let ctx = CommissioningContext(
             config: config,
             hardware: hardware,
             profile: .developer,
@@ -164,7 +165,10 @@ struct SetupFullCommand: AsyncParsableCommand {
             daemonHost: daemonHost,
             daemonPort: daemonPort,
             startDaemon: !skipDaemonStart,
-            daemonStartTimeout: daemonStartTimeout,
+            daemonStartTimeout: daemonStartTimeout
+        )
+        let result = try await runCommissioning(
+            ctx,
             scoutSummary: "Scout collected \(scoutResult.recordsCollected) record(s) and generated \(scoutResult.candidatesGenerated) candidate(s)."
         )
         print("Full baseline complete.")
