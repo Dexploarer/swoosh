@@ -23,7 +23,7 @@ public actor OpenAIResponsesProvider: ToolCallingModelProviding, EmbeddingProvid
     private let http: any HTTPClient
     private let baseURL: String
 
-    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(),
+    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(purpose: "provider:openai"),
                 baseURL: String = "https://api.openai.com") {
         self.secrets = secrets; self.http = http; self.baseURL = baseURL
     }

@@ -21,7 +21,7 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingPr
     private let http: any HTTPClient
     private let baseURL: String
 
-    public init(http: any HTTPClient = URLSessionHTTPClient(),
+    public init(http: any HTTPClient = URLSessionHTTPClient(purpose: "provider:local-openai-compat"),
                 baseURL: String = "http://127.0.0.1:11434/v1") {
         self.http = http; self.baseURL = baseURL
     }
@@ -291,7 +291,7 @@ public struct LocalProviderDiscovery: Sendable {
 
     /// Probe common local inference endpoints
     public func discover() async -> [DiscoveredProvider] {
-        let http = URLSessionHTTPClient()
+        let http = URLSessionHTTPClient(purpose: "provider:local-openai-compat")
         var found: [DiscoveredProvider] = []
 
         let endpoints = [

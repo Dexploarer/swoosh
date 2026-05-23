@@ -6,7 +6,7 @@ sidebar_position: 5
 
 # Module Map
 
-Swoosh is sliced into ~54 single-purpose modules in `Sources/`. The dependency hierarchy flows from `SwooshKit` (the public SDK) through `SwooshCore` (the agent kernel) down into the tool, provider, and storage layers.
+Swoosh is sliced into ~51 single-purpose modules in `Sources/`. The dependency hierarchy flows from `SwooshKit` (the public SDK) through `SwooshCore` (the agent kernel) down into the tool, provider, and storage layers.
 
 ## Core SDK
 
@@ -25,7 +25,6 @@ Swoosh is sliced into ~54 single-purpose modules in `Sources/`. The dependency h
 | `SwooshTools` | Typed `SwooshTool` protocol, `ToolRegistry` actor, `ToolsetID` enum, `TypeErasedTool<T>`. |
 | `SwooshToolsets` | Concrete tool implementations: `CoreTools`, `FileTools`, `GitTools`, `JupiterSwapTools`, `HyperliquidTradeTools`, etc. Registered via `DefaultToolRegistrar`. |
 | `SwooshFirewall` | **Only** permission enforcement point. `SwooshFirewallActor` denies any permission not explicitly granted. `SwooshAuditLog` is the in-memory audit impl. |
-| `SwooshMacros` / `SwooshMacroPlugin` | Compile-time `@SwooshTool` macro infrastructure (swift-syntax 600). |
 
 ## Memory & Personalization
 
@@ -58,16 +57,34 @@ Swoosh is sliced into ~54 single-purpose modules in `Sources/`. The dependency h
 | `SwooshProviders` | Remote adapters: `OpenAIResponsesProvider`, `OpenRouterProvider`, `LocalOpenAICompatibleProvider`, `ElizaCloudProvider`, routed by `ProviderRouter`. |
 | `SwooshMLX` | Local Apple-silicon inference via MLXLLM/MLXVLM. Select with `SWOOSH_MLX_MODEL`. |
 | `SwooshFoundation` | Apple Foundation Models structured-output adapter. |
+| `SwooshLocalLLM` | LiteRT/Gemma on-device LLM executor (Option B path). |
 | `SwooshModels` | Model catalog + Hugging Face discovery. |
 
-## MCP & Integrations
+## Modality Routers
+
+| Module | Purpose |
+|--------|---------|
+| `SwooshCapabilities` | Unified `CapabilityRouter` + status snapshot for the post-LLM modalities. UserDefaults-driven, hot-swappable provider keys via `SwooshSecrets`. |
+| `SwooshSTT` | Speech-to-text router; Apple Speech default with cloud fallbacks. |
+| `SwooshVoiceProviders` | TTS providers (ElevenLabs, Cartesia, OpenAI) + `StreamingTTSPlayer`. |
+| `SwooshLocalVoice` | On-device TTS via Kokoro ANE (cloning, device policy, downloader). |
+| `SwooshMusic` | Music generation providers (StableAudio, Suno, ElevenLabs). |
+| `SwooshVision` | Apple Vision wrapper — OCR, depth, foreground mask, document/face. |
+| `SwooshTranslation` | Apple Translation + OpenAI fallback. |
+| `SwooshEmbeddings` | Apple NaturalLanguage + OpenAI-compat fallback. |
+| `SwooshImageGen` | Apple Image Playground + FAL/OpenAI cloud fallback. |
+
+## Crypto
+
+| Module | Purpose |
+|--------|---------|
+| `SwooshWallet` | Multi-chain RPC client with endpoint failover. |
+
+## MCP
 
 | Module | Purpose |
 |--------|---------|
 | `SwooshMCP` | Model Context Protocol — stdio client, JSON-RPC transport, server registry. Agent-facing tools: `mcp.list_servers`, `mcp.list_tools`, `mcp.call`. |
-| `SwooshMCPAuth` | Auth helpers for MCP server connections. |
-| `SwooshIntegrations` | Third-party integration adapters. |
-| `SwooshGateway` | Network gateway and proxy layer. |
 
 ## UI
 
@@ -75,6 +92,7 @@ Swoosh is sliced into ~54 single-purpose modules in `Sources/`. The dependency h
 |--------|---------|
 | `SwooshUI` | Dashboard, menu bar, toolbar, theme editor, drag-drop, Inspector, Tips, Spatial (RealityView orb / Model3D), Spotlight indexer, FocusFilter, Live Activities, WritingTools + Image Playground hooks, generative surface host. |
 | `SwooshGenerativeUI` | Agent-emitted UI (A2UI-shaped): typed `UIComponent` enum, `UISurfaceUpdate` wire format, `ComponentCatalog` security gate, `UIRenderer` SwiftUI walker. |
+| `SwooshWidgets` | Widget extension types + App Group `WidgetDataBridge`. |
 
 ## Infrastructure
 
@@ -83,18 +101,16 @@ Swoosh is sliced into ~54 single-purpose modules in `Sources/`. The dependency h
 | `SwooshAPI` | Hummingbird HTTP API server (`swooshd`'s `/api/*` routes). |
 | `SwooshDaemon` | `swooshd` entry point; supervises `actantdb` subprocess. |
 | `SwooshCLI` | `swift-argument-parser` entry point, all subcommands. |
-| `SwooshObservability` | Structured logging, tracing, metrics. |
-| `SwooshNetworkPolicy` | Network egress controls. |
-| `SwooshSandbox` | Process sandboxing utilities. |
+| `SwooshCLIRunner` | Exec entry point for the `swoosh` binary. |
+| `SwooshNetworkPolicy` | Per-host egress allow/deny gate for outbound HTTP, fanout to `AuditLogging`. Composes with `SwooshFirewall`'s coarse `.networkAccess` permission. |
 | `SwooshProcess` | Child-process management helpers. |
-| `SwooshBench` | Reliability benchmarks (tool validity, memory precision, replay determinism). |
 | `SwooshTUI` | Terminal UI primitives for the REPL. |
-| `SwooshLSP` | sourcekit-lsp integration. |
 | `SwooshDoctor` | System health check implementations. |
-| `SwooshInstaller` | Install / update helpers. |
 | `SwooshChatSDK` | Typed chat message types and session management. |
-| `SwooshPlugins` | Plugin host for runtime-loaded extensions. |
-| `SwooshMedia` | Media generation tool surface. |
+| `SwooshPlugins` | Plugin manifest + runtime types (cross-platform). |
+| `SwooshPluginRuntime` | Plugin host with Swift/Exec/WASM/WASI/MCP-bridge executors (macOS/Linux). |
+| `SwooshDemoPlugins` | Bundled reference plugins (HelloSwift, HelloExec, HelloWasm, HelloWasi). |
 | `SwooshApprovals` | Approval center UI and request routing. |
 | `SwooshDaemonSupport` | Shared helpers used by the daemon. |
 | `SwooshProviderBridge` | Bridge layer between provider adapters and the kernel. |
+| `SwooshFiles` | Bookmark-resolved file access with bounds, glob, and depth clamps. |

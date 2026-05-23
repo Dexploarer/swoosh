@@ -23,7 +23,7 @@ public actor ElizaCloudProvider: ModelProviding {
     private let http: any HTTPClient
     private let baseURL: String
 
-    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(),
+    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(purpose: "provider:eliza-cloud"),
                 baseURL: String = "https://elizacloud.ai/api/v1") {
         self.secrets = secrets; self.http = http; self.baseURL = baseURL
     }

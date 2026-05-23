@@ -24,7 +24,7 @@ public actor OpenRouterProvider: StreamingModelProviding {
     private let http: any HTTPClient
     private let baseURL: String
 
-    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(),
+    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(purpose: "provider:openrouter"),
                 baseURL: String = "https://openrouter.ai/api/v1") {
         self.secrets = secrets; self.http = http; self.baseURL = baseURL
     }
@@ -205,7 +205,7 @@ public actor OpenRouterPKCEAuth {
     private let http: any HTTPClient
     private var pendingVerifier: String?
 
-    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient()) {
+    public init(secrets: any SecretStoring, http: any HTTPClient = URLSessionHTTPClient(purpose: "provider:openrouter")) {
         self.secrets = secrets; self.http = http
     }
 
