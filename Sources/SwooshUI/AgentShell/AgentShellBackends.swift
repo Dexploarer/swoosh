@@ -23,17 +23,27 @@ import SwooshModels
 
 public enum AgentShellBackends {
 
+    /// Maps a `ChatResponse.modelUsed` string to a display name when the
+    /// response was served by a known on-device fallback model. Return nil
+    /// for daemon-served turns so no badge appears. Callers on iOS pass a
+    /// closure backed by `LiteRTModelCatalog`; macOS leaves it nil.
+    public typealias LocalModelClassifier = @Sendable (String) -> String?
+
     /// Direct executor backend. No offline buffering — if the daemon is
     /// unreachable, the send surfaces as an error message in the chat.
     public static func swooshExecutor(
         _ executor: any SwooshExecutor,
-        sessionID: String = "default"
+        sessionID: String = "default",
+        localModelClassifier: LocalModelClassifier? = nil
     ) -> AgentSendHandler {
         return { @MainActor text, shell in
             let request = chatRequest(sessionID: sessionID, input: text, shell: shell)
             do {
                 let response = try await executor.run(request)
-                shell.messages.append(.init(role: .agent, text: response.message))
+                let localName = localModelClassifier?(response.modelUsed)
+                shell.messages.append(
+                    .init(role: .agent, text: response.message, localModelName: localName)
+                )
             } catch {
                 shell.messages.append(
                     .init(role: .agent,
@@ -54,7 +64,8 @@ public enum AgentShellBackends {
     public static func offlineCached(
         executor: any SwooshExecutor,
         cache: OfflineMessageCache,
-        sessionID: String = "default"
+        sessionID: String = "default",
+        localModelClassifier: LocalModelClassifier? = nil
     ) -> AgentSendHandler {
         return { @MainActor text, shell in
             // Persist user turn locally immediately so it survives a
@@ -66,7 +77,10 @@ public enum AgentShellBackends {
             let request = chatRequest(sessionID: sessionID, input: text, shell: shell)
             do {
                 let response = try await executor.run(request)
-                shell.messages.append(.init(role: .agent, text: response.message))
+                let localName = localModelClassifier?(response.modelUsed)
+                shell.messages.append(
+                    .init(role: .agent, text: response.message, localModelName: localName)
+                )
                 shell.syncState = .online
                 await cache.append(
                     .init(sessionID: sessionID, role: .agent, text: response.message)

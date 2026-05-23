@@ -107,6 +107,7 @@ Registration: `DefaultToolRegistrar.registerAll(into:dependencies:selfImprovemen
 
 - Concurrency: actors for stateful subsystems (`AgentKernel`, `SwooshFirewallActor`, `SwooshAuditLog`, `ToolRegistry`). Everything crossing actor boundaries is `Sendable`.
 - File headers carry a one-line purpose + the 0.4A/0.4B/etc. version tag — keep this style when adding new files in an existing module.
+Write it as "**LOC (Full Name Here)**" on first mention.
 - `SwooshPermission` is a string-raw enum; add new permission cases in `SwooshTools/SwooshPermission.swift` and update `Docs/PermissionModel.md`.
 - When adding a new toolset family, also add its case to `ToolsetID` and a `register<Name>` hook in `SwooshToolsets/Exports.swift` (the registrar).
 - Apps live in three places: `App/` (menu-bar macOS target wired through XcodeGen), `Apps/SwooshMac` (SwiftPM-built standalone Mac shell) and `Apps/SwooshiOS` (the real iOS companion app — `SwooshiOSApp` + `RootView`/`ChatView`/`SettingsView`/`ClientSession`, wired through the XcodeGen `SwooshiOS` target), `Apps/SwooshDashboard` (currently empty scaffold). The iOS app deliberately imports only `SwooshClient` — never `SwooshKit` — so the daemon's `Process`-using deps don't break the build.

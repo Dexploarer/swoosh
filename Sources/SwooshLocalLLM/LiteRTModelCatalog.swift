@@ -1,5 +1,3 @@
-#if os(iOS)
-
 // SwooshLocalLLM/LiteRTModelCatalog.swift — 0.9S On-device model catalog
 //
 // Built-in catalog of LiteRT-LM `.litertlm` models. Each entry records
@@ -94,5 +92,3 @@ public enum LiteRTModelCatalog {
         all.first(where: { $0.id == id })
     }
 }
-
-#endif

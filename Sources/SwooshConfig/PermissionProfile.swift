@@ -186,13 +186,15 @@ extension PermissionProfile {
                 .webSearch, .webExtract, .networkAccess, .networkRead,
                 .workflowRead, .workflowWrite, .workflowRun,
                 .skillsRead, .skillsWrite, .goalsRead, .goalsWrite,
-                .manifestRead, .manifestRun
+                .manifestRead, .manifestRun,
+                .imageGenerate
             ]
         case .automation:
             return PermissionProfile.from(preset: .developer).grantedSwooshPermissions.union([
                 .calendarRead, .calendarWrite, .remindersRead, .remindersWrite,
                 .shortcutsRun, .scheduleRead, .scheduleWrite, .scheduleRun,
-                .appUsageRead, .focusModeRead
+                .appUsageRead, .focusModeRead,
+                .videoGenerate, .threeDGenerate
             ])
         case .power:
             return Set(SwooshPermission.allCases).subtracting([

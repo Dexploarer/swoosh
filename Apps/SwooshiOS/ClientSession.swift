@@ -32,6 +32,32 @@ final class ClientSession {
         set { UserDefaults.standard.set(newValue, forKey: "swoosh.localFallback") }
     }
 
+    #if os(iOS)
+    /// The device-recommended local model, selected at session
+    /// construction by `LiteRTDevicePolicy` (RAM-aware, auto-routes to
+    /// Gemma 4 E2B on devices that can't host E4B).
+    let localModel: LiteRTModel
+
+    /// Shared downloader for the active local model. UI rows observe its
+    /// `state` for progress; the `FallbackExecutor` reads from the same
+    /// instance so a download triggered from Settings prewarms the
+    /// fallback path.
+    let localModelDownloader: LiteRTModelDownloader
+
+    init() {
+        // `recommendedModel()` queries live memory budget — call it once
+        // so the downloader and the executor target the same .litertlm.
+        // (Prior code called it twice; on a memory-pressure edge it could
+        // return different models for the two slots.)
+        let recommended = LiteRTDevicePolicy.recommendedModel()
+        self.localModel = recommended
+        self.localModelDownloader = LiteRTModelDownloader(model: recommended)
+        LocalToolDispatcher.install()
+    }
+    #else
+    init() {}
+    #endif
+
     enum HealthState: Sendable, Equatable {
         case unknown
         case ok
@@ -60,6 +86,8 @@ final class ClientSession {
         let routedRemote: any SwooshExecutor = MainActor.assumeIsolated {
             FallbackExecutor(
                 remote: remote,
+                model: localModel,
+                downloader: localModelDownloader,
                 enableLocalFallback: localFallbackEnabled
             )
         }

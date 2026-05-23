@@ -19,6 +19,9 @@
 //   4. If the local path also fails, rethrow the original remote error
 //      (so users see the more actionable network message, not a model
 //      load error).
+//
+// The downloader can be provided by the caller (so Settings UI shares one
+// `@Observable` instance with the executor) or constructed internally.
 
 import Foundation
 import SwooshClient
@@ -32,21 +35,21 @@ public actor FallbackExecutor: SwooshExecutor {
 
     @MainActor public init(
         remote: any SwooshExecutor,
-        model: LiteRTModel = LiteRTModelCatalog.defaultModel,
+        model: LiteRTModel = LiteRTDevicePolicy.recommendedModel(),
+        downloader: LiteRTModelDownloader? = nil,
         enableLocalFallback: Bool = true
     ) {
+        // When a caller supplies a pre-built downloader (typically the
+        // shared one from ClientSession so Settings UI sees the same
+        // progress state), authority over which model to load comes
+        // from the downloader — otherwise `cachedURL` and the executor
+        // could end up referencing different `.litertlm` files and the
+        // ANE would load wrong weights silently.
+        let effectiveModel = downloader?.model ?? model
         self.remote = remote
-        self.local = LiteRTLocalExecutor(model: model)
-        self.downloader = LiteRTModelDownloader(model: model)
+        self.local = LiteRTLocalExecutor(model: effectiveModel)
+        self.downloader = downloader ?? LiteRTModelDownloader(model: effectiveModel)
         self.enableLocalFallback = enableLocalFallback
-    }
-
-    /// Kick off model download in the background so the first fallback
-    /// doesn't pay the full latency tax. Safe to call repeatedly.
-    @MainActor public func prewarm() async {
-        if !downloader.isCached {
-            downloader.download()
-        }
     }
 
     public func run(_ request: ChatRequest) async throws -> ChatResponse {

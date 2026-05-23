@@ -36,14 +36,25 @@ public struct AgentShellMessage: Identifiable, Sendable, Hashable {
     public let role: Role
     public var text: String
     public let timestamp: Date
+    /// Non-nil when this turn was served by an on-device fallback model
+    /// rather than the daemon. Surfaces as a "Local · <name>" badge above
+    /// the agent text so the user can tell when the local path served.
+    public let localModelName: String?
 
     public enum Role: String, Sendable, Codable { case user, agent }
 
-    public init(id: UUID = UUID(), role: Role, text: String, timestamp: Date = .now) {
+    public init(
+        id: UUID = UUID(),
+        role: Role,
+        text: String,
+        timestamp: Date = .now,
+        localModelName: String? = nil
+    ) {
         self.id = id
         self.role = role
         self.text = text
         self.timestamp = timestamp
+        self.localModelName = localModelName
     }
 }
 

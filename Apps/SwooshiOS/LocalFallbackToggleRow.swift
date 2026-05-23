@@ -31,13 +31,21 @@ struct LocalFallbackToggleRow: View {
             }
             .onChange(of: enabled) { _, newValue in
                 session.localFallbackEnabled = newValue
+                #if os(iOS)
+                // Toggle-on prewarm: start the model download as soon as
+                // the user opts in, so the first fallback isn't blocked
+                // on a multi-GB download.
+                if newValue, !session.localModelDownloader.isCached {
+                    session.localModelDownloader.download()
+                }
+                #endif
             }
         }
     }
 
     private var footnote: String {
         #if os(iOS)
-        return "Falls back to Gemma 4 E4B (~3.65 GB) when the Mac daemon is unreachable."
+        return "Falls back to \(session.localModel.displayName) (~\(ByteCountFormatter.string(fromByteCount: session.localModel.estimatedBytes, countStyle: .file))) when the Mac daemon is unreachable."
         #else
         return "iOS only."
         #endif

@@ -21,6 +21,10 @@ import SwooshClient
 import SwooshGenerativeUI
 import SwooshUI
 import SwooshVoiceProviders
+#if os(iOS)
+import SwooshLocalLLM
+import SwooshLocalVoice
+#endif
 
 struct AgentRoot: View {
     @Environment(ClientSession.self) private var session
@@ -29,6 +33,7 @@ struct AgentRoot: View {
     @State private var voice: VoiceMode? = nil
     @State private var wiredExecutor = false
     @State private var showVoicePill = false
+    @State private var levelSource = AudioLevelSource()
 
     // Attachment pickers
     @State private var showingFileImporter = false
@@ -45,6 +50,8 @@ struct AgentRoot: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             shellSurface
+            LiquidVoiceSphere(onTap: { toggleVoicePill() })
+                .environment(levelSource)
             if showVoicePill, let voice {
                 IOSVoicePill(voice: voice, onClose: { closePill() })
                     .padding(.horizontal, 16)
@@ -55,6 +62,15 @@ struct AgentRoot: View {
         .environment(shell)
         .background(SwooshNeonTokens.Canvas.bg.ignoresSafeArea())
         .task { wireExecutor() }
+        .task {
+            // Stand up audio metering + haptics for the liquid sphere.
+            levelSource.bind(shell: shell, playback: VoiceRouter.shared.playback)
+            VoiceHapticsCoordinator.shared.start()
+        }
+        .onDisappear {
+            levelSource.detach()
+            VoiceHapticsCoordinator.shared.stop()
+        }
         .onChange(of: session.isPaired) { _, _ in
             wiredExecutor = false
             wireExecutor()
@@ -202,17 +218,49 @@ struct AgentRoot: View {
         // the user's currently-chosen cloud TTS (if configured). The
         // system fallback uses the existing AVSpeechSynthesizer path
         // via VoiceMode.speakReplies/TTSEngine.
-        let baseHandler = AgentShellBackends.swooshExecutor(executor, sessionID: session.sessionID)
+        let baseHandler = AgentShellBackends.swooshExecutor(
+            executor,
+            sessionID: session.sessionID,
+            localModelClassifier: { modelID in
+                LiteRTModelCatalog.all
+                    .first(where: { $0.id == modelID })?
+                    .displayName
+            }
+        )
         shell.send = { @MainActor text, shellModel in
             await baseHandler(text, shellModel)
-            // After the agent replies, route through the cloud TTS
-            // when the user has picked one and key is configured.
             guard let lastReply = shellModel.messages.last,
                   lastReply.role == .agent,
                   VoiceRouter.shared.isCurrentTTSConfigured(),
-                  VoiceRouter.shared.currentTTSChoice != .system,
-                  let provider = try? VoiceRouter.shared.activeCloudTTSProvider()
+                  VoiceRouter.shared.currentTTSChoice != .system
             else { return }
+            // On-device path: local provider returns a complete WAV;
+            // play through VoiceRouter.playback.
+            if let localProvider = LocalTTSResolver.provider(for: VoiceRouter.shared.currentTTSChoice) {
+                let cloneID = ActiveClonePreference.current
+                // A clone selection only applies to PocketTTS (the only
+                // engine wired to LocalVoiceCloneStore). Surface the
+                // mismatch when the user switches engines so we don't
+                // silently route Kokoro/StyleTTS2/etc. through the
+                // (irrelevant) cached clone id.
+                if cloneID != nil, VoiceRouter.shared.currentTTSChoice != .pocketTTSLocal {
+                    ActiveClonePreference.current = nil
+                }
+                do {
+                    let result: TTSResult
+                    if let cloneID, VoiceRouter.shared.currentTTSChoice == .pocketTTSLocal {
+                        result = try await localProvider.synthesize(text: lastReply.text, cloneID: cloneID)
+                    } else {
+                        result = try await localProvider.synthesize(text: lastReply.text, voiceID: nil, format: .wav)
+                    }
+                    try VoiceRouter.shared.playback.play(result)
+                } catch {
+                    // Local TTS failed — fall through silently; user still has text + system fallback.
+                }
+                return
+            }
+            // Cloud path: streamed via existing chunked player.
+            guard let provider = try? VoiceRouter.shared.activeCloudTTSProvider() else { return }
             do {
                 let stream = provider.synthesizeStream(
                     text: lastReply.text,
@@ -221,9 +269,17 @@ struct AgentRoot: View {
                 )
                 await VoiceRouter.shared.streamingPlayer.play(stream: stream, format: .mp3)
             } catch {
-                // Fall back silently — the user still gets text + system voice.
+                // Fall back silently.
             }
         }
+    }
+
+    /// Sphere-tap action: toggle the voice pill and the underlying mic.
+    /// Mirrors the toolbar mic-button behaviour so the floating sphere
+    /// becomes the natural one-handed control.
+    private func toggleVoicePill() {
+        voice?.toggle()
+        showVoicePill = voice?.isActive ?? false
     }
 
     private func closePill() {

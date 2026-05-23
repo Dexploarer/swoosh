@@ -44,7 +44,13 @@ let package = Package(
         .library(name: "SwooshModels", targets: ["SwooshModels"]),
         .library(name: "SwooshSTT", targets: ["SwooshSTT"]),
         .library(name: "SwooshVoiceProviders", targets: ["SwooshVoiceProviders"]),
+        .library(name: "SwooshLocalVoice", targets: ["SwooshLocalVoice"]),
         .library(name: "SwooshMusic", targets: ["SwooshMusic"]),
+        .library(name: "SwooshVision", targets: ["SwooshVision"]),
+        .library(name: "SwooshTranslation", targets: ["SwooshTranslation"]),
+        .library(name: "SwooshEmbeddings", targets: ["SwooshEmbeddings"]),
+        .library(name: "SwooshImageGen", targets: ["SwooshImageGen"]),
+        .library(name: "SwooshCapabilities", targets: ["SwooshCapabilities"]),
     ],
     dependencies: [
         // CLI
@@ -72,6 +78,12 @@ let package = Package(
         .package(path: "../actantDB/sdks/swift"),
         // WhisperKit — Apple Silicon-optimised speech-to-text via Core ML
         .package(url: "https://github.com/argmaxinc/WhisperKit", from: "1.0.0"),
+        // FluidAudio — frontier CoreML audio models in Swift (Kokoro TTS
+        // on ANE, VAD, diarization). Apache-2.0, drives the real Kokoro
+        // backend in SwooshLocalVoice. iOS 17+ / macOS 14+.
+        // 0.14.x lands Swift 6 strict-concurrency cleanups and an iOS 26
+        // compatibility fix (heap corruption in KokoroAne ANE path).
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", from: "0.14.7"),
         // WasmKit — embeddable WebAssembly runtime for the wasm-kind plugin
         // executor. Includes the `WAT` package so the bundled .wat demo can
         // be compiled at runtime without shipping a precompiled .wasm.
@@ -261,6 +273,46 @@ let package = Package(
             name: "SwooshApprovals",
             dependencies: ["SwooshTools"]
         ),
+        // SwooshVision — Apple Vision wrapper (OCR, depth, foreground mask,
+        // document recognition, face detection). Cross-platform.
+        .target(
+            name: "SwooshVision",
+            dependencies: []
+        ),
+        // SwooshTranslation — Apple Translation framework + OpenAI fallback.
+        // Cross-platform.
+        .target(
+            name: "SwooshTranslation",
+            dependencies: []
+        ),
+        // SwooshEmbeddings — Apple NaturalLanguage + OpenAI cloud fallback
+        // wrapped behind a single EmbeddingRouter. Cross-platform.
+        .target(
+            name: "SwooshEmbeddings",
+            dependencies: []
+        ),
+        // SwooshImageGen — Apple Image Playground + OpenAI cloud fallback.
+        // Cross-platform; the local provider gates on macOS 15.2+/iOS 18.2+.
+        // Depends on SwooshTools so cloud providers can require permissions
+        // and emit AuditEntry records through the Firewall + AuditLogging
+        // protocols (concrete impls injected daemon-side; iOS picker passes
+        // nil and the gating is a no-op).
+        .target(
+            name: "SwooshImageGen",
+            dependencies: ["SwooshTools"]
+        ),
+        // SwooshCapabilities — unified router + status snapshot for the
+        // four post-LLM modalities (Vision/Translation/Embeddings/ImageGen).
+        // Mirrors the VoiceRouter pattern: UserDefaults-driven, swappable.
+        .target(
+            name: "SwooshCapabilities",
+            dependencies: [
+                "SwooshVision",
+                "SwooshTranslation",
+                "SwooshEmbeddings",
+                "SwooshImageGen",
+            ]
+        ),
         .target(
             name: "SwooshFiles",
             dependencies: ["SwooshTools"]
@@ -399,6 +451,23 @@ let package = Package(
         .target(
             name: "SwooshVoiceProviders",
             dependencies: ["SwooshSecrets", "SwooshMusic", "SwooshSTT"]
+        ),
+
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - SwooshLocalVoice — on-device TTS (Kokoro, OmniVoice)
+        // ══════════════════════════════════════════════════════════════
+        // Mirrors SwooshLocalLLM for voice. Today the engine falls back
+        // to AVSpeechSynthesizer (so the audio loop works end-to-end);
+        // the swap point is `LocalVoiceEngine.backend`. When an ONNX
+        // Runtime / MLX-Audio / CoreML dep lands, add a Backend impl
+        // and the rest of the stack (downloader, provider, picker,
+        // Settings UI) keeps working.
+        .target(
+            name: "SwooshLocalVoice",
+            dependencies: [
+                "SwooshVoiceProviders",
+                .product(name: "FluidAudio", package: "FluidAudio"),
+            ]
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -589,6 +658,14 @@ let package = Package(
         .testTarget(
             name: "SwooshModelsTests",
             dependencies: ["SwooshModels"]
+        ),
+        .testTarget(
+            name: "SwooshLocalLLMTests",
+            dependencies: ["SwooshLocalLLM"]
+        ),
+        .testTarget(
+            name: "SwooshLocalVoiceTests",
+            dependencies: ["SwooshLocalVoice"]
         ),
         .testTarget(
             name: "SwooshFoundationTests",

@@ -10,9 +10,10 @@ Swoosh has two independent controls:
 | Profile | Firewall grants | Tool policy | Safety flags |
 |---------|-----------------|-------------|--------------|
 | `safe` | Read-only runtime, memory, audit, and network status | Restrictive, low chain depth | Locked |
-| `developer` | File, Git, Swift/Xcode, memory, workflow, skills, and provider access | Default agent policy | Locked |
-| `automation` | Developer plus calendar, reminders, scheduling, app usage, focus signals | Default agent policy | Locked |
-| `power` | Nearly all permissions except mainnet writes | Critical model calls allowed, approvals still required | Development safety |
+| `developer` | File, Git, Swift/Xcode, memory, workflow, skills, provider access, and `imageGenerate` | Default agent policy | Locked |
+| `automation` | Developer plus calendar, reminders, scheduling, app usage, focus signals, `videoGenerate`, `threeDGenerate` | Default agent policy | Locked |
+| `power` | Nearly all permissions except mainnet writes (includes all media-gen) | Critical model calls allowed, approvals still required | Development safety |
+| `trader` | Developer plus chain reads/builds/signing/broadcast and mainnet writes | Critical + human-only model calls allowed with approvals | Trader safety |
 | `autonomous` | Every `SwooshPermission` case | Full model tool access, high limits, approvals optional | All safety flags enabled |
 | `custom` | Developer defaults until edited | Default agent policy | Locked |
 
@@ -51,6 +52,18 @@ Swoosh has two independent controls:
 - CLI status: `swoosh permissions --status` prints the active profile, tool policy, and key safety flags.
 - macOS dashboard: Settings shows runtime config, every `ToolCallPolicy` field, and every `SwooshSafetyConfig` flag.
 - iOS companion: Settings reads `/api/runtime/config` and shows the paired Mac daemon profile, tool policy, and safety flags.
+
+## Media generation permissions
+
+Three permissions gate the post-LLM media surface. Distinct cases let a user grant chat-with-images without also granting shell access or trading.
+
+| Permission | Capability | Cloud requires |
+|------------|------------|----------------|
+| `imageGenerate` | Text-to-image. Local via Apple Image Playground (macOS 15.2+/iOS 18.2+), cloud via OpenAI `gpt-image-1`. | `networkAccess` for cloud |
+| `videoGenerate` | Text-to-video. Cloud-only today via FAL.ai (Veo 3, Kling, Hunyuan Video). | `networkAccess` |
+| `threeDGenerate` | Text/image-to-3D. Cloud-only today via FAL.ai (Tripo3D, Trellis, TripoSR). | `networkAccess` |
+
+Local-only `imageGenerate` (Image Playground) is granted by `.developer`+. Cloud video and 3D are granted by `.automation`+ since they imply outbound network spend.
 
 ## Approval Semantics
 

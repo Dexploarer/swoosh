@@ -42,6 +42,16 @@ public final class TTSPlayback: NSObject {
     private var queue: [TTSResult] = []
     private var positionTimer: Timer?
 
+    /// Average power of the current playback in dB (negative). nil when
+    /// nothing is playing. Used by visualisers (liquid voice sphere) and
+    /// the haptics coordinator to react to the agent's outgoing voice.
+    public func averagePowerDB() -> Float? {
+        guard let player, player.isPlaying else { return nil }
+        player.isMeteringEnabled = true
+        player.updateMeters()
+        return player.averagePower(forChannel: 0)
+    }
+
     public override init() {
         super.init()
         configureAudioSession()

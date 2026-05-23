@@ -43,17 +43,57 @@ public final class VoiceRouter {
         case elevenlabs
         case openaiTTS    = "openai-tts"
         case cartesia
+        /// On-device TTS via `SwooshLocalVoice` — Kokoro 82M (English+Mandarin, fixed voice packs).
+        case kokoroLocal  = "kokoro-local"
+        /// On-device zero-shot voice cloning via `SwooshLocalVoice` — StyleTTS2 LibriTTS.
+        case styleTTS2Local = "styletts2-local"
+        /// On-device persistent voice cloning via `SwooshLocalVoice` — PocketTTS.
+        case pocketTTSLocal = "pockettts-local"
+        /// On-device TTS via `SwooshLocalVoice` — OmniVoice (600+ languages,
+        /// voice cloning). Routed by the device policy on smaller iPhones.
+        case omniVoiceLocal = "omnivoice-local"
 
         public var id: String { rawValue }
         public var displayName: String {
             switch self {
-            case .system:     return "Apple voices (system)"
-            case .elevenlabs: return "ElevenLabs"
-            case .openaiTTS:  return "OpenAI TTS"
-            case .cartesia:   return "Cartesia Sonic"
+            case .system:           return "Apple voices (system)"
+            case .elevenlabs:       return "ElevenLabs"
+            case .openaiTTS:        return "OpenAI TTS"
+            case .cartesia:         return "Cartesia Sonic"
+            case .kokoroLocal:      return "Kokoro (on-device)"
+            case .styleTTS2Local:   return "StyleTTS2 (on-device, zero-shot clone)"
+            case .pocketTTSLocal:   return "PocketTTS (on-device, persistent clone)"
+            case .omniVoiceLocal:   return "OmniVoice (on-device, 600+ langs)"
             }
         }
-        public var requiresAPIKey: Bool { self != .system }
+        public var requiresAPIKey: Bool {
+            switch self {
+            case .system, .kokoroLocal, .styleTTS2Local, .pocketTTSLocal, .omniVoiceLocal:
+                return false
+            case .elevenlabs, .openaiTTS, .cartesia:
+                return true
+            }
+        }
+        /// True for engines that don't reach the network. Used by the
+        /// chat path to decide whether a TTS pick is offline-capable.
+        public var isLocal: Bool {
+            switch self {
+            case .system, .kokoroLocal, .styleTTS2Local, .pocketTTSLocal, .omniVoiceLocal:
+                return true
+            case .elevenlabs, .openaiTTS, .cartesia:
+                return false
+            }
+        }
+        /// True for engines that can synthesise an arbitrary cloned voice
+        /// from a reference audio file. Drives the "Clone a voice" UI.
+        public var supportsCloning: Bool {
+            switch self {
+            case .styleTTS2Local, .pocketTTSLocal, .omniVoiceLocal, .elevenlabs, .cartesia:
+                return true
+            case .system, .kokoroLocal, .openaiTTS:
+                return false
+            }
+        }
         public var providerID: String { rawValue }
     }
 
@@ -65,11 +105,13 @@ public final class VoiceRouter {
         set { UserDefaults.standard.set(newValue.rawValue, forKey: "swoosh.voice.ttsEngine") }
     }
 
-    /// Build the active cloud TTS provider. Returns nil for `.system`
-    /// (which lives in SwooshUI's `TTSEngine` — call that directly).
+    /// Build the active TTS provider conforming to `TTSProviding`.
+    /// Returns nil for `.system` (which lives in SwooshUI's `TTSEngine`)
+    /// and for the on-device choices (which need the SwooshLocalVoice
+    /// module — wired by `activeTTSProvider()` in module clients).
     public func activeCloudTTSProvider() throws -> (any TTSProviding)? {
         switch currentTTSChoice {
-        case .system:
+        case .system, .kokoroLocal, .styleTTS2Local, .pocketTTSLocal, .omniVoiceLocal:
             return nil
         case .elevenlabs:
             return ElevenLabsTTSProvider(
