@@ -141,11 +141,7 @@ func commissionLocalRuntime(
 ) async throws -> SetupCommissioningResult {
     try config.ensureDirectories()
     let tokenPath = config.apiTokenFile
-    if !FileManager.default.fileExists(atPath: tokenPath.path) {
-        let token = try generateBearerToken()
-        try token.write(to: tokenPath, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tokenPath.path)
-    }
+    _ = try ensureBearerTokenFile(at: tokenPath)
 
     let runtimeConfig = SwooshRuntimeConfig(
         setupMode: mode,
@@ -248,7 +244,14 @@ private func verifiedReadiness(
 private func makeReadinessClient(config: SwooshConfigStore, host: String, port: Int) -> SwooshAPIClient {
     let token = (try? String(contentsOf: config.apiTokenFile, encoding: .utf8))?
         .trimmingCharacters(in: .whitespacesAndNewlines)
-    let baseURL = URL(string: "http://\(host):\(port)")!
+    var components = URLComponents()
+    components.scheme = "http"
+    components.host = host
+    components.port = port
+    // Should never fail with a valid host string; if it does, fall back
+    // to a loopback URL so the caller can surface a real network error
+    // instead of crashing the CLI.
+    let baseURL = components.url ?? URL(string: "http://127.0.0.1:\(port)")!
     return SwooshAPIClient(baseURL: baseURL, token: token)
 }
 

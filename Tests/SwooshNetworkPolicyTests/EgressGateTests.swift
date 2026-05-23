@@ -141,21 +141,21 @@ struct EgressGateAuditTests {
         EgressRequest(host: host, port: nil, scheme: scheme, method: "GET", purpose: "provider:openai")
     }
 
-    @Test("Allow decisions emit a toolCallStarted audit entry")
+    @Test("Allow decisions emit an egressAllowed audit entry")
     func allowEmits() async throws {
         let auditor = CollectingAuditor()
         let gate = EgressGate(configuration: .permissive, auditor: auditor)
         _ = await gate.evaluate(req("api.openai.com"))
         let snapshot = await auditor.snapshot()
         #expect(snapshot.count == 1)
-        #expect(snapshot.first?.kind == .toolCallStarted)
+        #expect(snapshot.first?.kind == .egressAllowed)
         #expect(snapshot.first?.detail.contains("egress.allow") == true)
         #expect(snapshot.first?.detail.contains("api.openai.com") == true)
         #expect(snapshot.first?.detail.contains("provider:openai") == true)
         #expect(snapshot.first?.success == true)
     }
 
-    @Test("Deny decisions emit a permissionDenied audit entry with reason")
+    @Test("Deny decisions emit an egressDenied audit entry with reason")
     func denyEmits() async throws {
         let auditor = CollectingAuditor()
         let gate = EgressGate(
@@ -165,7 +165,7 @@ struct EgressGateAuditTests {
         _ = await gate.evaluate(req("bad.example"))
         let snapshot = await auditor.snapshot()
         #expect(snapshot.count == 1)
-        #expect(snapshot.first?.kind == .permissionDenied)
+        #expect(snapshot.first?.kind == .egressDenied)
         #expect(snapshot.first?.detail.contains("egress.deny") == true)
         #expect(snapshot.first?.detail.contains("denylist") == true)
         #expect(snapshot.first?.success == false)

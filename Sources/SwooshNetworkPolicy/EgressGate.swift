@@ -118,11 +118,11 @@ public actor EgressGate: NetworkPolicy {
         let success: Bool
         switch decision {
         case .allow:
-            kind = .toolCallStarted // closest existing kind for "egress allowed"
+            kind = .egressAllowed
             detail = "egress.allow \(request.scheme)://\(request.host) [\(request.purpose)]"
             success = true
         case let .deny(reason):
-            kind = .permissionDenied
+            kind = .egressDenied
             detail = "egress.deny \(request.scheme)://\(request.host) [\(request.purpose)]: \(reason)"
             success = false
         }

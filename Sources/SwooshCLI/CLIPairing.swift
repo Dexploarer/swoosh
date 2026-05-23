@@ -1,8 +1,12 @@
-// SwooshCLI/CLIPairing.swift — QR + local-IP helpers for daemon pairing — 0.4A
+// SwooshCLI/CLIPairing.swift — QR + local-IP helpers for daemon pairing — 0.4B
 //
 // Pulled out of DaemonPairCommand so the menu-bar app can reuse the same
 // QR + IP discovery when it grows its own pairing surface, and so the
 // CLI command file stays a thin dispatch shell.
+//
+// 0.4B revision: no force unwraps in the `getifaddrs` walk; QR pixels
+// rendered at 1× (terminal-sized) instead of 10× (off-screen); interface
+// name match expanded to include Linux `eth*` / `wlan*` prefixes.
 
 import Foundation
 #if canImport(CoreImage)
@@ -17,8 +21,11 @@ import SystemConfiguration
 
 enum CLIPairing {
     /// Render `string` as an ASCII-art QR code, or `nil` when CoreImage
-    /// is unavailable (Linux CI). The bitmap is upscaled 10× so terminals
-    /// can resolve module boundaries even on retina-shrunken windows.
+    /// is unavailable (Linux CI). Pixels are rendered at 1× so the result
+    /// fits inside a typical 80-column terminal — QR codes are usually
+    /// 25–45 modules per side and a 2-char ASCII cell keeps the aspect
+    /// ratio readable. Earlier revisions used a 10× scale which produced
+    /// output too wide to scan from a terminal.
     static func generateQRCode(from string: String) -> String? {
         #if canImport(CoreImage) && canImport(AppKit)
         guard let data = string.data(using: .utf8) else { return nil }
@@ -28,12 +35,8 @@ enum CLIPairing {
 
         guard let outputImage = filter.outputImage else { return nil }
 
-        let scaleX = 10.0
-        let scaleY = 10.0
-        let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-
         let context = CIContext()
-        guard let cgImage = context.createCGImage(scaledImage, from: scaledImage.extent) else { return nil }
+        guard let cgImage = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
 
         let width = cgImage.width
         let height = cgImage.height
@@ -86,27 +89,26 @@ enum CLIPairing {
         guard getifaddrs(&ifaddr) == 0 else { return nil }
         defer { freeifaddrs(ifaddr) }
 
-        var ptr = ifaddr
-        while ptr != nil {
-            let interface = ptr!.pointee
-            ptr = interface.ifa_next   // advance early so `continue` is safe
+        var cursor = ifaddr
+        while let currentPtr = cursor {
+            let interface = currentPtr.pointee
+            cursor = interface.ifa_next   // advance early so `continue` is safe
             // `ifa_addr` is documented to be NULL for some interface types
             // (per getifaddrs(3)). Dereferencing without a check crashes.
             guard let addrPtr = interface.ifa_addr else { continue }
-            if addrPtr.pointee.sa_family == UInt8(AF_INET) {
-                let name = String(cString: interface.ifa_name)
-                if name == "en0" || name.hasPrefix("en") || name.hasPrefix("wl") {
-                    var addr = addrPtr.pointee
-                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                    getnameinfo(&addr, socklen_t(addr.sa_len), &hostname, socklen_t(hostname.count), nil, socklen_t(0), NI_NUMERICHOST)
-                    let ip = hostname.withUnsafeBufferPointer { buf in
-                        String(cString: buf.baseAddress!)
-                    }
-                    if !ip.hasPrefix("127.") && !ip.hasPrefix("169.") {
-                        address = ip
-                        break
-                    }
-                }
+            guard addrPtr.pointee.sa_family == UInt8(AF_INET) else { continue }
+            let name = String(cString: interface.ifa_name)
+            guard Self.isInterestingInterface(name) else { continue }
+            var addr = addrPtr.pointee
+            var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            getnameinfo(&addr, socklen_t(addr.sa_len), &hostname, socklen_t(hostname.count), nil, socklen_t(0), NI_NUMERICHOST)
+            guard let ip = hostname.withUnsafeBufferPointer({ buf -> String? in
+                guard let base = buf.baseAddress else { return nil }
+                return String(cString: base)
+            }) else { continue }
+            if !ip.hasPrefix("127.") && !ip.hasPrefix("169.") {
+                address = ip
+                break
             }
         }
 
@@ -124,5 +126,13 @@ enum CLIPairing {
             return nil
         }
         return String(data: data, encoding: .utf8)
+    }
+
+    /// Interface name match for `localIPAddress`. macOS uses `en*`,
+    /// Linux uses `eth*` / `wlan*` / `wl*`, FreeBSD wireless uses `wlan*`.
+    /// Loopback / docker / utun / bridge / etc. are intentionally excluded.
+    static func isInterestingInterface(_ name: String) -> Bool {
+        let prefixes = ["en", "eth", "wl", "wlan"]
+        return prefixes.contains(where: { name.hasPrefix($0) })
     }
 }

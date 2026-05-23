@@ -24,15 +24,11 @@ struct DaemonPairCommand: AsyncParsableCommand {
         let config = makeSwooshConfigStore(configDirectory: configDirectory)
         let tokenPath = config.apiTokenFile
 
-        if !FileManager.default.fileExists(atPath: tokenPath.path) {
-            let token = try generateBearerToken()
-            try token.write(to: tokenPath, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tokenPath.path)
-        }
-
-        let tokenContent = try? String(contentsOf: tokenPath, encoding: .utf8)
-        guard let token = tokenContent?.trimmingCharacters(in: .whitespacesAndNewlines), !token.isEmpty else {
-            print("✗ Failed to read API token from \(tokenPath.path)")
+        let token: String
+        do {
+            token = try ensureBearerTokenFile(at: tokenPath)
+        } catch {
+            print("✗ Failed to mint or read API token at \(tokenPath.path): \(error)")
             return
         }
 
