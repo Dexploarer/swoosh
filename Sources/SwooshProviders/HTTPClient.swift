@@ -1,8 +1,12 @@
-// SwooshProviders/HTTPClient.swift — 0.9P HTTP Client Abstraction
+// SwooshProviders/HTTPClient.swift — 0.9Q HTTP Client Abstraction
 //
-// Real URLSession transport. Mockable for tests.
+// Real URLSession transport. Mockable for tests. Every outbound request
+// flows through a `NetworkPolicy` (default: `AllowAllNetworkPolicy`) so
+// the daemon can lock egress down to an allowlist without each provider
+// re-implementing the gate.
 
 import Foundation
+import SwooshNetworkPolicy
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - HTTP client protocol
@@ -36,12 +40,28 @@ public enum HTTPError: Error, Sendable {
 
 public struct URLSessionHTTPClient: HTTPClient {
     private let session: URLSession
+    private let policy: any NetworkPolicy
+    private let purpose: String
 
-    public init(session: URLSession = .shared) {
+    /// - Parameters:
+    ///   - session: URLSession to use. Defaults to `.shared`.
+    ///   - policy: Per-host egress gate. Defaults to permissive so
+    ///     existing callers stay unchanged; the daemon constructs with
+    ///     a real `EgressGate` to enforce its allow/deny list.
+    ///   - purpose: Short label included in policy decisions and audit
+    ///     entries (e.g. `"provider:openai"`, `"rpc:solana"`).
+    public init(
+        session: URLSession = .shared,
+        policy: any NetworkPolicy = AllowAllNetworkPolicy(),
+        purpose: String = "http"
+    ) {
         self.session = session
+        self.policy = policy
+        self.purpose = purpose
     }
 
     public func send(_ request: URLRequest) async throws -> HTTPResponse {
+        try await preflight(request)
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPError.networkError("Not an HTTP response")
@@ -63,6 +83,7 @@ public struct URLSessionHTTPClient: HTTPClient {
     }
 
     public func sendStreaming(_ request: URLRequest) async throws -> (URLResponse, AsyncThrowingStream<Data, Error>) {
+        try await preflight(request)
         let (bytes, response) = try await session.bytes(for: request)
         let stream = AsyncThrowingStream<Data, Error> { continuation in
             Task {
@@ -77,6 +98,22 @@ public struct URLSessionHTTPClient: HTTPClient {
             }
         }
         return (response, stream)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // MARK: - Egress preflight
+    // ═══════════════════════════════════════════════════════════════
+
+    private func preflight(_ request: URLRequest) async throws {
+        guard let egress = EgressRequest(request: request, purpose: purpose) else {
+            // Missing host — let URLSession surface the configuration
+            // error; not a policy denial.
+            return
+        }
+        let decision = await policy.evaluate(egress)
+        if case let .deny(reason) = decision {
+            throw EgressDeniedError(request: egress, reason: reason)
+        }
     }
 }
 

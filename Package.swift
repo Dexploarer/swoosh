@@ -51,6 +51,7 @@ let package = Package(
         .library(name: "SwooshEmbeddings", targets: ["SwooshEmbeddings"]),
         .library(name: "SwooshImageGen", targets: ["SwooshImageGen"]),
         .library(name: "SwooshCapabilities", targets: ["SwooshCapabilities"]),
+        .library(name: "SwooshNetworkPolicy", targets: ["SwooshNetworkPolicy"]),
         .library(name: "SwooshCLI",          targets: ["SwooshCLI"]),
     ],
     dependencies: [
@@ -222,7 +223,8 @@ let package = Package(
         ),
         .target(name: "SwooshFoundation", dependencies: ["SwooshCore", "SwooshClient"]),   // Apple Foundation Models adapter
         .target(name: "SwooshSecrets",    dependencies: ["SwooshTools"]),   // Keychain + SecretRef + SecretResolving
-        .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets", "SwooshModels"]),
+        .target(name: "SwooshNetworkPolicy", dependencies: ["SwooshTools"]),   // Per-host outbound HTTP gate + audit fanout
+        .target(name: "SwooshProviders",  dependencies: ["SwooshTools", "SwooshSecrets", "SwooshModels", "SwooshNetworkPolicy"]),
         .target(
             name: "SwooshProviderBridge",
             dependencies: ["SwooshCore", "SwooshProviders", "SwooshSecrets", "SwooshTools", "SwooshModels", "SwooshMLX"]
@@ -520,6 +522,10 @@ let package = Package(
         .testTarget(
             name: "SwooshApprovalsTests",
             dependencies: ["SwooshApprovals", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshNetworkPolicyTests",
+            dependencies: ["SwooshNetworkPolicy", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshBoardTests",
