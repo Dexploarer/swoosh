@@ -24,23 +24,30 @@ public enum SwooshGenerativeUISentinel {
         return try enc.encode(Wrapper(_swoosh_ui: surface))
     }
 
-    /// Decode a surface from a tool-output blob carrying the sentinel.
-    /// Returns nil when the blob isn't a surface envelope.
-    public static func decode(_ data: Data) -> UISurfaceUpdate? {
+    public static func decode(_ data: Data) throws -> UISurfaceUpdate? {
         struct Wrapper: Decodable {
-            let _swoosh_ui: UISurfaceUpdate
-            enum CodingKeys: String, CodingKey { case _swoosh_ui }
+            let surface: UISurfaceUpdate?
+
+            enum CodingKeys: String, CodingKey {
+                case surface = "_swoosh_ui"
+            }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                guard container.contains(.surface) else {
+                    self.surface = nil
+                    return
+                }
+                self.surface = try container.decode(UISurfaceUpdate.self, forKey: .surface)
+            }
         }
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
-        return (try? dec.decode(Wrapper.self, from: data))?._swoosh_ui
+        return try dec.decode(Wrapper.self, from: data).surface
     }
 
-    /// Inspect a string output for a sentinel surface (UTF-8). Cheap path
-    /// when the tool returns its JSON as a string instead of `JSONValue`.
-    public static func decode(from string: String) -> UISurfaceUpdate? {
-        guard let data = string.data(using: .utf8) else { return nil }
-        return decode(data)
+    public static func decode(from string: String) throws -> UISurfaceUpdate? {
+        try decode(Data(string.utf8))
     }
 }
 

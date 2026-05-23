@@ -118,6 +118,16 @@ public enum UIComponentBody: Codable, Sendable, Hashable {
         }
     }
 
+    public static let builtInTypeNames: Set<String> = [
+        "text", "heading", "caption", "markdown", "code",
+        "column", "row", "grid", "stack", "spacer", "divider",
+        "card", "glassPanel", "section", "scrollContainer",
+        "statusChip", "badge", "progress", "meter", "loadingDots",
+        "image", "avatar",
+        "button", "link", "toggle",
+        "list", "chart", "keyValue", "table",
+    ]
+
     /// IDs of children referenced by this body (for graph traversal + diffing).
     public var childIDs: [String] {
         switch self {

@@ -33,22 +33,7 @@ public struct ComponentCatalog: Sendable, Equatable {
     // MARK: - Built-in catalogs
 
     /// The standard catalog — every built-in body. Most hosts want this.
-    public static let standard = ComponentCatalog(allowedTypes: [
-        // Text
-        "text", "heading", "caption", "markdown", "code",
-        // Layout
-        "column", "row", "grid", "stack", "spacer", "divider",
-        // Containers
-        "card", "glassPanel", "section", "scrollContainer",
-        // Indicators
-        "statusChip", "badge", "progress", "meter", "loadingDots",
-        // Media
-        "image", "avatar",
-        // Interaction
-        "button", "link", "toggle",
-        // Data
-        "list", "chart", "keyValue", "table",
-    ])
+    public static let standard = ComponentCatalog(allowedTypes: UIComponentBody.builtInTypeNames)
 
     /// Minimal catalog — text + layout only. Use for unverified or low-trust
     /// agents where rich widgets shouldn't be exposed.

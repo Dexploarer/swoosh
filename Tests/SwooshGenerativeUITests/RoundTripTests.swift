@@ -27,11 +27,21 @@ final class RoundTripTests: XCTestCase {
     func testEnvelopeWrap() throws {
         let surface = UISurfaceUpdate.sample()
         let envelope = try SwooshGenerativeUISentinel.envelope(for: surface)
-        guard let recovered = SwooshGenerativeUISentinel.decode(envelope) else {
+        guard let recovered = try SwooshGenerativeUISentinel.decode(envelope) else {
             return XCTFail("Failed to recover surface from envelope")
         }
         XCTAssertEqual(recovered.surfaceID, surface.surfaceID)
         XCTAssertEqual(recovered.rootID, surface.rootID)
+    }
+
+    func testEnvelopeDecodeReturnsNilWhenSentinelAbsent() throws {
+        let data = Data(#"{"message":"plain tool output"}"#.utf8)
+        XCTAssertNil(try SwooshGenerativeUISentinel.decode(data))
+    }
+
+    func testEnvelopeDecodeThrowsWhenSentinelMalformed() {
+        let data = Data(#"{"_swoosh_ui":{"surfaceID":"broken"}}"#.utf8)
+        XCTAssertThrowsError(try SwooshGenerativeUISentinel.decode(data))
     }
 
     func testValidationFlagsBrokenRoot() {
@@ -130,10 +140,118 @@ final class RoundTripTests: XCTestCase {
         XCTAssertTrue(combined.allows("button"))
     }
 
+    func testStandardCatalogMatchesBuiltInTypes() {
+        XCTAssertEqual(ComponentCatalog.standard.allowedTypes, UIComponentBody.builtInTypeNames)
+    }
+
+    func testRepresentativeBodiesMatchBuiltInTypes() {
+        let bodies: [UIComponentBody] = [
+            .text(""),
+            .heading("", level: 1),
+            .caption(""),
+            .markdown(""),
+            .code("", language: nil),
+            .column(children: [], spacing: nil, alignment: nil),
+            .row(children: [], spacing: nil, alignment: nil),
+            .grid(children: [], columns: 1, spacing: nil),
+            .stack(children: []),
+            .spacer(minLength: nil),
+            .divider,
+            .card(child: "", title: nil, subtitle: nil),
+            .glassPanel(child: ""),
+            .section(child: "", header: nil, footer: nil),
+            .scrollContainer(child: "", axis: nil),
+            .statusChip(label: "", tint: "accent", systemImage: nil),
+            .badge(label: "", count: nil, tint: nil),
+            .progress(value: 0, label: nil),
+            .meter(value: 0, range: ClosedRangePair(0, 1), label: nil),
+            .loadingDots,
+            .image(systemName: nil, url: nil, size: nil),
+            .avatar(systemName: nil, url: nil, label: nil),
+            .button(label: "", action: .noop, systemImage: nil, style: nil),
+            .link(label: "", url: "https://example.com"),
+            .toggle(label: "", isOn: false, action: .noop),
+            .list(items: [], style: nil),
+            .chart(series: [], kind: "line", title: nil),
+            .keyValue(pairs: []),
+            .table(columns: [], rows: []),
+        ]
+        XCTAssertEqual(Set(bodies.map(\.typeName)), UIComponentBody.builtInTypeNames)
+    }
+
     func testDisablingToolCallsBlocksAction() {
         let cat = ComponentCatalog.standard.disablingToolCalls()
         XCTAssertFalse(cat.allowsToolCalls)
         XCTAssertFalse(cat.allows(.toolCall(name: "x", arguments: [:])))
         XCTAssertTrue(cat.allows(.openURL("https://example.com")))
+    }
+
+    func testToolCallPolicyCanBlockToggleActionsEvenWhenToggleRenders() {
+        let cat = ComponentCatalog.standard.disablingToolCalls()
+        XCTAssertTrue(cat.allows("toggle"))
+        XCTAssertFalse(cat.allows(.toolCall(name: "x", arguments: [:])))
+    }
+
+    func testHexParserRejectsMalformedHex() {
+        XCTAssertNil(parseHexColor("#zzzzzz"))
+        XCTAssertNil(parseHexColor("#12"))
+        XCTAssertNil(parseHexColor("#abg"))
+        XCTAssertNil(parseHexColor("##abc"))
+        XCTAssertNil(parseHexColor("abc#"))
+        XCTAssertEqual(parseHexColor("#abc"), RGBColor(
+            red: 170.0 / 255.0,
+            green: 187.0 / 255.0,
+            blue: 204.0 / 255.0
+        ))
+    }
+
+    func testTableRowsNormalizeToColumnCount() {
+        XCTAssertEqual(normalizedTableRow(["a"], columnCount: 3), ["a", "", ""])
+        XCTAssertEqual(normalizedTableRow(["a", "b", "c"], columnCount: 2), ["a", "b"])
+        XCTAssertEqual(normalizedTableRow(["a", "b"], columnCount: 2), ["a", "b"])
+    }
+
+    func testChartPointIDsIncludeSeriesIndex() {
+        let first = chartPoints(seriesID: "a", values: [1, 2]).map(\.id)
+        let second = chartPoints(seriesID: "b", values: [1, 2]).map(\.id)
+        XCTAssertEqual(first, ["a-0", "a-1"])
+        XCTAssertEqual(second, ["b-0", "b-1"])
+        XCTAssertTrue(Set(first).isDisjoint(with: second))
+    }
+
+    func testChartSeriesIDsUseStableContentKeysWithOccurrences() {
+        let series = [
+            ChartSeries(name: "A", values: [1, 2], color: nil),
+            ChartSeries(name: "A", values: [1, 2], color: nil),
+        ]
+        XCTAssertEqual(chartSeriesItems(series).map(\.id), ["A||1.0,2.0#0", "A||1.0,2.0#1"])
+    }
+
+    func testListItemsUseComponentIDAndOccurrence() {
+        let rendered = listItems(["a", "b", "a"])
+        XCTAssertEqual(rendered.map(\.id), [
+            UIListItemID(componentID: "a", occurrence: 0),
+            UIListItemID(componentID: "b", occurrence: 0),
+            UIListItemID(componentID: "a", occurrence: 1),
+        ])
+        XCTAssertEqual(rendered.map(\.number), [1, 2, 3])
+    }
+
+    func testTableCellIDsIncludeRowAndColumn() {
+        XCTAssertEqual(
+            tableCellIDs(row: 2, columnCount: 3),
+            [
+                UITableCellID(row: 2, column: 0),
+                UITableCellID(row: 2, column: 1),
+                UITableCellID(row: 2, column: 2),
+            ]
+        )
+    }
+
+    func testMeterBoundsClampAndNormalizeRange() {
+        XCTAssertEqual(meterBounds(value: 2, range: ClosedRangePair(0, 1)), UIMeterBounds(lower: 0, upper: 1, value: 1))
+        XCTAssertEqual(meterBounds(value: 3, range: ClosedRangePair(10, 2)), UIMeterBounds(lower: 2, upper: 10, value: 3))
+        XCTAssertEqual(meterBounds(value: .nan, range: ClosedRangePair(0, 1)), UIMeterBounds(lower: 0, upper: 1, value: 0))
+        XCTAssertEqual(meterBounds(value: 3, range: ClosedRangePair(1, 1)), UIMeterBounds(lower: 0, upper: 1, value: 1))
     }
 }
