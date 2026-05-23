@@ -288,6 +288,15 @@ public enum AuditEntryKind: String, Codable, Sendable {
     case workflowStarted
     case workflowCompleted
     case safetyViolation
+    /// `SwooshNetworkPolicy` allowed an outbound HTTP request. `detail`
+    /// carries the scheme, host, and purpose label so reviewers can see
+    /// what was reached. Distinct from `toolCallStarted` (which is the
+    /// tool registry's own event) — auditors that want to filter for
+    /// network egress shouldn't have to wade through tool calls.
+    case egressAllowed
+    /// `SwooshNetworkPolicy` denied an outbound HTTP request. `detail`
+    /// carries the reason the gate returned plus the scheme/host/purpose.
+    case egressDenied
     /// Plugin lifecycle or per-tool-call event from `SwooshPlugins`.
     /// The `detail` field carries the specific `PluginAuditEventKind` and the
     /// plugin ID. `success` is false for sandbox violations / failed tool
