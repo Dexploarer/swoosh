@@ -1,4 +1,4 @@
-// SwooshFiles/SafeFileAccessor.swift — Concrete file access with safety (0.4C)
+// SwooshFiles/SafeFileAccessor.swift — Concrete file access with safety (0.4D)
 //
 // Implements FileAccessing from SwooshTools.
 // Every operation validates paths, checks sensitivity, enforces size limits.
@@ -11,6 +11,11 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
     public let pathResolver: SafePathResolver
     public let sensitivePolicy: SensitiveFilePolicy
     public let maxFileSize: Int64
+
+    /// Hard cap on recursive directory walks. A caller passing
+    /// `maxDepth: 9999` still walks no deeper than this. Defense in
+    /// depth — `listRecursive` is recursive without TCO.
+    public static let maxRecursiveDepth: Int = 32
 
     public init(
         rootStore: any ApprovedRootStore,
@@ -29,6 +34,21 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
     public func resolveBookmark(id: String) async throws -> URL {
         guard let root = await rootStore.get(id: id) else {
             throw FileAccessError.rootNotApproved
+        }
+        // Prefer the security-scoped bookmark when one was stored. Stale
+        // bookmarks fall through to the absolute path so a moved/renamed
+        // root still resolves (matches the 0.4C behaviour for callers
+        // that never set bookmarkData).
+        if let data = root.bookmarkData {
+            var isStale = false
+            if let url = try? URL(
+                resolvingBookmarkData: data,
+                options: [],
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            ), !isStale {
+                return url
+            }
         }
         return URL(fileURLWithPath: root.absolutePath)
     }
@@ -49,11 +69,14 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
             targetURL = URL(fileURLWithPath: approvedRoot.absolutePath)
         }
 
+        let safeDepth = min(max(maxDepth, 0), Self.maxRecursiveDepth)
+        // Standardize so `/tmp/...` and `/private/tmp/...` (macOS
+        // symlink) compare equal under prefix strip.
         return try listRecursive(
-            baseURL: URL(fileURLWithPath: approvedRoot.absolutePath),
-            currentURL: targetURL,
+            baseURL: URL(fileURLWithPath: approvedRoot.absolutePath).standardizedFileURL,
+            currentURL: targetURL.standardizedFileURL,
             includeHidden: includeHidden,
-            maxDepth: maxDepth,
+            maxDepth: safeDepth,
             currentDepth: 0
         )
     }
@@ -123,8 +146,11 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
     }
 
     public func deleteFile(root: URL, relativePath: String) async throws {
-        // Disabled in 0.4C
-        throw FileAccessError.writeNotAllowed
+        // Deletion is intentionally not exposed through the file
+        // toolset. Distinguish from `writeNotAllowed` so a UI can
+        // surface "delete is unsupported" rather than "this root is
+        // read-only".
+        throw FileAccessError.deletionUnsupported
     }
 
     public func searchFiles(
@@ -135,7 +161,9 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
     ) async throws -> [FileSearchMatch] {
         let approvedRoot = try await findApprovedRoot(for: root)
         try pathResolver.validateAccess(root: approvedRoot, write: false)
-        let rootURL = URL(fileURLWithPath: approvedRoot.absolutePath)
+        // Standardize so `/tmp/...` and `/private/tmp/...` (macOS
+        // symlink) compare equal under prefix strip.
+        let rootURL = URL(fileURLWithPath: approvedRoot.absolutePath).standardizedFileURL
         let limit = maxResults ?? 50
 
         var results: [FileSearchMatch] = []
@@ -148,7 +176,7 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
         while let fileURL = enumerator?.nextObject() as? URL {
             guard results.count < limit else { break }
 
-            let relativePath = fileURL.path.replacingOccurrences(of: rootURL.path + "/", with: "")
+            let relativePath = relativise(fileURL.standardizedFileURL.path, under: rootURL.path)
             if sensitivePolicy.shouldSkip(path: relativePath) {
                 enumerator?.skipDescendants()
                 continue
@@ -160,8 +188,13 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
                 if !matchGlob(name: name, pattern: pattern) { continue }
             }
 
-            guard let isFile = try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile,
-                  isFile else { continue }
+            guard let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                  values.isRegularFile == true else { continue }
+
+            // Skip files above the size budget — mirrors `readFile`'s
+            // `fileTooLarge` guard. Without this, a 1 GB blob in the
+            // tree would be loaded into memory just to be skipped.
+            if let size = values.fileSize, Int64(size) > maxFileSize { continue }
 
             // Search content
             guard let data = try? Data(contentsOf: fileURL),
@@ -212,7 +245,7 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
 
         var entries: [FileEntry] = []
         for item in contents {
-            let relativePath = item.path.replacingOccurrences(of: baseURL.path + "/", with: "")
+            let relativePath = relativise(item.standardizedFileURL.path, under: baseURL.path)
 
             let isSensitive = sensitivePolicy.shouldSkip(path: relativePath)
             let values = try? item.resourceValues(forKeys: Set(keys))
@@ -242,12 +275,57 @@ public struct SafeFileAccessor: FileAccessing, Sendable {
         return entries
     }
 
-    private func matchGlob(name: String, pattern: String) -> Bool {
-        // Simple glob: *.swift → name ends with .swift
-        if pattern.hasPrefix("*.") {
-            let ext = String(pattern.dropFirst(2))
-            return name.hasSuffix("." + ext)
+    /// Strict prefix-strip — returns the portion of `fullPath` after
+    /// `prefix/`, or `fullPath` unchanged if it doesn't actually live
+    /// under that prefix. Previously `replacingOccurrences` was used and
+    /// silently matched substrings (e.g. `/var/X/` was found inside
+    /// `/private/var/X/file`, leaving `/privatefile`).
+    func relativise(_ fullPath: String, under prefix: String) -> String {
+        let normalized = prefix.hasSuffix("/") ? prefix : prefix + "/"
+        if fullPath.hasPrefix(normalized) {
+            return String(fullPath.dropFirst(normalized.count))
         }
-        return name == pattern
+        if fullPath == prefix {
+            return ""
+        }
+        return fullPath
+    }
+
+    /// Single-segment glob matcher. Supported forms:
+    ///   • exact          — `README.md`
+    ///   • prefix         — `Tests*`
+    ///   • suffix         — `*.swift` (and the historical alias `*.ext`)
+    ///   • contains       — `*Foo*`
+    ///   • prefix+suffix  — `Tests*.swift`
+    ///
+    /// Does NOT support `?`, character classes, or recursive `**`. Path
+    /// separators are not part of the input — the caller already split
+    /// off the basename.
+    func matchGlob(name: String, pattern: String) -> Bool {
+        // Fast path: no wildcard at all.
+        guard pattern.contains("*") else { return name == pattern }
+
+        let starts = pattern.hasPrefix("*")
+        let ends   = pattern.hasSuffix("*")
+        let trimmed = pattern.trimmingCharacters(in: CharacterSet(charactersIn: "*"))
+
+        // "*" or "**" — matches everything.
+        if trimmed.isEmpty { return true }
+
+        // "*Foo*" — contains.
+        if starts && ends { return name.contains(trimmed) }
+        // "*Foo" / "*.ext" — suffix.
+        if starts { return name.hasSuffix(trimmed) }
+        // "Foo*" — prefix.
+        if ends { return name.hasPrefix(trimmed) }
+
+        // Embedded "*" e.g. "Tests*.swift" — split on the single star
+        // and require prefix + suffix. Only one "*" is supported.
+        let parts = pattern.split(separator: "*", omittingEmptySubsequences: false)
+        guard parts.count == 2 else { return false }
+        let prefix = String(parts[0])
+        let suffix = String(parts[1])
+        guard name.count >= prefix.count + suffix.count else { return false }
+        return name.hasPrefix(prefix) && name.hasSuffix(suffix)
     }
 }

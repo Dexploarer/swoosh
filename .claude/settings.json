@@ -1,5 +1,5 @@
 {
-  "$comment": "Swoosh project-local settings. Extends ~/.claude/settings.json (which already auto-allows Bash/Read/Glob/Grep). Adds project-specific allows for build tools, deny rules for paths that would destroy local agent state, and three hooks: PreToolUse safety-banner (non-blocking reminders on sensitive files) + loc-guard (warns at 350 LOC, blocks at >400 per CLAUDE.md convention), and UserPromptSubmit prompt-enhancer (Haiku-powered context-aware rewrite, skips slash commands / short / long prompts; toggle off with PROMPT_ENHANCER=off).",
+  "$comment": "Swoosh project-local settings. Extends ~/.claude/settings.json (which already auto-allows Bash/Read/Glob/Grep). Adds project-specific allows for build tools, deny rules for paths that would destroy local agent state, and four hooks: PreToolUse safety-banner (non-blocking reminders on sensitive files) + loc-guard (warns at 350 LOC, blocks at >400 per CLAUDE.md convention), UserPromptSubmit prompt-enhancer (Haiku-powered context-aware rewrite, skips slash commands / short / long prompts; toggle off with PROMPT_ENHANCER=off), and SessionStart learnings-context (loads .superstack/learnings.md into context on startup/resume/clear so past patterns and pitfalls surface automatically; use /learn add to capture new entries).",
   "hooks": {
     "PreToolUse": [
       {
@@ -14,6 +14,14 @@
       {
         "hooks": [
           { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/prompt-enhancer.sh", "timeout": 65 }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          { "type": "command", "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/learnings-context.sh" }
         ]
       }
     ]

@@ -1,9 +1,18 @@
-// SwooshFoundation/FoundationModelsAdapter.swift — Apple Foundation Models adapter
+// SwooshFoundation/FoundationModelsAdapter.swift — 0.9Q Apple Foundation Models adapter
 //
 // Tier 1: Apple's on-device ~3B model.
 // Use for: intent classification, tool argument drafting, entity extraction,
 //          memory candidate extraction, risk scoring, short summarization.
 // Do NOT use as the main brain. Use as the private local control plane.
+//
+// **Status**: helpers are kernel-optional. None of these methods are
+// wired by default from the agent kernel — they exist so that callers
+// (Scout review queue, agent-loop pre-approval scoring, calendar
+// scrape) can pull on them without re-implementing on-device guided
+// generation. New consumers should construct a single shared
+// `FoundationModelAdapter` and reuse it; the actor caches the
+// `LanguageModelSession` and `resetSession()` is the only way to free
+// its context budget.
 
 #if canImport(FoundationModels)
 import FoundationModels

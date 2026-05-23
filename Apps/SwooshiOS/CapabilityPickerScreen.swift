@@ -47,7 +47,7 @@ struct CapabilityPickerScreen: View {
             )
         } footer: {
             if !router.isVideoConfigured {
-                Text("Add a FAL.ai API key in Settings → Daemon to enable video generation.")
+                Text("Add a FAL.ai API key in Settings → Voice → Provider keys (account 'fal') to enable video generation.")
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }
@@ -75,7 +75,7 @@ struct CapabilityPickerScreen: View {
             )
         } footer: {
             if !router.isThreeDConfigured {
-                Text("Add a FAL.ai API key in Settings → Daemon to enable 3D generation.")
+                Text("Add a FAL.ai API key in Settings → Voice → Provider keys (account 'fal') to enable 3D generation.")
                     .font(.footnote)
                     .foregroundStyle(.orange)
             }
@@ -199,7 +199,7 @@ struct CapabilityPickerScreen: View {
                     .foregroundStyle(.secondary)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Cloud fallback").font(.subheadline.weight(.semibold))
-                    Text("Cloud providers only run when you've added an OpenAI key in Settings → Daemon. The local-first router uses Apple frameworks when available and falls through to cloud automatically.")
+                    Text("Cloud providers only run when you've added an OpenAI key in Settings → Voice → Provider keys. The local-first router uses Apple frameworks when available and falls through to cloud automatically. Keys are stored in the iOS Keychain and rotate hot — replacing the key takes effect on the next call.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

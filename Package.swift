@@ -23,7 +23,6 @@ let package = Package(
         .library(name: "SwooshVault",     targets: ["SwooshVault"]),
         .library(name: "SwooshFirewall",  targets: ["SwooshFirewall"]),
         .library(name: "SwooshFlow",      targets: ["SwooshFlow"]),
-        .library(name: "SwooshBoard",     targets: ["SwooshBoard"]),
         .library(name: "SwooshMLX",       targets: ["SwooshMLX"]),
         .library(name: "SwooshFoundation",targets: ["SwooshFoundation"]),
         .library(name: "SwooshSecrets",   targets: ["SwooshSecrets"]),
@@ -112,6 +111,7 @@ let package = Package(
                 "SwooshDoctor",
                 "SwooshActantBackend",
                 "SwooshFirewall",
+                "SwooshFlow",
                 "SwooshApprovals",
                 "SwooshFiles",
                 "SwooshProcess",
@@ -131,6 +131,7 @@ let package = Package(
                 "SwooshGoals",
                 "SwooshManifesting",
                 "SwooshCron",
+                "SwooshDoctor",
                 "SwooshProviderBridge",
                 "SwooshSecrets",
                 "SwooshModels",
@@ -139,6 +140,7 @@ let package = Package(
                 "SwooshToolsets",
                 "SwooshTools",
                 "SwooshFirewall",
+                "SwooshFlow",
                 "SwooshApprovals",
                 "SwooshFiles",
                 "SwooshProcess",
@@ -263,13 +265,6 @@ let package = Package(
         .target(name: "SwooshCron", dependencies: ["SwooshTools"]),
         .target(name: "SwooshChatSDK", dependencies: ["SwooshClient"]),
         .target(
-            name: "SwooshBoard",
-            dependencies: [
-                "SwooshTools",
-                .product(name: "SQLite", package: "SQLite.swift"),
-            ]
-        ),
-        .target(
             name: "SwooshApprovals",
             dependencies: ["SwooshTools"]
         ),
@@ -304,14 +299,21 @@ let package = Package(
         // SwooshCapabilities — unified router + status snapshot for the
         // four post-LLM modalities (Vision/Translation/Embeddings/ImageGen).
         // Mirrors the VoiceRouter pattern: UserDefaults-driven, swappable.
+        // Reads API keys hot from SwooshSecrets' KeychainAPIKeyProvider so
+        // a key written by any picker is picked up on the next provider call.
         .target(
             name: "SwooshCapabilities",
             dependencies: [
+                "SwooshSecrets",
                 "SwooshVision",
                 "SwooshTranslation",
                 "SwooshEmbeddings",
                 "SwooshImageGen",
             ]
+        ),
+        .testTarget(
+            name: "SwooshCapabilitiesTests",
+            dependencies: ["SwooshCapabilities", "SwooshSecrets"]
         ),
         .target(
             name: "SwooshFiles",
@@ -480,7 +482,7 @@ let package = Package(
 
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshVault", "SwooshBoard", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
+            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshVault", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
         ),
         .target(
             name: "SwooshWidgets",
@@ -515,10 +517,6 @@ let package = Package(
         .testTarget(
             name: "SwooshApprovalsTests",
             dependencies: ["SwooshApprovals", "SwooshTools"]
-        ),
-        .testTarget(
-            name: "SwooshBoardTests",
-            dependencies: ["SwooshBoard", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshMCPTests",
@@ -559,6 +557,10 @@ let package = Package(
         .testTarget(
             name: "SwooshDevToolsTests",
             dependencies: ["SwooshTools", "SwooshFiles", "SwooshProcess", "SwooshFirewall"]
+        ),
+        .testTarget(
+            name: "SwooshFilesTests",
+            dependencies: ["SwooshFiles", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshFlowTests",
@@ -669,7 +671,11 @@ let package = Package(
         ),
         .testTarget(
             name: "SwooshFoundationTests",
-            dependencies: ["SwooshFoundation", "SwooshCore"]
+            dependencies: ["SwooshFoundation", "SwooshCore", "SwooshClient"]
+        ),
+        .testTarget(
+            name: "SwooshEmbeddingsTests",
+            dependencies: ["SwooshEmbeddings"]
         ),
         .testTarget(
             name: "SwooshKitTests",

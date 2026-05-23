@@ -39,6 +39,7 @@ import SwooshTools
 import SwooshFirewall
 import SwooshApprovals
 import SwooshFiles
+import SwooshFlow
 import SwooshProcess
 import SwooshProviderBridge
 import SwooshProviders
@@ -793,6 +794,9 @@ struct SwooshDaemon {
                         executor: cronExecutor,
                         id: id
                     )
+                },
+                doctorReport: {
+                    await SwooshDaemon.doctorReportResponse(config: configStore)
                 },
                 walletAccounts: {
                     await SwooshDaemon.walletAccountsResponse(store: toolRuntime.walletStore)
@@ -1888,7 +1892,11 @@ private func makeDaemonToolRuntime(
         memoryStore: MemoryStore(backend: backend),
         scoutStore: FileScoutToolStore(url: swooshDir.appendingPathComponent("scout/tool-state.json")),
         workflowStore: FileWorkflowToolStore(url: swooshDir.appendingPathComponent("workflows/tool-drafts.json")),
-        workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry),
+        workflowStepExecutor: TracingWorkflowStepExecutor(
+            inner: RegistryWorkflowStepExecutor(registry: registry),
+            recorder: InMemoryWorkflowTraceRecorder(),
+            workflowID: "daemon"
+        ),
         secrets: secretResolver
     )
     return DaemonToolRuntime(

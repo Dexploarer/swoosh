@@ -88,6 +88,30 @@ struct SettingsScreen: View {
                 }
             }
 
+            Section("Automation") {
+                NavigationLink {
+                    CronScreen()
+                } label: {
+                    IconRow(
+                        tile: IconTile(systemName: "calendar.badge.clock", tint: .indigo),
+                        title: "Scheduled jobs",
+                        detail: "Cron-style triggers that wake the agent"
+                    )
+                }
+            }
+
+            Section("Diagnostics") {
+                NavigationLink {
+                    DoctorScreen()
+                } label: {
+                    IconRow(
+                        tile: IconTile(systemName: "stethoscope", tint: .red),
+                        title: "Doctor",
+                        detail: "System health, config, secrets, model, storage"
+                    )
+                }
+            }
+
             Section {
                 NavigationLink {
                     AboutScreen()

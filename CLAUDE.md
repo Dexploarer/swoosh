@@ -49,7 +49,7 @@ SwooshKit ──► SwooshCore ──► SwooshTools
 SwooshActantBackend  ──►  ActantAgent  ──►  ActantDB  (Swift SDK; spawns actantdb subprocess)
                                               ▲
                           SwooshFirewall ─────┘
-                          SwooshFlow / SwooshBoard / SwooshVault / SwooshToolsets / etc.
+                          SwooshFlow / SwooshVault / SwooshToolsets / etc.
 ```
 
 - **`SwooshKit`** is the public SDK; it `@_exported import`s `SwooshCore` and exposes the `Swoosh.configure { ... }` entry point. **macOS/Linux only** — pulls in `SwooshActantBackend` → `ActantAgent.ActantDBSupervisor` which spawns child processes.
@@ -87,7 +87,7 @@ Registration: `DefaultToolRegistrar.registerAll(into:dependencies:selfImprovemen
 ## Storage & secrets
 
 - All durable agent state — sessions, memories, approvals, audit records — lives in **ActantDB** at `~/.swoosh/actant.db`, fronted by `actantdb serve` (spawned by `swooshd` via `ActantAgent.ActantDBSupervisor`). Schema sketch in `Docs/Architecture.md`.
-- A handful of subsystems (`SwooshVault`, `SwooshFirewall`, `SwooshBoard`) still use `SQLite.swift` directly for local caches that don't belong on the event ledger; that's why the `SQLite.swift` package dependency stays.
+- A handful of subsystems (`SwooshVault`, `SwooshFirewall`) still use `SQLite.swift` directly for local caches that don't belong on the event ledger; that's why the `SQLite.swift` package dependency stays.
 - Secrets live in Keychain under service `ai.swoosh.agent`. `SwooshSecrets` provides scavengers (Environment / ConfigFile / Keychain) — read order matters; `KeychainSecretStore` is the canonical store.
 - Other state lives under `~/.swoosh/{config.json, theme.json, setup-reports/, logs/, artifacts/, models/}`.
 - macOS sandbox is **disabled** for both the app and widget extension (see `project.yml` — `ENABLE_APP_SANDBOX: false`, and `App/Swoosh.entitlements`). App group: `group.ai.swoosh.shared`.

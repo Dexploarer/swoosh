@@ -1,4 +1,4 @@
-// SwooshFiles/SafePathResolver.swift — Path resolver with escape prevention (0.4C)
+// SwooshFiles/SafePathResolver.swift — Path resolver with escape prevention (0.4D)
 //
 // Every file tool uses this before any I/O.
 // Rejects absolute paths, parent traversal, and escape attempts.
@@ -51,7 +51,7 @@ public struct SafePathResolver: Sendable {
 
 // MARK: - File access errors
 
-public enum FileAccessError: Error, Sendable {
+public enum FileAccessError: Error, Sendable, Equatable {
     case absolutePathNotAllowed
     case parentTraversalNotAllowed
     case pathEscapesApprovedRoot
@@ -61,4 +61,10 @@ public enum FileAccessError: Error, Sendable {
     case sensitiveFileBlocked(String)
     case fileTooLarge(Int64)
     case unsupportedEncoding
+    /// Returned by `deleteFile`. Distinct from `writeNotAllowed` so a UI
+    /// can tell "this root is read-only" from "delete is globally off".
+    case deletionUnsupported
+    /// Returned by `resolveBookmark` when the stored bookmark data is
+    /// stale (the underlying file moved or was deleted).
+    case staleBookmark
 }

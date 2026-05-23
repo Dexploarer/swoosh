@@ -162,11 +162,6 @@ exercise it was never connected.
   `resume()` has a silent correctness bug: `findLastApprovedGate`
   always returns `nil`, so a human-approved step is permanently
   skipped (`WorkflowExecutionEngine.swift:222-226`).
-- **MCP cannot connect to anything.** `SwooshMCP` has real registry,
-  policy, and auth *data models* but **no JSON-RPC transport** — there
-  is no code that performs the MCP `initialize`/`tools/list`
-  handshake. `SwooshBridge` is intentionally inert (every operation
-  throws `transportUnavailable`) and is instantiated nowhere.
 - **Cleanup note (2026-05-22):** the previously flagged unused
   observability package, trigger-schema package, and compile-time tool
   macro have been deleted from the SwiftPM source/test graph. The
@@ -192,7 +187,6 @@ than the one in the tree. Documentation should be reconciled:
 | Crypto toolsets (EVM/Solana/Jupiter/Hyperliquid/Uniswap) | Declared but never registered; partly stubbed; no RPC client |
 | "All durable state — … approvals, audit records — lives in ActantDB" | Audit + approvals are in-memory; lost on restart |
 | "`SwooshVault` … uses `SQLite.swift` … for local caches" | `MemoryVault` is a plain in-memory dictionary, no persistence |
-| `SwooshMCP` "import/export MCP tools" | No transport — cannot reach any MCP server |
 | "Level-0 progressive disclosure" skill catalog injection | The injection code path is dead (argument never passed) |
 | Scout `MusicHistorySource` / `ScreenTimeSource` scaffolds | Neither type exists in the codebase |
 | Compile-time tool generation macro | Removed; tools hand-write typed conformance |

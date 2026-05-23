@@ -1,25 +1,33 @@
 // SwooshCapabilities/CapabilityRouter.swift
 // Version: 0.9R
 //
-// Unified router for the four "new modalities" Swoosh shipped post-LLM:
+// Unified router for the six "new modalities" Swoosh shipped post-LLM:
 //   • Vision (OCR, depth, foreground, document recognition, faces)
 //   • Translation (Apple Translation + cloud fallback)
 //   • Embeddings (Apple NaturalLanguage + cloud fallback)
 //   • Image generation (Apple Image Playground + cloud fallback)
+//   • Video generation (FAL.ai — Veo 3, Kling, Hunyuan, Luma)
+//   • 3D generation (FAL.ai — Tripo3D, Trellis, TripoSR, Hunyuan3D)
 //
 // Pattern mirrors `VoiceRouter` in `SwooshVoiceProviders`: a `@MainActor`
 // `@Observable` that reads UserDefaults for the current choice and
 // instantiates the matching provider on demand. Swap providers by
 // flipping a UserDefaults key from Settings — no app restart needed.
+//
+// API keys are read hot from Keychain via `KeychainAPIKeyProvider.for(_:)`
+// each time a cloud provider is constructed. Writing or rotating a key
+// in Keychain takes effect on the next `activeXProvider()` call — no
+// app restart, no router reconfiguration. The same Keychain entries are
+// shared with the voice picker (service `ai.swoosh.secrets`, account
+// `ai.swoosh.<providerID>`), so one OpenAI key unlocks every OpenAI-backed
+// surface.
 
 import Foundation
-import OSLog
+import SwooshSecrets
 import SwooshVision
 import SwooshTranslation
 import SwooshEmbeddings
 import SwooshImageGen
-
-private let logger = Logger(subsystem: "ai.swoosh.capabilities", category: "CapabilityRouter")
 
 @MainActor
 @Observable
@@ -28,22 +36,22 @@ public final class CapabilityRouter {
 
     public static let shared = CapabilityRouter()
 
-    /// Optional injection point for cloud fallbacks. Set by the app on
-    /// startup if cloud keys are configured. When nil, only the local
-    /// path is attempted.
-    public var openAIAPIKeyProvider: (@Sendable () async throws -> String)?
-
-    /// FAL.ai key for video + 3D generation. Same shape as
-    /// `openAIAPIKeyProvider` — closure-based so the router doesn't
-    /// reach into Keychain directly.
-    public var falAPIKeyProvider: (@Sendable () async throws -> String)?
-
-    /// Optional URL override for the larger local embedding endpoint
-    /// (Ollama default). When nil, the Ollama-default Nomic Embed
-    /// config is used.
-    public var localEmbeddingConfig: LocalOpenAICompatibleEmbeddingProvider.Config?
-
     public init() {}
+
+    // MARK: - Keychain provider IDs
+
+    /// Provider IDs used as Keychain accounts (`ai.swoosh.<id>` under
+    /// service `ai.swoosh.secrets`). Shared with the voice picker.
+    public enum KeychainProviderID {
+        public static let openAI = "openai"
+        public static let fal    = "fal"
+    }
+
+    /// True when the user has stored an OpenAI key in Keychain. Drives
+    /// "configure your key" UI affordances for cloud choices.
+    public var isOpenAIConfigured: Bool {
+        KeychainAPIKeyProvider.isConfigured(providerID: KeychainProviderID.openAI)
+    }
 
     // MARK: - Vision
 
@@ -110,15 +118,13 @@ public final class CapabilityRouter {
         case .appleTranslation:
             return AppleTranslationProvider()
         case .openAI:
-            guard let provider = openAIAPIKeyProvider else {
-                logger.warning("Translation choice .openAI selected but no API key provider configured — falling back to AppleTranslationProvider. Set an OpenAI key in Settings or change the choice.")
-                return AppleTranslationProvider()
-            }
-            return OpenAITranslationProvider(apiKey: provider)
+            return OpenAITranslationProvider(
+                apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.openAI)
+            )
         case .routerLocalFirst:
-            let cloud: (any TranslationProviding)? = openAIAPIKeyProvider.map {
-                OpenAITranslationProvider(apiKey: $0)
-            }
+            let cloud: (any TranslationProviding) = OpenAITranslationProvider(
+                apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.openAI)
+            )
             return TranslationRouter(local: AppleTranslationProvider(), cloud: cloud)
         }
     }
@@ -161,21 +167,54 @@ public final class CapabilityRouter {
         case .appleNL:
             return AppleNLEmbeddingProvider()
         case .localOpenAICompatible:
-            let config = localEmbeddingConfig ?? .ollamaNomicEmbed
-            return LocalOpenAICompatibleEmbeddingProvider(config: config)
+            return LocalOpenAICompatibleEmbeddingProvider(
+                config: currentLocalEmbeddingChoice.config
+            )
         case .openAI:
-            guard let provider = openAIAPIKeyProvider else { return AppleNLEmbeddingProvider() }
-            return OpenAIEmbeddingProvider(apiKey: provider)
+            return OpenAIEmbeddingProvider(
+                apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.openAI)
+            )
         case .routerLocalFirst:
-            let cloud: (any EmbeddingProviding)? = openAIAPIKeyProvider.map {
-                OpenAIEmbeddingProvider(apiKey: $0)
-            }
-            let localConfig = localEmbeddingConfig ?? .ollamaNomicEmbed
-            let local: any EmbeddingProviding = (localEmbeddingConfig != nil)
-                ? LocalOpenAICompatibleEmbeddingProvider(config: localConfig)
-                : AppleNLEmbeddingProvider()
-            return EmbeddingRouter(local: local, cloud: cloud)
+            let cloud: (any EmbeddingProviding) = OpenAIEmbeddingProvider(
+                apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.openAI)
+            )
+            return EmbeddingRouter(local: AppleNLEmbeddingProvider(), cloud: cloud)
         }
+    }
+
+    // MARK: - Local embedding preset
+
+    /// Named on-device embedding backends. Used when `currentEmbeddingChoice`
+    /// is `.localOpenAICompatible` to pick which local server + model to call.
+    public enum LocalEmbeddingChoice: String, Sendable, CaseIterable, Identifiable {
+        case ollamaNomicEmbed = "ollama-nomic-embed"
+        case ollamaMxbaiEmbed = "ollama-mxbai-embed"
+        case ollamaBGEM3      = "ollama-bge-m3"
+
+        public var id: String { rawValue }
+        public var displayName: String {
+            switch self {
+            case .ollamaNomicEmbed: return "Ollama · nomic-embed-text (768-dim)"
+            case .ollamaMxbaiEmbed: return "Ollama · mxbai-embed-large (1024-dim)"
+            case .ollamaBGEM3:      return "Ollama · bge-m3 (1024-dim, multilingual)"
+            }
+        }
+
+        public var config: LocalOpenAICompatibleEmbeddingProvider.Config {
+            switch self {
+            case .ollamaNomicEmbed: return .ollamaNomicEmbed
+            case .ollamaMxbaiEmbed: return .ollamaMxbaiEmbed
+            case .ollamaBGEM3:      return .ollamaBGEM3
+            }
+        }
+    }
+
+    public var currentLocalEmbeddingChoice: LocalEmbeddingChoice {
+        get {
+            let raw = UserDefaults.standard.string(forKey: "swoosh.capabilities.localEmbedding") ?? "ollama-nomic-embed"
+            return LocalEmbeddingChoice(rawValue: raw) ?? .ollamaNomicEmbed
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: "swoosh.capabilities.localEmbedding") }
     }
 
     // MARK: - Image generation
@@ -215,12 +254,13 @@ public final class CapabilityRouter {
         case .imagePlayground:
             return ImagePlaygroundProvider()
         case .openAI:
-            guard let provider = openAIAPIKeyProvider else { return ImagePlaygroundProvider() }
-            return OpenAIImageProvider(apiKey: provider)
+            return OpenAIImageProvider(
+                apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.openAI)
+            )
         case .routerLocalFirst:
-            let cloud: (any ImageGenProviding)? = openAIAPIKeyProvider.map {
-                OpenAIImageProvider(apiKey: $0)
-            }
+            let cloud: (any ImageGenProviding) = OpenAIImageProvider(
+                apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.openAI)
+            )
             return ImageGenRouter(local: ImagePlaygroundProvider(), cloud: cloud)
         }
     }

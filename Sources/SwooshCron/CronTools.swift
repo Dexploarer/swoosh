@@ -1,4 +1,8 @@
-// SwooshCron/CronTools.swift — Single model-facing cronjob tool
+// SwooshCron/CronTools.swift — 0.5A Single model-facing cronjob tool
+//
+// 0.5A: removed unused `deliver` argument. It had no downstream consumer.
+// Old persisted jobs decode unchanged (JSONDecoder ignores extra keys);
+// the model can no longer pass `deliver` in a CronJobToolInput payload.
 import Foundation
 import SwooshTools
 
@@ -20,7 +24,6 @@ public struct CronJobToolInput: Codable, Sendable {
     public let prompt: String?
     public let skills: [String]?
     public let enabledToolsets: [String]?
-    public let deliver: String?
     public let repeatLimit: Int?
     public let script: String?
     public let noAgent: Bool?
@@ -35,7 +38,6 @@ public struct CronJobToolInput: Codable, Sendable {
         prompt: String? = nil,
         skills: [String]? = nil,
         enabledToolsets: [String]? = nil,
-        deliver: String? = nil,
         repeatLimit: Int? = nil,
         script: String? = nil,
         noAgent: Bool? = nil,
@@ -49,7 +51,6 @@ public struct CronJobToolInput: Codable, Sendable {
         self.prompt = prompt
         self.skills = skills
         self.enabledToolsets = enabledToolsets
-        self.deliver = deliver
         self.repeatLimit = repeatLimit
         self.script = script
         self.noAgent = noAgent
@@ -106,7 +107,6 @@ public struct CronJobTool: SwooshTool {
                 schedule: CronScheduleParser.parse(input.schedule.unwrap(or: CronToolError.missingField("schedule"))),
                 skills: input.skills ?? [],
                 enabledToolsets: input.enabledToolsets,
-                deliver: input.deliver,
                 repeatLimit: input.repeatLimit,
                 script: input.script,
                 noAgent: input.noAgent ?? false,
@@ -128,7 +128,6 @@ public struct CronJobTool: SwooshTool {
             }
             if let skills = input.skills { job.skills = skills }
             if let enabledToolsets = input.enabledToolsets { job.enabledToolsets = enabledToolsets }
-            if let deliver = input.deliver { job.deliver = deliver }
             if let repeatLimit = input.repeatLimit { job.repeatLimit = repeatLimit }
             if let script = input.script { job.script = script }
             if let noAgent = input.noAgent { job.noAgent = noAgent }

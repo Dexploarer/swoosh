@@ -1,9 +1,16 @@
 // SwooshEmbeddings/EmbeddingRouter.swift
-// Version: 0.9R
+// Version: 0.9S
 //
 // Local-first router. Apple NL first, cloud only when the user opted
 // in (a cloud provider was injected) AND the local provider returned no
 // embedding (rare).
+//
+// 0.9S: removed the orphan `enum SwooshEmbeddings { defaultProvider }`
+// namespace — its name collided with the module name (`import
+// SwooshEmbeddings` then `SwooshEmbeddings.defaultProvider(...)` is
+// ambiguous in Swift) and it had zero callers. Construct
+// `EmbeddingRouter` directly; the AppleNL default lives on the init's
+// `local:` parameter.
 
 import Foundation
 
@@ -29,11 +36,5 @@ public actor EmbeddingRouter: EmbeddingProviding {
             guard let cloud else { throw error }
             return try await cloud.embed(text)
         }
-    }
-}
-
-public enum SwooshEmbeddings {
-    public static func defaultProvider(cloud: (any EmbeddingProviding)? = nil) -> any EmbeddingProviding {
-        EmbeddingRouter(local: AppleNLEmbeddingProvider(), cloud: cloud)
     }
 }

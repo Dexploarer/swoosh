@@ -48,7 +48,7 @@ SwooshKit ──► SwooshCore ──► SwooshTools
 SwooshActantBackend ──► ActantAgent ──► ActantDB Swift SDK
                                          ▲
                         SwooshFirewall ──┘
-                        SwooshFlow / SwooshBoard / SwooshVault / SwooshToolsets / …
+                        SwooshFlow / SwooshVault / SwooshToolsets / …
 ```
 
 ## Storage layout

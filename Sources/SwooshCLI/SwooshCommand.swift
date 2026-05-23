@@ -1,7 +1,8 @@
-// SwooshCLI/SwooshCommand.swift — CLI entry point + Doctor/Model/Daemon
+// SwooshCLI/SwooshCommand.swift — 0.9B CLI entry point + Model/Daemon
 //
-// swoosh <subcommand>  — see subcommands below
-// Split into: SetupCommands.swift, ChatAskCommands.swift, ScoutMemoryCommands.swift
+// swoosh <subcommand>  — see subcommands below.
+// Split into: SetupCommands.swift, ChatAskCommands.swift,
+// ScoutMemoryCommands.swift, DoctorCLICommand.swift.
 
 import ArgumentParser
 import SwooshKit
@@ -49,71 +50,6 @@ struct SwooshCommand: AsyncParsableCommand {
         ],
         defaultSubcommand: ChatCommand.self
     )
-}
-
-// MARK: - Doctor
-
-struct DoctorCommand: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "doctor", abstract: "Run comprehensive diagnostics.")
-
-    @Flag(name: .long, help: "Attempt to fix detected issues.")
-    var fix = false
-
-    @Flag(name: .long, help: "Output as JSON.")
-    var json = false
-
-    @Option(name: .customLong("config-dir"), help: "State directory to inspect instead of ~/.swoosh.")
-    var configDirectory: String?
-
-    func run() async throws {
-        let config = makeSwooshConfigStore(configDirectory: configDirectory)
-        if fix {
-            try config.ensureDirectories()
-        }
-        let runner = DoctorRunner()
-        let result = await runner.runAll(context: DoctorContext(
-            configPath: config.configFile.path,
-            statePath: config.configDirectory.path,
-            logPath: config.logsDir.path
-        ))
-
-        if json {
-            print("{\"passed\": \(result.isHealthy), \"checks\": \(result.checks.count), \"failures\": \(result.summary.failures)}")
-            return
-        }
-
-        print("Swoosh Doctor\n")
-
-        var currentCategory = ""
-        for check in result.checks {
-            if check.category.rawValue != currentCategory {
-                currentCategory = check.category.rawValue
-                print("─── \(currentCategory) ───")
-            }
-
-            let icon: String
-            let detail: String
-            switch check.status {
-            case .pass: icon = "✓"; detail = check.message ?? "passed"
-            case .warning: icon = "○"; detail = check.message ?? "warning"
-            case .fail: icon = "✗"; detail = check.message ?? "failed"
-            case .skipped: icon = "-"; detail = check.message ?? "skipped"
-            }
-
-            print("  \(icon) \(check.title): \(detail)")
-            if let f = check.fixCommand, icon == "✗" { print("    Fix: \(f)") }
-        }
-
-        print()
-        if result.summary.failures == 0, result.summary.warnings == 0 {
-            print("All checks passed. ✓")
-        } else if result.summary.failures == 0 {
-            print("\(result.summary.warnings) warning(s) found.")
-        } else {
-            print("\(result.summary.failures) issue(s) found.")
-            if !fix { print("Run `swoosh doctor --fix` to attempt repairs.") }
-        }
-    }
 }
 
 // MARK: - Model

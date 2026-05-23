@@ -5,8 +5,13 @@
 // the root router file under the LOC ceiling. Both modalities are
 // cloud-only today (FAL.ai). Local executors can be added later by
 // adding new enum cases and matching providers.
+//
+// FAL key is read hot from Keychain on every provider construction —
+// rotating the key in Settings → Provider keys takes effect on the next
+// `activeVideoProvider()` / `activeThreeDProvider()` call.
 
 import Foundation
+import SwooshSecrets
 import SwooshImageGen
 
 extension CapabilityRouter {
@@ -55,15 +60,19 @@ extension CapabilityRouter {
     }
 
     /// Returns a configured video provider, or nil when no FAL key has
-    /// been injected. Callers should surface a "Configure FAL key" UI
-    /// affordance when nil.
+    /// been stored in Keychain. Callers should surface a "Configure FAL
+    /// key" UI affordance when nil.
     public func activeVideoProvider() -> (any VideoGenProviding)? {
-        guard let keyProvider = falAPIKeyProvider else { return nil }
-        let client = FALClient(apiKey: keyProvider)
+        guard isVideoConfigured else { return nil }
+        let client = FALClient(
+            apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.fal)
+        )
         return FALVideoProvider(client: client)
     }
 
-    public var isVideoConfigured: Bool { falAPIKeyProvider != nil }
+    public var isVideoConfigured: Bool {
+        KeychainAPIKeyProvider.isConfigured(providerID: KeychainProviderID.fal)
+    }
 
     // MARK: - 3D generation
 
@@ -105,10 +114,14 @@ extension CapabilityRouter {
     }
 
     public func activeThreeDProvider() -> (any ThreeDGenProviding)? {
-        guard let keyProvider = falAPIKeyProvider else { return nil }
-        let client = FALClient(apiKey: keyProvider)
+        guard isThreeDConfigured else { return nil }
+        let client = FALClient(
+            apiKey: KeychainAPIKeyProvider.for(KeychainProviderID.fal)
+        )
         return FALThreeDProvider(client: client)
     }
 
-    public var isThreeDConfigured: Bool { falAPIKeyProvider != nil }
+    public var isThreeDConfigured: Bool {
+        KeychainAPIKeyProvider.isConfigured(providerID: KeychainProviderID.fal)
+    }
 }

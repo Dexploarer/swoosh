@@ -1,7 +1,11 @@
-// SwooshDoctor/DoctorTypes.swift — 0.9A Doctor + Debug Bundle + Privacy Report
+// SwooshDoctor/DoctorTypes.swift — 0.9B Doctor + Debug Bundle + Privacy Report
 //
 // System diagnostics, privacy auditing, debug bundle generation.
 // Debug bundles are always redacted. Privacy reports detect leaks.
+//
+// 0.9B: `PrivacyScanner.scanText` now scans once. Prior version walked
+// each pattern set twice — once to build `issues`, once to populate
+// boolean flags — which could disagree if the two paths drifted.
 
 import Foundation
 import SwooshTools
@@ -151,19 +155,25 @@ public struct PrivacyScanner: Sendable {
 
     public func scanText(_ text: String) -> PrivacyScanResult {
         var issues: [String] = []
-        for p in Self.secretPatterns {
-            if text.contains(p) { issues.append("Secret pattern found: \(p.prefix(10))…") }
+        var hasSecrets = false
+        var hasCookies = false
+        var hasSeedPhrases = false
+        for p in Self.secretPatterns where text.contains(p) {
+            issues.append("Secret pattern found: \(p.prefix(10))…")
+            hasSecrets = true
         }
-        for p in Self.cookiePatterns {
-            if text.contains(p) { issues.append("Cookie pattern found: \(p.prefix(10))…") }
+        for p in Self.cookiePatterns where text.contains(p) {
+            issues.append("Cookie pattern found: \(p.prefix(10))…")
+            hasCookies = true
         }
-        for p in Self.seedPatterns {
-            if text.contains(p) { issues.append("Seed pattern found: \(p.prefix(10))…") }
+        for p in Self.seedPatterns where text.contains(p) {
+            issues.append("Seed pattern found: \(p.prefix(10))…")
+            hasSeedPhrases = true
         }
         return PrivacyScanResult(
-            hasSecrets: Self.secretPatterns.contains { text.contains($0) },
-            hasCookies: Self.cookiePatterns.contains { text.contains($0) },
-            hasSeedPhrases: Self.seedPatterns.contains { text.contains($0) },
+            hasSecrets: hasSecrets,
+            hasCookies: hasCookies,
+            hasSeedPhrases: hasSeedPhrases,
             issues: issues
         )
     }

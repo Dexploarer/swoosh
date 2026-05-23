@@ -37,7 +37,6 @@ SwooshFoundation   →  Apple Foundation Models structured-output adapter
 SwooshFirewall     →  user-visible tool permissions and auditability
 SwooshVault        →  transparent, user-governed memory
 SwooshFlow         →  testable, replayable workflow engine
-SwooshBoard        →  executable multi-agent task graph with replay
 SwooshMCP          →  Model Context Protocol client (stdio transport, wired into ToolRegistry)
 ```
 
@@ -51,7 +50,6 @@ SwooshMCP          →  Model Context Protocol client (stdio transport, wired in
 | `SwooshFirewall` | Agent Firewall — approval engine, audit log, risk classification |
 | `SwooshVault` | Memory Vault — transparent, editable, auditable, confidence-scored |
 | `SwooshFlow` | Workflow compiler, "Make this repeatable", test fixtures, failure rules |
-| `SwooshBoard` | Executable task graph with typed tasks and replay |
 | `SwooshModels` | Model catalog (curated + Hugging Face discovery) + hardware-aware recommendations |
 | `SwooshMLX` | MLX Swift on-device inference (macOS) |
 | `SwooshFoundation` | Apple Foundation Models adapter + `FoundationExecutor` |

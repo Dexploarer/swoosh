@@ -1,4 +1,9 @@
-// SwooshCron/CronJob.swift — Durable scheduled agent jobs
+// SwooshCron/CronJob.swift — 0.5A Durable scheduled agent jobs
+//
+// 0.5A: removed unused `deliver` field. It had zero consumers — declared,
+// persisted, accepted via CLI + agent tool, but never read. Existing
+// jobs.json files with a `deliver` key still decode (JSONDecoder ignores
+// unknown keys by default); the field simply stops round-tripping out.
 import Foundation
 import SwooshTools
 
@@ -9,7 +14,6 @@ public struct CronJob: Codable, Sendable, Identifiable {
     public var schedule: CronSchedule
     public var skills: [String]
     public var enabledToolsets: [String]?
-    public var deliver: String?
     public var repeatLimit: Int?
     public var completedRuns: Int
     public var state: CronJobState
@@ -33,7 +37,6 @@ public struct CronJob: Codable, Sendable, Identifiable {
         schedule: CronSchedule,
         skills: [String] = [],
         enabledToolsets: [String]? = nil,
-        deliver: String? = nil,
         repeatLimit: Int? = nil,
         state: CronJobState = .scheduled,
         enabled: Bool = true,
@@ -51,7 +54,6 @@ public struct CronJob: Codable, Sendable, Identifiable {
         self.schedule = schedule
         self.skills = skills
         self.enabledToolsets = enabledToolsets
-        self.deliver = deliver
         self.repeatLimit = repeatLimit
         self.completedRuns = 0
         self.state = state

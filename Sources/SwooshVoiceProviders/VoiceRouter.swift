@@ -23,6 +23,7 @@
 
 import Foundation
 import SwooshMusic
+@_exported import SwooshSecrets
 import SwooshSTT
 
 @MainActor

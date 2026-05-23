@@ -1,12 +1,13 @@
-// SwooshVoiceProviders/KeychainAPIKeyProvider.swift — 0.9R Keychain-bound key provider
+// SwooshSecrets/KeychainAPIKeyProvider.swift — 0.9R Keychain-bound key provider
 //
-// Closes the loop for cloud TTS providers — instead of each call site
-// wiring its own keychain reader, pass `KeychainAPIKeyProvider.for(...)`
-// and the provider self-sources its key.
+// Closes the loop for cloud providers — instead of each call site wiring
+// its own keychain reader, pass `KeychainAPIKeyProvider.for(...)` and the
+// provider self-sources its key on every call (hot-swappable).
 //
 // Convention: keys live under service `ai.swoosh.secrets`, account is
-// the provider's `id` (e.g. "elevenlabs", "openai", "cartesia"). The
-// VoicePickerScreen writes to this same location.
+// `ai.swoosh.<providerID>` (e.g. "ai.swoosh.openai", "ai.swoosh.fal").
+// One key per provider, shared across voice + capability routers — entering
+// an OpenAI key in any picker unlocks every OpenAI-backed surface.
 
 import Foundation
 import Security

@@ -1,18 +1,21 @@
-// SwooshClient/SwooshExecutor.swift — Pluggable backend for chat turns
+// SwooshClient/SwooshExecutor.swift — 0.4B Pluggable backend for chat turns
 //
-// The abstraction the iOS app actually talks to. Two implementations land
-// in this slice:
+// The abstraction the iOS app actually talks to. Three implementations
+// ship today:
 //
 //   • RemoteKernelExecutor — POSTs to /api/agent/chat on a paired daemon.
 //     Lives here in SwooshClient (pure URLSession; iOS-buildable).
 //   • LocalKernelExecutor  — runs an in-process AgentKernel. Lives in
-//     SwooshKit (Mac-only today because the kernel transitively depends
-//     on the actantdb supervisor).
+//     SwooshKit (Mac-only because the kernel transitively depends on
+//     the actantdb supervisor).
+//   • FallbackExecutor     — wraps a remote + an optional local executor
+//     and prefers the remote, dropping back to local on transport
+//     errors. Lives in SwooshLocalLLM and is the "use Mac when
+//     reachable, fall back to local" composition.
 //
-// Once actantDB ships an iOS-buildable Swift SDK (FFI-backed), a third
-// implementation can register a local kernel on iOS too, and a
-// `RoutedExecutor` can pick "use Mac when reachable, fall back to local"
-// without any caller changes.
+// Once actantDB ships an iOS-buildable Swift SDK (FFI-backed), a local
+// kernel will also build on iOS and `FallbackExecutor` will work
+// unchanged with both halves on-device.
 
 import Foundation
 

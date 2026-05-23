@@ -61,9 +61,6 @@ struct CronCreateCommand: AsyncParsableCommand {
     @Option(name: .long, help: "Working directory for script execution.")
     var workdir: String?
 
-    @Option(name: .long, help: "Optional delivery target label.")
-    var deliver: String?
-
     @Option(name: .long, help: "Stop after this many successful runs.")
     var repeatLimit: Int?
 
@@ -72,7 +69,6 @@ struct CronCreateCommand: AsyncParsableCommand {
             name: name ?? String(prompt.prefix(48)),
             prompt: prompt,
             schedule: CronScheduleParser.parse(schedule),
-            deliver: deliver,
             repeatLimit: repeatLimit,
             script: script,
             noAgent: noAgent,

@@ -1,4 +1,4 @@
-// SwooshFiles/ApprovedRoot.swift — Approved root model (0.4C)
+// SwooshFiles/ApprovedRoot.swift — Approved root model (0.4D)
 //
 // Every file/git/swift tool operates inside an approved root.
 // No absolute paths outside registered roots.
@@ -8,6 +8,12 @@ import Foundation
 public struct ApprovedRoot: Codable, Sendable, Identifiable, Hashable {
     public let id: String
     public let displayName: String
+    /// Security-scoped bookmark data for sandboxed access. When non-nil,
+    /// `SafeFileAccessor.resolveBookmark(id:)` resolves through it via
+    /// `URL(resolvingBookmarkData:)` and falls back to `absolutePath`
+    /// only if resolution fails (stale or otherwise). When the app
+    /// sandbox is disabled (current default — see project.yml
+    /// `ENABLE_APP_SANDBOX: false`), this is optional belt-and-braces.
     public let bookmarkData: Data?
     public let absolutePath: String
     public let createdAt: Date
@@ -30,6 +36,36 @@ public struct ApprovedRoot: Codable, Sendable, Identifiable, Hashable {
         self.createdAt = createdAt
         self.allowedRead = allowedRead
         self.allowedWrite = allowedWrite
+    }
+
+    // MARK: - Bookmark helpers
+
+    /// Build an `ApprovedRoot` from a URL the user picked, encoding a
+    /// security-scoped bookmark alongside the absolute path. Resolution
+    /// is then portable across app restarts and surface-area changes
+    /// (file moves, sandbox boundary changes).
+    ///
+    /// Returns the constructed root, or throws the underlying
+    /// `bookmarkData` error.
+    public static func makeBookmark(
+        from url: URL,
+        displayName: String? = nil,
+        allowedRead: Bool = true,
+        allowedWrite: Bool = true
+    ) throws -> ApprovedRoot {
+        let standardized = url.standardizedFileURL
+        let data = try standardized.bookmarkData(
+            options: [.minimalBookmark],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+        return ApprovedRoot(
+            displayName: displayName ?? standardized.lastPathComponent,
+            bookmarkData: data,
+            absolutePath: standardized.path,
+            allowedRead: allowedRead,
+            allowedWrite: allowedWrite
+        )
     }
 }
 

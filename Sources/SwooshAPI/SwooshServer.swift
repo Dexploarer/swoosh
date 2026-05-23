@@ -72,6 +72,7 @@ extension FirewallMutationResponse: ResponseEncodable {}
 extension FirewallCheckResponse: ResponseEncodable {}
 extension CronJobsResponse: ResponseEncodable {}
 extension CronJobMutationResponse: ResponseEncodable {}
+extension DoctorReportResponse: ResponseEncodable {}
 extension WalletAccountsResponse: ResponseEncodable {}
 extension WalletAccountResponse: ResponseEncodable {}
 extension WalletBalanceResponse: ResponseEncodable {}
@@ -180,6 +181,9 @@ public struct SwooshAPIRuntimeSources: Sendable {
     public let createCronJob: @Sendable (CronJobCreateRequest) async throws -> CronJobMutationResponse
     public let deleteCronJob: @Sendable (String) async throws -> CronJobsResponse
     public let runCronJob: @Sendable (String) async throws -> CronJobMutationResponse
+
+    // ── Tier 1: Doctor ─────────────────────────────────────────────
+    public let doctorReport: @Sendable () async -> DoctorReportResponse
 
     // ── Tier 1: Wallet ops ─────────────────────────────────────────
     public let walletAccounts: @Sendable () async -> WalletAccountsResponse
@@ -349,6 +353,16 @@ public struct SwooshAPIRuntimeSources: Sendable {
         runCronJob: @escaping @Sendable (String) async throws -> CronJobMutationResponse = { _ in
             throw APIError.badRequest("cron store is not configured")
         },
+        doctorReport: @escaping @Sendable () async -> DoctorReportResponse = {
+            DoctorReportResponse(
+                id: "unconfigured",
+                createdAt: Date(),
+                checks: [],
+                summary: DoctorSummaryWire(passed: 0, warnings: 0, failures: 0, skipped: 0),
+                recommendations: [],
+                isHealthy: true
+            )
+        },
         walletAccounts: @escaping @Sendable () async -> WalletAccountsResponse = {
             WalletAccountsResponse(accounts: [])
         },
@@ -423,6 +437,7 @@ public struct SwooshAPIRuntimeSources: Sendable {
         self.createCronJob = createCronJob
         self.deleteCronJob = deleteCronJob
         self.runCronJob = runCronJob
+        self.doctorReport = doctorReport
         self.walletAccounts = walletAccounts
         self.createWalletAccount = createWalletAccount
         self.deleteWalletAccount = deleteWalletAccount
@@ -1007,6 +1022,11 @@ public struct SwooshAPIServer: Sendable {
             } catch {
                 throw apiHTTPError(error)
             }
+        }
+
+        // ── Tier 1: Doctor ─────────────────────────────────────────
+        apiGroup.get("/doctor") { _, _ -> DoctorReportResponse in
+            await runtime.doctorReport()
         }
 
         // ── Tier 1: Wallet ops ─────────────────────────────────────
@@ -1661,6 +1681,11 @@ private actor APIRuntimeState {
     }
     func runCronJob(_ id: String) async throws -> CronJobMutationResponse {
         try await sources.runCronJob(id)
+    }
+
+    // ── Tier 1: Doctor ─────────────────────────────────────────────
+    func doctorReport() async -> DoctorReportResponse {
+        await sources.doctorReport()
     }
 
     // ── Tier 1: Wallet ops ─────────────────────────────────────────

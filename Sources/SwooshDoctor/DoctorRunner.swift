@@ -1,6 +1,10 @@
-// SwooshDoctor/DoctorRunner.swift — Diagnostic runner + report extensions
+// SwooshDoctor/DoctorRunner.swift — 0.9B Diagnostic runner + report extensions
 //
-// Runs all checks and produces a DoctorReport. Checks defined in DoctorChecks.swift.
+// Runs all checks and produces a DoctorReport. Checks live across
+// `InstallationChecks.swift`, `ConfigSecretsChecks.swift`, and
+// `ModelStoragePrivacyChecks.swift`. Optimization recommendations
+// switch on `DoctorCheckID` constants so a check rename is caught
+// by the compiler.
 
 import Foundation
 import SwooshTools
@@ -80,13 +84,13 @@ extension DoctorReport {
             else { recs.append("🟡 \(w.title): \(w.message ?? "")") }
         }
 
-        if !checks.contains(where: { $0.checkID == "secrets.providers" && $0.status == .pass }) {
+        if !checks.contains(where: { $0.checkID == DoctorCheckID.providerKeys && $0.status == .pass }) {
             recs.append("💡 Run `swoosh discover-credentials` to find API keys from other apps")
         }
-        if !checks.contains(where: { $0.checkID == "config.model" && $0.status == .pass }) {
+        if !checks.contains(where: { $0.checkID == DoctorCheckID.modelConfig && $0.status == .pass }) {
             recs.append("💡 Run `swoosh setup` to configure your default model provider")
         }
-        if checks.contains(where: { $0.checkID == "perf.memory" && $0.status == .warning }) {
+        if checks.contains(where: { $0.checkID == DoctorCheckID.memory && $0.status == .warning }) {
             recs.append("💡 Restart Swoosh to reclaim memory: `swoosh restart`")
         }
 

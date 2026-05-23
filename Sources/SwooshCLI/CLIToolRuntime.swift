@@ -7,6 +7,7 @@ import SwooshConfig
 import SwooshCron
 import SwooshFiles
 import SwooshFirewall
+import SwooshFlow
 import SwooshProcess
 import SwooshSecrets
 import SwooshSkills
@@ -62,7 +63,15 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
         memoryStore: memoryStore,
         scoutStore: FileScoutToolStore(url: stateRoot.appendingPathComponent("scout/tool-state.json")),
         workflowStore: FileWorkflowToolStore(url: stateRoot.appendingPathComponent("workflows/tool-drafts.json")),
-        workflowStepExecutor: RegistryWorkflowStepExecutor(registry: registry),
+        // Wrap the registry executor in SwooshFlow's tracing wrapper
+        // so engineering rule #4 ("every workflow is replayable") holds
+        // for runtime `workflow.run` calls — the recorder is queryable
+        // via `WorkflowTraceRecording.tail`.
+        workflowStepExecutor: TracingWorkflowStepExecutor(
+            inner: RegistryWorkflowStepExecutor(registry: registry),
+            recorder: InMemoryWorkflowTraceRecorder(),
+            workflowID: "cli"
+        ),
         secrets: secretResolver
     )
 

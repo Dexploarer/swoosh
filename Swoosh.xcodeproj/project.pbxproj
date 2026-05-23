@@ -42,6 +42,7 @@
 		812E14C35917FD0503AC43D5 /* VoiceHapticsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4C6ACF942D2F88EEA2C6041 /* VoiceHapticsCoordinator.swift */; };
 		81F9802FDDEC5D16ADEFBA3B /* LocalFallbackToggleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */; };
 		828EE27AA1EAC29C4E994BED /* AudioLevelSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74FB3852458ED5ADD01B5C4 /* AudioLevelSource.swift */; };
+		84D2FAA829E69A0C50681CD9 /* CronScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58838535A8646A8F3287BDFB /* CronScreen.swift */; };
 		852ADEC763785DAF2B2BB42B /* SwooshImageGen in Frameworks */ = {isa = PBXBuildFile; productRef = C1D8DEB68F839F7A2B4189B9 /* SwooshImageGen */; };
 		87A218A0D7E5686F396C9EDE /* VoicePickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBC979FDDA8EC113A147A084 /* VoicePickerScreen.swift */; };
 		8D6E1CD2344A3BEF608C18C8 /* PermissionAndPolicyScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D902C99CD3D18210E97481 /* PermissionAndPolicyScreens.swift */; };
@@ -59,6 +60,7 @@
 		B6606D768591ED1AEAD88C6E /* SwooshEmbeddings in Frameworks */ = {isa = PBXBuildFile; productRef = 9DAF129D8F01B12920642DCF /* SwooshEmbeddings */; };
 		B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */; };
 		C3312726808315191FD14368 /* CapabilityPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41A487D16E069E246C1FE33 /* CapabilityPickerScreen.swift */; };
+		D0AC05AB13879430D16D0523 /* DoctorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */; };
 		D270DFA4E91A9EE7A1CEE991 /* LocalVoiceSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1208AEE4DDB17E6ACBD41549 /* LocalVoiceSettingsSection.swift */; };
 		D5DCB03232519DF157BF1B89 /* ErrorRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D3555C518013DB31668CC /* ErrorRow.swift */; };
 		E052265C132915BC379E8892 /* WalletAccountDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB83FAB5CF6100402E906B91 /* WalletAccountDetail.swift */; };
@@ -87,8 +89,10 @@
 		403AB8740FE9644AC93AC63F /* ChannelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelCatalog.swift; sourceTree = "<group>"; };
 		4248F678DCB78516E8143314 /* SwooshWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SwooshWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		55FF97564A6C8A9FEF187FA8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		58838535A8646A8F3287BDFB /* CronScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronScreen.swift; sourceTree = "<group>"; };
 		5C47C75353D8DB6E31AC986F /* Swoosh.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Swoosh.iOS.entitlements; sourceTree = "<group>"; };
 		6D0EB8AA916802AA1DF0E84B /* SwooshWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SwooshWidgetExtension.entitlements; sourceTree = "<group>"; };
+		6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorScreen.swift; sourceTree = "<group>"; };
 		6F82347749598EDE00D671EA /* LoadingRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingRow.swift; sourceTree = "<group>"; };
 		72F1ABF3C0A11470D895C296 /* ChannelsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsScreen.swift; sourceTree = "<group>"; };
 		76C6079D285806396765CCF5 /* LocalVoiceDownloadRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVoiceDownloadRow.swift; sourceTree = "<group>"; };
@@ -207,6 +211,8 @@
 				DD9130DA046954B1598FC3EE /* CloneVoiceSheet.swift */,
 				F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */,
 				17D656E8BA83FB8FF00A2631 /* ConnectionsScreen.swift */,
+				58838535A8646A8F3287BDFB /* CronScreen.swift */,
+				6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */,
 				F93D3555C518013DB31668CC /* ErrorRow.swift */,
 				3F7E64053038BE7A8B8B69C2 /* IconTile.swift */,
 				E1C7AA2E2F507D88558C8D12 /* Info.plist */,
@@ -437,6 +443,8 @@
 				6948EA80A56C65B6D58405AD /* ClonedVoicesSection.swift in Sources */,
 				B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */,
 				105DA551E8644020D688E312 /* ConnectionsScreen.swift in Sources */,
+				84D2FAA829E69A0C50681CD9 /* CronScreen.swift in Sources */,
+				D0AC05AB13879430D16D0523 /* DoctorScreen.swift in Sources */,
 				D5DCB03232519DF157BF1B89 /* ErrorRow.swift in Sources */,
 				8F9C928AE4827949F555D24A /* IOSVoicePill.swift in Sources */,
 				4949F574DA32CD5B8C0CAE80 /* IconTile.swift in Sources */,

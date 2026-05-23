@@ -40,7 +40,6 @@ Swoosh is sliced into ~54 single-purpose modules in `Sources/`. The dependency h
 | Module | Purpose |
 |--------|---------|
 | `SwooshFlow` | Workflow engine: `WorkflowExecutionEngine`, `WorkflowDryRunEngine`, `WorkflowReplayEngine`, `WorkflowTrigger*`. Every workflow is replayable. |
-| `SwooshBoard` | Executable multi-agent task graph with typed tasks and replay. |
 | `SwooshTriggers` | Trigger + action schema and in-memory registry (firing engine experimental). |
 | `SwooshCron` | Scheduled agent job runner. |
 
