@@ -9,7 +9,7 @@ let package = Package(
     ],
     products: [
         // ── Executables ───────────────────────────────────────────────
-        .executable(name: "swoosh",  targets: ["SwooshCLI"]),
+        .executable(name: "swoosh",  targets: ["SwooshCLIRunner"]),
         .executable(name: "swooshd", targets: ["SwooshDaemon"]),
 
         // ── Public SDK ────────────────────────────────────────────────
@@ -51,6 +51,7 @@ let package = Package(
         .library(name: "SwooshEmbeddings", targets: ["SwooshEmbeddings"]),
         .library(name: "SwooshImageGen", targets: ["SwooshImageGen"]),
         .library(name: "SwooshCapabilities", targets: ["SwooshCapabilities"]),
+        .library(name: "SwooshCLI",          targets: ["SwooshCLI"]),
     ],
     dependencies: [
         // CLI
@@ -93,7 +94,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - CLI & Daemon
         // ══════════════════════════════════════════════════════════════
-        .executableTarget(
+        .target(
             name: "SwooshCLI",
             dependencies: [
                 "SwooshKit",
@@ -119,6 +120,10 @@ let package = Package(
                 .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
+        ),
+        .executableTarget(
+            name: "SwooshCLIRunner",
+            dependencies: ["SwooshCLI"]
         ),
         .executableTarget(
             name: "SwooshDaemon",
@@ -688,6 +693,9 @@ let package = Package(
         .testTarget(
             name: "SwooshCLITests",
             dependencies: [
+                "SwooshCLI",
+                "SwooshClient",
+                "SwooshConfig",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),

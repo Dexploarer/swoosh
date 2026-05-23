@@ -1,4 +1,4 @@
-// SwooshCLI/ScoutMemoryCommands.swift — Scout, Memory, Permissions commands + Helpers
+// SwooshCLI/ScoutMemoryCommands.swift — Scout, Memory, Permissions commands + Helpers — 0.4B
 
 import ArgumentParser
 import ActantDB
@@ -54,7 +54,6 @@ struct ScoutRunCommand: AsyncParsableCommand {
 
         var sources = ScoutSourceCatalog.operationalLocalSources(folderURLs: folderPaths)
         sources.append(PersonalizationSignalSource())
-        sources.append(HermesImportSource())
 
         let backend = loadCLIBackend()
         let existingMemories = await loadExistingMemorySummaries(backend: backend)
@@ -351,63 +350,4 @@ private func loadExistingMemorySummaries(backend: AgentBackend?) async -> [Exist
         pending.map { ExistingMemorySummary(text: $0.text, category: $0.category) }
 }
 
-// MARK: - CLI Setup UI
-
-struct CLISetupUI: SetupUI {
-    func showProgress(_ step: SetupStepID, message: String) async { print("  ⟳ \(message)") }
-
-    func showResult(_ step: SetupStepID, result: SetupResult) async {
-        switch result {
-        case .success(let s): print("  ✓ \(s)")
-        case .skipped(let r): print("  ○ Skipped: \(r)")
-        case .failed(let e):  print("  ✗ Failed: \(e)")
-        }
-    }
-
-    func showVerification(_ step: SetupStepID, result: VerificationResult) async {
-        switch result {
-        case .passed(let d): print("  ✓ Verified: \(d)")
-        case .warning(let m): print("  ⚠ \(m)")
-        case .failed(let e):  print("  ✗ Verification failed: \(e)")
-        }
-    }
-
-    func askYesNo(_ prompt: String, default defaultVal: Bool) async -> Bool {
-        let suffix = defaultVal ? "[Y/n]" : "[y/N]"
-        print("  \(prompt) \(suffix) ", terminator: "")
-        guard let input = readLine()?.lowercased() else { return defaultVal }
-        return input.isEmpty ? defaultVal : (input == "y" || input == "yes")
-    }
-
-    func askChoice(_ prompt: String, options: [String], default defaultIdx: Int) async -> Int {
-        print("  \(prompt) [\(defaultIdx + 1)]: ", terminator: "")
-        guard let input = readLine(), let idx = Int(input) else { return defaultIdx }
-        return max(0, min(idx - 1, options.count - 1))
-    }
-
-    func askString(_ prompt: String, default defaultVal: String?) async -> String {
-        let suffix = defaultVal.map { " [\($0)]" } ?? ""
-        print("  \(prompt)\(suffix): ", terminator: "")
-        guard let input = readLine(), !input.isEmpty else { return defaultVal ?? "" }
-        return input
-    }
-
-    func askSecret(_ prompt: String) async -> String {
-        print("  \(prompt): ", terminator: "")
-        return readLine() ?? ""
-    }
-
-    func showReport(_ report: SetupReport) async {
-        print("\n─── Setup Report ──────────────────────────────")
-        for step in report.steps {
-            let icon: String
-            switch step.verification {
-            case .passed: icon = "✓"
-            case .warning: icon = "○"
-            case .failed: icon = "✗"
-            }
-            print("  \(icon) \(step.stepID.rawValue)")
-        }
-        print()
-    }
-}
+// CLISetupUI now lives in CLISetupUI.swift.
