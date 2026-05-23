@@ -1,4 +1,4 @@
-// SwooshCLI/ChatAdapterCommands.swift — Toggle chat platform adapters
+// SwooshCLI/ChatAdapterCommands.swift — Toggle chat platform adapters — 0.4B
 import ArgumentParser
 import Foundation
 import SwooshClient
@@ -98,13 +98,4 @@ private func adapterConfigurationSummary(configured: Bool, missing: [String], no
     if configured { return "configured" }
     if !missing.isEmpty { return "missing \(missing.joined(separator: ", "))" }
     return notes.first ?? "manual configuration required"
-}
-
-extension JSONEncoder {
-    static var swooshCLI: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
-    }
 }
