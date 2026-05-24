@@ -1,4 +1,9 @@
-// SwooshScout/PersonalizationSignals.swift — Passive personalization signals
+// SwooshScout/PersonalizationSignals.swift — 0.9S Passive personalization signals
+//
+// Append-only JSONL signal store the daemon writes while running.
+// `PersonalizationSignalSource` reads the store on demand and emits
+// aggregate `personalizationSignal` records — never the raw signal
+// stream — so the model never sees individual app-focus events.
 
 import Foundation
 

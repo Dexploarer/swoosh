@@ -1,4 +1,4 @@
-// SwooshScout/Scout.swift — First-run personalization scanner
+// SwooshScout/Scout.swift — 0.9S First-run personalization scanner
 //
 // "Collect context, not secrets. Learn workflows, not credentials."
 //
@@ -41,6 +41,10 @@ public enum Sensitivity: String, Codable, Sendable, Comparable {
     }
 }
 
+/// Outcome of `ScoutSource.checkPermission()` / `requestPermission()`.
+/// `notDetermined` means the user has never been asked; `restricted`
+/// means the OS denies the request regardless of user consent (parental
+/// controls, MDM, missing entitlement, unsupported platform).
 public enum SourcePermissionStatus: Sendable {
     case granted
     case denied
@@ -107,10 +111,15 @@ public enum RecordKind: String, Codable, Sendable {
     case reminderItem          // Pending/recently-completed reminder
     case healthSleep           // Sleep duration summary, not raw heart-rate data
     case healthActivity        // Step / move ring summary
-    case musicHistory          // Recently-played music aggregate
     case recentDocument        // Recent doc per-app via Apple's sharedfilelist
-    case screenTime            // iOS DeviceActivity bucket
     case personalizationSignal // Passive Swoosh runtime signal aggregate
+
+    // NOTE: `musicHistory` and `screenTime` were declared as planned
+    // tags but never produced by any source. Removed in 0.9S — no
+    // Scout records carry these values (verified via repo grep) so
+    // removal does not break any persisted ledger. Re-add when the
+    // matching producer (`MusicHistorySource` / `ScreenTimeSource`)
+    // actually lands.
 }
 
 // MARK: - Memory candidate
@@ -173,31 +182,43 @@ public enum PersonalizationDepth: String, Codable, Sendable, CaseIterable {
 
 /// Strips secrets before model context. The model should not see raw secrets.
 public struct SecretRedactor: Sendable {
+
+    /// Single redaction rule — paired (regex, replacement template). The
+    /// list is iterated in order; order matters when patterns overlap.
+    fileprivate struct Rule: Sendable {
+        let regex: NSRegularExpression
+        let replacement: String
+    }
+
+    /// Compiled once at module load. Avoids the per-call regex compile
+    /// cost the previous implementation paid (`try? NSRegularExpression`
+    /// inside the loop) — for a corpus of hundreds of records that adds
+    /// up to noticeable startup latency for `swoosh setup`.
+    fileprivate static let rules: [Rule] = [
+        // API keys (common patterns)
+        rule(#"(sk-[a-zA-Z0-9]{20,})"#, "[REDACTED_API_KEY]"),
+        rule(#"(ghp_[a-zA-Z0-9]{36,})"#, "[REDACTED_GITHUB_TOKEN]"),
+        rule(#"(xoxb-[a-zA-Z0-9\-]{20,})"#, "[REDACTED_SLACK_TOKEN]"),
+        // Bearer tokens
+        rule(#"Bearer\s+[a-zA-Z0-9\._\-]{20,}"#, "Bearer [REDACTED]"),
+        // SSH private keys (RSA / EC / OPENSSH / DSA header variants)
+        rule(pemPrivateKeyPattern, "[REDACTED_PRIVATE_KEY]"),
+        // Generic long hex/base64 tokens
+        rule(#"[a-f0-9]{64,}"#, "[REDACTED_HEX_TOKEN]"),
+        // .env style secrets
+        rule(#"(?i)(password|secret|token|api_key|apikey)\s*=\s*\S+"#, "$1=[REDACTED]"),
+        // Cookie values (key=value with long values)
+        rule(#"(?i)(cookie|session_id|csrf)[:=]\s*[a-zA-Z0-9\+/=]{32,}"#, "$1=[REDACTED_COOKIE]")
+    ]
+
     public init() {}
 
     public func redact(_ record: ScoutRecord) -> ScoutRecord {
         var text = record.content
-
-        // API keys (common patterns)
-        text = redactPattern(text, pattern: #"(sk-[a-zA-Z0-9]{20,})"#, replacement: "[REDACTED_API_KEY]")
-        text = redactPattern(text, pattern: #"(ghp_[a-zA-Z0-9]{36,})"#, replacement: "[REDACTED_GITHUB_TOKEN]")
-        text = redactPattern(text, pattern: #"(xoxb-[a-zA-Z0-9\-]{20,})"#, replacement: "[REDACTED_SLACK_TOKEN]")
-
-        // Bearer tokens
-        text = redactPattern(text, pattern: #"Bearer\s+[a-zA-Z0-9\._\-]{20,}"#, replacement: "Bearer [REDACTED]")
-
-        // SSH private keys
-        text = redactPattern(text, pattern: #"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----[\s\S]*?-----END (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"#, replacement: "[REDACTED_PRIVATE_KEY]")
-
-        // Generic long hex/base64 tokens
-        text = redactPattern(text, pattern: #"[a-f0-9]{64,}"#, replacement: "[REDACTED_HEX_TOKEN]")
-
-        // .env style secrets
-        text = redactPattern(text, pattern: #"(?i)(password|secret|token|api_key|apikey)\s*=\s*\S+"#, replacement: "$1=[REDACTED]")
-
-        // Cookie values (key=value with long values)
-        text = redactPattern(text, pattern: #"(?i)(cookie|session_id|csrf)[:=]\s*[a-zA-Z0-9\+/=]{32,}"#, replacement: "$1=[REDACTED_COOKIE]")
-
+        for rule in Self.rules {
+            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+            text = rule.regex.stringByReplacingMatches(in: text, range: range, withTemplate: rule.replacement)
+        }
         return ScoutRecord(
             sourceID: record.sourceID,
             kind: record.kind,
@@ -207,9 +228,21 @@ public struct SecretRedactor: Sendable {
         )
     }
 
-    private func redactPattern(_ text: String, pattern: String, replacement: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
-        let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        return regex.stringByReplacingMatches(in: text, range: range, withTemplate: replacement)
+    /// Static-let-friendly constructor. `try!` is safe here because the
+    /// patterns are compile-time literal regexes verified at module
+    /// load — any breakage shows up the first time tests touch
+    /// `SecretRedactor`. A regex literal that fails to compile is a
+    /// programming error, not runtime input.
+    fileprivate static func rule(_ pattern: String, _ replacement: String) -> Rule {
+        // swiftlint:disable:next force_try
+        Rule(regex: try! NSRegularExpression(pattern: pattern), replacement: replacement)
     }
+
+    /// Hoisted out of the table literal so the longest individual
+    /// pattern doesn't push the row onto a 130-character line.
+    fileprivate static let pemPrivateKeyPattern: String = {
+        let header = #"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"#
+        let footer = #"-----END (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"#
+        return header + #"[\s\S]*?"# + footer
+    }()
 }
