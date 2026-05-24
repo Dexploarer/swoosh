@@ -51,6 +51,8 @@ public struct SwooshCommand: AsyncParsableCommand {
             TerminalCommand.self,
             ChatAdaptersCommand.self,
             PluginCommand.self,
+            GoalCommand.self,
+            ManifestCommand.self,
             CompletionsCommand.self,
         ],
         defaultSubcommand: ChatCommand.self

@@ -1,4 +1,4 @@
-// SwooshGoals/GoalStore.swift — Persistence interface for goals
+// SwooshGoals/GoalStore.swift — Persistence interface for goals — 0.1A
 //
 // Same shape as SwooshSkills.SkillStoring — a protocol with a simple
 // in-memory default. ActantDB-backed conformance lives in

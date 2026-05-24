@@ -1,4 +1,4 @@
-// SwooshManifesting/ManifestTools.swift — Tool surface for manifestations
+// SwooshManifesting/ManifestTools.swift — Tool surface for manifestations — 0.1A
 //
 // Three tools — manifest_now, manifest_history, manifest_get.
 //

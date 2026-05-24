@@ -329,3 +329,101 @@ struct ExtraParsingTests {
         #expect(m.test == true)
     }
 }
+
+@Suite("Argument parsing — goal / manifest")
+struct GoalManifestParsingTests {
+    @Test("swoosh goal list --host --port parses with daemon options")
+    func goalList() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "goal", "list", "--host", "10.0.0.1", "--port", "9100", "--json",
+        ])
+        let list = try #require(command as? GoalListCommand)
+        #expect(list.daemon.host == "10.0.0.1")
+        #expect(list.daemon.port == 9100)
+        #expect(list.json == true)
+    }
+
+    @Test("swoosh goal set --statement --max-iterations parses")
+    func goalSet() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "goal", "set",
+            "--statement", "Ship the iOS app",
+            "--max-iterations", "5",
+        ])
+        let set = try #require(command as? GoalSetCommand)
+        #expect(set.statement == "Ship the iOS app")
+        #expect(set.maxIterations == 5)
+    }
+
+    @Test("swoosh goal show <id> parses")
+    func goalShow() throws {
+        let command = try SwooshCommand.parseAsRoot(["goal", "show", "abc123"])
+        let show = try #require(command as? GoalShowCommand)
+        #expect(show.goalID == "abc123")
+    }
+
+    @Test("swoosh goal abandon <id> --force parses")
+    func goalAbandon() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "goal", "abandon", "abc123", "--force",
+        ])
+        let abandon = try #require(command as? GoalAbandonCommand)
+        #expect(abandon.goalID == "abc123")
+        #expect(abandon.force == true)
+    }
+
+    @Test("swoosh goal update <id> --state parses")
+    func goalUpdate() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "goal", "update", "abc123", "--state", "paused",
+        ])
+        let update = try #require(command as? GoalUpdateCommand)
+        #expect(update.goalID == "abc123")
+        #expect(update.state == "paused")
+    }
+
+    @Test("swoosh goal with no subcommand defaults to list")
+    func goalDefaultsToList() throws {
+        let command = try SwooshCommand.parseAsRoot(["goal"])
+        #expect(command is GoalListCommand)
+    }
+
+    @Test("swoosh manifest history --json parses")
+    func manifestHistory() throws {
+        let command = try SwooshCommand.parseAsRoot(["manifest", "history", "--json"])
+        let history = try #require(command as? ManifestHistoryCommand)
+        #expect(history.json == true)
+    }
+
+    @Test("swoosh manifest show <id> parses")
+    func manifestShow() throws {
+        let command = try SwooshCommand.parseAsRoot(["manifest", "show", "abc123"])
+        let show = try #require(command as? ManifestShowCommand)
+        #expect(show.manifestationID == "abc123")
+    }
+
+    @Test("swoosh manifest now --reason parses")
+    func manifestNow() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "manifest", "now", "--reason", "user-requested",
+        ])
+        let now = try #require(command as? ManifestNowCommand)
+        #expect(now.reason == "user-requested")
+    }
+
+    @Test("swoosh manifest delete <id> --force parses")
+    func manifestDelete() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "manifest", "delete", "abc123", "--force",
+        ])
+        let delete = try #require(command as? ManifestDeleteCommand)
+        #expect(delete.manifestationID == "abc123")
+        #expect(delete.force == true)
+    }
+
+    @Test("swoosh manifest with no subcommand defaults to history")
+    func manifestDefaultsToHistory() throws {
+        let command = try SwooshCommand.parseAsRoot(["manifest"])
+        #expect(command is ManifestHistoryCommand)
+    }
+}
