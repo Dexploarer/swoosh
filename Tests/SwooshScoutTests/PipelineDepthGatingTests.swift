@@ -108,4 +108,3 @@ struct ScoutPipelineOptionsDefaultsTests {
         #expect(options.permissionMode == .requestIfNeeded)
     }
 }
-
