@@ -26,9 +26,17 @@ import SwooshTools
 public func makeDefaultCommandDefinitions(
     registry: SlashCommandRegistry
 ) -> [SlashCommandDefinition] {
+    makeCoreCommands(registry: registry)
+        + makeAgentCommands()
+        + makePersonalizationCommands()
+        + makeSystemDevCommands()
+}
 
-    // ── Core ─────────────────────────────────────────────────
+// MARK: - Core (/help, /exit, /clear)
 
+private func makeCoreCommands(
+    registry: SlashCommandRegistry
+) -> [SlashCommandDefinition] {
     let helpCmd = SlashCommandDefinition(
         name: "help",
         aliases: ["h", "?"],
@@ -56,8 +64,12 @@ public func makeDefaultCommandDefinitions(
         handler: { _ in .success("\u{001B}[2J\u{001B}[H") }
     )
 
-    // ── Agent ─────────────────────────────────────────────────
+    return [helpCmd, exitCmd, clearCmd]
+}
 
+// MARK: - Agent (/tools, /sessions)
+
+private func makeAgentCommands() -> [SlashCommandDefinition] {
     let toolsCmd = SlashCommandDefinition(
         name: "tools",
         aliases: ["t"],
@@ -91,8 +103,12 @@ public func makeDefaultCommandDefinitions(
         """)
     }
 
-    // ── Personalization ──────────────────────────────────────
+    return [toolsCmd, sessionsCmd]
+}
 
+// MARK: - Personalization (/vault)
+
+private func makePersonalizationCommands() -> [SlashCommandDefinition] {
     let vaultCmd = SlashCommandDefinition(
         name: "vault",
         aliases: ["v", "memory"],
@@ -116,9 +132,5 @@ public func makeDefaultCommandDefinitions(
         }
     }
 
-    return [
-        helpCmd, exitCmd, clearCmd,
-        toolsCmd, sessionsCmd,
-        vaultCmd
-    ] + makeSystemDevCommands()
+    return [vaultCmd]
 }
