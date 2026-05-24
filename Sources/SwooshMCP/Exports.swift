@@ -321,10 +321,29 @@ public struct MCPContentRedactor: Sendable {
         // prior leak where `Bearer eyJ...` only stripped the `Bearer `
         // label). `maxBytes` truncation stays MCP-side because it's
         // calibrated against MCP's content-block size budget.
-        var redacted = SensitivePatterns.redact(text)
+        let redacted = SensitivePatterns.redact(text)
         if redacted.utf8.count > maxBytes {
-            redacted = String(redacted.prefix(maxBytes)) + "…[truncated]"
+            return Self.truncate(redacted, toBytes: maxBytes) + "…[truncated]"
         }
         return redacted
+    }
+
+    /// Truncate `text` so the result's UTF-8 byte length is `<= byteLimit`,
+    /// always cutting at a character boundary so multi-byte content (emojis,
+    /// accented characters, CJK glyphs) is never split mid-sequence.
+    /// `String.prefix(byteLimit)` operates on Character count, which over-
+    /// shoots the byte budget on any non-ASCII content.
+    private static func truncate(_ text: String, toBytes byteLimit: Int) -> String {
+        var accumulated = 0
+        var endIndex = text.startIndex
+        var index = text.startIndex
+        while index < text.endIndex {
+            let charBytes = text[index].utf8.count
+            if accumulated + charBytes > byteLimit { break }
+            accumulated += charBytes
+            index = text.index(after: index)
+            endIndex = index
+        }
+        return String(text[..<endIndex])
     }
 }

@@ -1,4 +1,4 @@
-// Tests/SwooshPluginsTests/SharedRedactorPatternsTests.swift — 0.9A
+// Tests/SwooshPluginsTests/SharedRedactorPatternsTests.swift — 0.9C
 //
 // Regression test for the audit finding "byte-identical sensitive-pattern
 // lists in two modules". After consolidation, `PluginContentRedactor`
@@ -50,5 +50,40 @@ struct SharedRedactorPatternsTests {
         let redactor = PluginContentRedactor()
         let safe = "Hello world, here is some normal text with no markers."
         #expect(redactor.redact(safe) == safe)
+    }
+
+    @Test("Label-followed-by-space patterns mask the value, not just the label")
+    func labelWithSpaceMasksValue() {
+        // Regression: patterns like `token:` / `cookie:` / `password:` lack
+        // a trailing space, so the canonical `label: value` shape used to
+        // leak the value — the masker stopped at the first terminator
+        // (the space) and emitted `[REDACTED] value`. Skipping leading
+        // terminators after the pattern hit closes the leak.
+        let cases: [(input: String, mustNotContain: String)] = [
+            ("token: secret123", "secret123"),
+            ("cookie: session=abc", "session=abc"),
+            ("password: hunter2", "hunter2"),
+            ("api_key: sk_test_AAAA", "sk_test_AAAA"),
+            ("secret: my-super-secret", "my-super-secret")
+        ]
+        for (input, secret) in cases {
+            let output = SensitivePatterns.redact(input)
+            #expect(
+                !output.contains(secret),
+                "redact(\"\(input)\") leaked the value: \"\(output)\""
+            )
+            #expect(output.contains("[REDACTED]"))
+        }
+    }
+
+    @Test("Repeated label-value patterns each get masked")
+    func repeatedPatternsAllMasked() {
+        let input = "cookie: a=1; cookie: b=2; cookie: c=3"
+        let output = SensitivePatterns.redact(input)
+        #expect(!output.contains("a=1"))
+        #expect(!output.contains("b=2"))
+        #expect(!output.contains("c=3"))
+        // Three masks, exactly.
+        #expect(output.components(separatedBy: "[REDACTED]").count - 1 == 3)
     }
 }

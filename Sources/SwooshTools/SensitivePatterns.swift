@@ -1,4 +1,4 @@
-// SwooshTools/SensitivePatterns.swift — Shared sensitive-substring redaction — 0.9B
+// SwooshTools/SensitivePatterns.swift — Shared sensitive-substring redaction — 0.9C
 //
 // Single source of truth for "this looks like a secret, redact it before
 // it lands in audit logs / prompts / MCP responses". Consumed by both
@@ -45,10 +45,17 @@ public enum SensitivePatterns {
         " ", "\t", "\n", "\r", ",", ";", "\"", "'", ")", "]", "}"
     ]
 
-    /// Mask every occurrence of every pattern in `strings` plus the
-    /// non-terminator characters that immediately follow it. Replacement
-    /// is the single token `[REDACTED]` so the masked output collapses
-    /// secret labels and values together.
+    /// Mask every occurrence of every pattern in `strings` plus the value
+    /// that follows it. Replacement is the single token `[REDACTED]` —
+    /// both label and value collapse to one marker.
+    ///
+    /// After a pattern hit, the masker:
+    ///   1. Advances past the pattern itself.
+    ///   2. Skips any *leading* terminators (so `token: secret` doesn't
+    ///      stop at the space and leak `secret` — patterns without a
+    ///      trailing whitespace literal still mask the value).
+    ///   3. Consumes non-terminator characters until the next terminator
+    ///      or end-of-string.
     ///
     /// Why "consume to terminator" instead of regex word boundary: real
     /// tokens contain `.` and `-` (JWT segments, Solana addresses,
@@ -59,29 +66,44 @@ public enum SensitivePatterns {
     public static func redact(_ text: String) -> String {
         var output = ""
         output.reserveCapacity(text.count)
-        var scalars = text.unicodeScalars
-        var i = scalars.startIndex
-        while i < scalars.endIndex {
-            if let match = firstMatchAt(scalars: scalars, start: i) {
+        let scalars = text.unicodeScalars
+        var current = scalars.startIndex
+        while current < scalars.endIndex {
+            if let match = firstMatchAt(scalars: scalars, start: current) {
                 output += "[REDACTED]"
-                // Consume the pattern + the value (everything up to the
-                // next terminator or end-of-string).
-                var j = scalars.index(i, offsetBy: match.utf16Length)
-                while j < scalars.endIndex, !valueTerminators.contains(Character(scalars[j])) {
-                    j = scalars.index(after: j)
-                }
-                i = j
+                current = consumeValue(
+                    scalars: scalars,
+                    afterPatternAt: scalars.index(current, offsetBy: match.scalarCount)
+                )
             } else {
-                output.unicodeScalars.append(scalars[i])
-                i = scalars.index(after: i)
+                output.unicodeScalars.append(scalars[current])
+                current = scalars.index(after: current)
             }
         }
         return output
     }
 
+    /// Skip leading terminators (so `label:_value` and `label: value` both
+    /// mask the value, not just the label) then walk through the value
+    /// itself until a trailing terminator or end-of-string. Returns the
+    /// index AFTER the masked value.
+    private static func consumeValue(
+        scalars: String.UnicodeScalarView,
+        afterPatternAt: String.UnicodeScalarView.Index
+    ) -> String.UnicodeScalarView.Index {
+        var cursor = afterPatternAt
+        while cursor < scalars.endIndex, valueTerminators.contains(Character(scalars[cursor])) {
+            cursor = scalars.index(after: cursor)
+        }
+        while cursor < scalars.endIndex, !valueTerminators.contains(Character(scalars[cursor])) {
+            cursor = scalars.index(after: cursor)
+        }
+        return cursor
+    }
+
     /// Returns the pattern that matches at `start` in `scalars`, or nil
-    /// if nothing matches. Longest-first so `-----BEGIN` wins over
-    /// shorter prefix overlaps if any future pattern shares a prefix.
+    /// if nothing matches. Iterates the canonical list largest-first so
+    /// `-----BEGIN` wins over any shorter prefix overlaps.
     private static func firstMatchAt(
         scalars: String.UnicodeScalarView,
         start: String.UnicodeScalarView.Index
@@ -91,13 +113,19 @@ public enum SensitivePatterns {
             let patternScalars = pattern.unicodeScalars
             guard remaining.count >= patternScalars.count else { continue }
             if remaining.starts(with: patternScalars) {
-                return Match(utf16Length: patternScalars.count)
+                return Match(scalarCount: patternScalars.count)
             }
         }
         return nil
     }
 
+    /// Pattern-match result. `scalarCount` is the number of Unicode
+    /// scalars in the matched pattern — the masker advances by this many
+    /// scalar indices past the match. (Earlier drafts called this
+    /// `utf16Length`, which was misleading: scalar count and UTF-16 code
+    /// unit count differ for characters outside the Basic Multilingual
+    /// Plane.)
     private struct Match {
-        let utf16Length: Int
+        let scalarCount: Int
     }
 }

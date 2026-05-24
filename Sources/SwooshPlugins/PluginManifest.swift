@@ -46,7 +46,6 @@ public struct PluginManifest: Codable, Sendable, Identifiable {
     /// dependency-resolution stability and planner ranking. Defaults to 0.
     public var priority: Int
 
-    // swiftlint:disable:next function_parameter_count
     public init(
         id: String, name: String, version: String, description: String? = nil,
         author: String? = nil, kind: PluginKind = .swift,
