@@ -132,6 +132,20 @@ struct HuggingFaceDiscoveryEstimateSizeTests {
         #expect(size.tier == .small)
         #expect(size.memoryGB == 1.2)
     }
+
+    @Test("500M wins over 0.3B when both appear (largest-first invariant)")
+    func largestFirstAcrossNotations() {
+        // Regression test for a table-ordering bug: 500M (= 0.5B) was listed
+        // AFTER 0.3B in the size table, so a hypothetical name carrying
+        // both spellings would have falsely picked the smaller 0.3B row.
+        // The fix re-orders the table strictly by parameter count, so the
+        // larger 500M (micro / 0.35 GB) wins over the smaller 0.3B
+        // (nano / 0.2 GB).
+        let size = HuggingFaceDiscovery.estimateSize("X-0.3B-500M")
+        #expect(size.params == "500M")
+        #expect(size.tier == .micro)
+        #expect(size.memoryGB == 0.35)
+    }
 }
 
 @Suite("HuggingFaceDiscovery.containsAnchored")
