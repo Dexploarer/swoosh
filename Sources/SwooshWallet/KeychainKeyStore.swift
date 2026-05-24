@@ -1,4 +1,4 @@
-// SwooshWallet/KeychainKeyStore.swift — Biometric-gated Keychain store
+// SwooshWallet/KeychainKeyStore.swift — Biometric-gated Keychain store — 0.9A
 //
 // Stores the secret material for each WalletAccount as a generic password
 // item. Items are pinned to:

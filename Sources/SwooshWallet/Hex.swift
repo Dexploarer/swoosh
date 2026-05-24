@@ -1,4 +1,4 @@
-// SwooshWallet/Hex.swift — Hex encoding helpers
+// SwooshWallet/Hex.swift — Hex encoding helpers — 0.9A
 //
 // EVM addresses and signatures are hex with a 0x prefix. RPC responses
 // return quantities and storage data as hex-prefixed strings too. These

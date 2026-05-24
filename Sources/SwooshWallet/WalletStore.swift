@@ -1,4 +1,4 @@
-// SwooshWallet/WalletStore.swift — Wallet facade
+// SwooshWallet/WalletStore.swift — Wallet facade — 0.9A
 //
 // Holds:
 //   • the per-chain metadata index (JSON-encoded WalletAccount list)
@@ -43,8 +43,14 @@ public actor WalletStore {
         return list
     }
 
-    private func writeAccounts(_ list: [WalletAccount]) {
-        let data = (try? JSONEncoder().encode(list)) ?? Data()
+    /// Persist the account index to UserDefaults. JSONEncoder failure is
+    /// theoretically impossible for `[WalletAccount]` (every field is a
+    /// `Codable` value type) but if it ever happened, silently writing an
+    /// empty blob would mean every account vanishes on next launch with
+    /// the secret material orphaned in the Keychain forever. Throwing
+    /// `EncodingError` here makes the failure visible to the caller.
+    private func writeAccounts(_ list: [WalletAccount]) throws {
+        let data = try JSONEncoder().encode(list)
         userDefaults.set(data, forKey: Defaults.accountsKey)
     }
 
@@ -59,22 +65,27 @@ public actor WalletStore {
         try await keychain.save(secret: pair.secret, for: account)
         var list = accounts()
         list.append(account)
-        writeAccounts(list)
+        try writeAccounts(list)
         return account
     }
 
-    public func rename(account: WalletAccount, to label: String) {
+    /// Rename a stored account. Returns `false` when the account ID
+    /// doesn't match any persisted record so the caller can surface a
+    /// "not found" UI state instead of silently doing nothing.
+    @discardableResult
+    public func rename(account: WalletAccount, to label: String) throws -> Bool {
         var list = accounts()
-        guard let idx = list.firstIndex(where: { $0.id == account.id }) else { return }
+        guard let idx = list.firstIndex(where: { $0.id == account.id }) else { return false }
         list[idx].label = label
-        writeAccounts(list)
+        try writeAccounts(list)
+        return true
     }
 
     public func deleteAccount(_ account: WalletAccount) async throws {
         try await keychain.delete(account: account)
         var list = accounts()
         list.removeAll(where: { $0.id == account.id })
-        writeAccounts(list)
+        try writeAccounts(list)
     }
 
     // MARK: - Balance reads

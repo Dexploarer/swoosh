@@ -1,4 +1,4 @@
-// SwooshWallet/WalletChain.swift — Supported chains + RPC endpoints
+// SwooshWallet/WalletChain.swift — Supported chains + RPC endpoints — 0.9A
 //
 // The iOS app's in-app wallet supports four chains. Solana uses ed25519
 // (CryptoKit Curve25519.Signing), the EVM chains share secp256k1 + Keccak256

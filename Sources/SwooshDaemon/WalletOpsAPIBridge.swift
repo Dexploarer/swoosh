@@ -78,7 +78,10 @@ extension SwooshDaemon {
         guard let account = await findWalletAccount(store: store, id: id) else {
             throw APIError.notFound("wallet account not found: \(id)")
         }
-        await store.rename(account: account, to: trimmedLabel)
+        let renamed = try await store.rename(account: account, to: trimmedLabel)
+        guard renamed else {
+            throw APIError.notFound("wallet account not found: \(id)")
+        }
         guard let refreshed = await findWalletAccount(store: store, id: id) else {
             throw APIError.notFound("wallet account disappeared after rename: \(id)")
         }
