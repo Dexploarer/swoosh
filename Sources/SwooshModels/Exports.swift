@@ -1,4 +1,4 @@
-// SwooshModels/Exports.swift — Re-export Foundation.URL for SwooshModels consumers — 0.9U
+// SwooshModels/Exports.swift — Re-export Foundation.URL for SwooshModels consumers — 0.9T
 //
 // SwooshModels' public APIs (e.g. `DynamicModelLoader.init(ollamaBase:hfBase:session:)`)
 // take `URL` parameters. Re-exporting `Foundation.URL` from this module lets

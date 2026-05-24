@@ -1,4 +1,4 @@
-// SwooshModels/HuggingFaceDiscovery.swift — Live model discovery from Hugging Face — 0.9U
+// SwooshModels/HuggingFaceDiscovery.swift — Live model discovery from Hugging Face — 0.9T
 //
 // Queries the HF API to find models the user doesn't have in the curated catalog.
 // Filters by pipeline_tag (task), library (gguf/mlx), and sorts by downloads.
