@@ -26,7 +26,7 @@ const chainId = Number(process.env.CHAIN_ID)
 const chain = CHAIN_MAP[chainId]
 if (!chain) {
   const supported = Object.keys(CHAIN_MAP).join(', ')
-  throw new Error(`Unsupported CHAIN_ID: ${chainId}. Supported chain IDs: ${supported}`)
+  throw new Error("Unsupported CHAIN_ID: "+chainId+". Supported chain IDs: "+supported)
 }
 
 const RPC = process.env.RPC
@@ -36,10 +36,10 @@ if (!RPC) throw new Error('RPC is required')
 
 const POOL_ID = process.env.POOL_ID
 if (!/^0x[0-9a-fA-F]{64}$/.test(POOL_ID)) {
-  throw new Error(`POOL_ID must be a 32-byte hex string (0x + 64 hex chars), got: ${POOL_ID}`)
+  throw new Error("POOL_ID must be a 32-byte hex string (0x + 64 hex chars), got: "+POOL_ID)
 }
 
-const FEE_BASE = 10_000
+const FEE_BASE = 10000
 function parseProtocolFee(packed) {
   const token0ProtocolFee = packed % 2 ** 12
   // eslint-disable-next-line no-bitwise
@@ -50,7 +50,7 @@ function parseProtocolFee(packed) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-const client = createPublicClient({ chain, transport: http(RPC) })
+const client = createPublicClient({ chain: chain, transport: http(RPC) })
 
 const [clResult, binResult] = await client.multicall({
   contracts: [
@@ -72,14 +72,14 @@ const [clResult, binResult] = await client.multicall({
 if (clResult.status === 'success' && clResult.result[0] !== 0n) {
   console.log(
     JSON.stringify({
-      protocolFeePercent: `${parseProtocolFee(clResult.result[2])[0]}%`,
+      protocolFeePercent: ""+parseProtocolFee(clResult.result[2])[0]+"%",
       poolType: 'cl',
-    }),
+    })
   )
 } else if (binResult.status === 'success' && binResult.result[0] !== 0n) {
   console.log(
     JSON.stringify({
-      protocolFeePercent: `${parseProtocolFee(binResult.result[1])[0]}%`,
+      protocolFeePercent: ""+parseProtocolFee(binResult.result[1])[0]+"%",
       poolType: 'bin',
     }),
   )

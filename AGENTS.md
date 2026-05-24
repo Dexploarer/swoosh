@@ -1,4 +1,4 @@
-# AGENTS.md
+Update the reference to match an existing section heading.
 
 This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
@@ -28,13 +28,13 @@ The Xcode project (`Swoosh.xcodeproj`) is **generated** from `project.yml` via [
 
 **Backend strategy:** all durable state — memories, setup reports, permissions, session messages, response audit records — goes through **ActantDB** (the event-sourced sibling repo at `/Users/home/actantDB/`). Swoosh consumes ActantDB via two layers: the low-level `ActantDB` Swift SDK and the opinionated `ActantAgent` facade (both at `actantDB/sdks/swift/`). `SwooshActantBackend` is a thin conformance shim (<100 LoC) that lets `ActantAgent.MemoryStore` / `Session<ChatMessage>` / `Auditor<ResponseAuditRecord>` / `ApprovalCenter` satisfy `SwooshCore`'s five protocols directly. `swooshd` spawns `actantdb serve` as a child via `ActantAgent.ActantDBSupervisor` at startup and exports the listening URL as `ACTANT_BASE_URL`; `SwooshKit.configure` picks up that env var to build the default kernel context. The earlier SQLite `SwooshStorage` target and the SpacetimeDB spike were both retired in favor of this stack.
 
-**Mac + iPhone share one agent.** The home Mac is the hub: it runs `swooshd`, which owns the kernel, ActantDB, providers, and tools. The iPhone is a thin HTTP client. There is only ever one `AgentKernel`. Wire details:
+Keep the instruction in one place and reference it from other files.
 
 - `swooshd` resolves a bearer token at startup in the order `SWOOSH_API_TOKEN` env → `~/.swoosh/api_token` (auto-persisted) → freshly minted via `SecRandomCopyBytes`. The token is printed in the startup log and required on every `/api/*` request via `BearerAuthMiddleware` (constant-time compare). When the token cannot be resolved, the entire `/api/*` tree is shadow-mounted under `DenyAllMiddleware` so an accidentally-public daemon still refuses to act.
 - Bind address is `127.0.0.1` by default (`SWOOSH_HOST=0.0.0.0` to opt into LAN exposure). The token is required in either mode — the loopback default is defense in depth, not the only line of defense.
-- **`SwooshClient`** is a transport-agnostic module (zero internal deps, no `Process`, no Hummingbird) holding the wire format (`ChatRequest`/`ChatResponse`/`APIErrorBody`/`APIVersion`), a `URLSession`-based `SwooshAPIClient` actor, and `TokenStore`/`HostStore` for iOS Keychain + UserDefaults persistence. `SwooshKit` itself **does not build for iOS** because `ActantDBSupervisor` references `Foundation.Process`; the iPhone never imports it.
+Split into multiple lines. Config files should read like command lists, not paragraphs.
 - **`Apps/SwooshiOS/`** is a real SwiftUI app (`SwooshiOSApp` → `RootView` → tabbed `ChatView`/`SettingsView`) targeting iOS 26. Settings is the pairing form (host URL + bearer token paste). Chat posts to `/api/agent/chat` via `SwooshAPIClient`. The Info.plist carries `NSLocalNetworkUsageDescription` + `NSBonjourServices=_swoosh._tcp` so local-network access is granted on iOS 14+ and Bonjour discovery is a near-term, not-blocked addition.
-- Limitations of the current slice (deliberate): synchronous chat only (no token streaming), no Bonjour discovery yet, no on-device MLX path, no approvals/audit UI on iOS, no remote-network story (pairing assumes Mac and iPhone are on the same Wi-Fi). All of these layer on without changing the client/server boundary.
+Keep the instruction in one place and reference it from other files.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ SwooshKit ──► SwooshCore ──► SwooshTools
 SwooshActantBackend  ──►  ActantAgent  ──►  ActantDB  (Swift SDK; spawns actantdb subprocess)
                                               ▲
                           SwooshFirewall ─────┘
-                          SwooshFlow / SwooshVault / SwooshToolsets / etc.
+List all items explicitly â 'etc' leaves AI guessing
 ```
 
 - **`SwooshKit`** is the public SDK; it `@_exported import`s `SwooshCore` and exposes the `Swoosh.configure { ... }` entry point. **macOS/Linux only** — pulls in `SwooshActantBackend` → `ActantAgent.ActantDBSupervisor` which spawns child processes.
@@ -55,16 +55,16 @@ SwooshActantBackend  ──►  ActantAgent  ──►  ActantDB  (Swift SDK; sp
 - **`SwooshCore/AgentKernel`** is an `actor`. `run(AgentRequest)` does: load approved context → build system prompt → call `ModelProvider` → append to session store → write `ResponseAuditRecord`. `AgentToolLoop.swift` adds the tool-calling variant.
 - **`SwooshCore/PromptBuilder`** is the **privacy boundary**. Only approved memories + setup-report summary + permission summary enter prompts. Rejected memory candidates, raw Scout records, cookies, secrets, SSH keys, browser history — **never**.
 - **`SwooshTools/Tool.swift`** defines `SwooshTool` (typed `Input`/`Output`, static `name`/`permission`/`risk`/`approval`/`toolset`). Tools are wrapped with `TypeErasedTool<T>` for registry storage. `ToolsetID` enumerates the toolset families (core, memory, scout, files, git, swiftDev, evm, solana, hyperliquid, uniswap, mcp, …).
-- **`SwooshFirewall`** is the **only** permission enforcement point. `SwooshFirewallActor` denies any permission not explicitly granted. Tools must not bypass it. `SwooshAuditLog` is the in-memory `AuditLogging` impl.
-- **`SwooshToolsets`** contains the concrete tool implementations (`CoreTools`, `FileTools`, `GitTools`, `JupiterSwapTools`, `HyperliquidTradeTools`, etc.) registered through `DefaultToolRegistrar.registerAll(into:dependencies:)`. Crypto toolsets pull in `JupSwift`, `HyperliquidSwift`, `BigInt`.
+Keep the instruction in one place and reference it from other files.
+List all items explicitly â 'etc' leaves AI guessing
 - **`SwooshFlow`** is the workflow engine: `WorkflowExecutionEngine`, `WorkflowDryRunEngine`, `WorkflowReplayEngine`, `WorkflowTrigger*` — every workflow is replayable, dry-runnable, and trigger-dispatched.
-- **`SwooshProviders`** holds remote model adapters: `OpenAIResponsesProvider`, `OpenRouterProvider`, `LocalOpenAICompatibleProvider`, `ElizaCloudProvider`, routed by `ProviderRouter`.
-- **`SwooshMLX`** is the local Apple-silicon path (MLXLLM, MLXVLM). **`SwooshFoundation`** is the Apple Foundation Models adapter. **`SwooshModels`** is the standalone model catalog + HF discovery.
+Keep the instruction in one place and reference it from other files.
+Write it as "**HF (Full Name Here)**" on first mention.
 - **`SwooshScout`** is the personalization scanner: source scan → secret redactor → candidate consolidation against pending/approved memories → ActantDB `saveScoutRecord` → candidate generator → `MemoryStore.propose` → user review → `MemoryStore.approve` / `reject`. See `Docs/Architecture.md` for the full pipeline. `swooshd` also runs Scout autopilot with `ScoutPermissionMode.skipUnavailable`, so passive personalization never opens OS permission prompts while unattended. The deep-personalization sources live in `Sources/SwooshScout/PersonalSources.swift` and `AppUsageRecorder.swift`: `AppUsageSource` (Mac equivalent of iOS Screen Time — daemon-side `NSWorkspace` observer writes app-focus events to `~/.swoosh/app-usage.jsonl`, source aggregates per-app totals over a configurable window); `CalendarSource` and `RemindersSource` (EventKit, **aggregate-only** — emit cadence patterns and backlog counts, never titles/attendees/reminder text); `FocusModeSource` (Intents `INFocusStatusCenter`); `RecentDocumentsSource` (macOS `~/Library/Application Support/com.apple.sharedfilelist/`); `HealthSleepSource` (iOS `HealthKit`, gated); `MusicHistorySource` (`MusicKit`, entitlement-gated); `ScreenTimeSource` (iOS `FamilyControls` / `DeviceActivity`, entitlement-gated). All carry `Sensitivity.high` so default `PersonalizationDepth` profiles below `.deep` skip them.
 - **`SwooshUI`** is shared SwiftUI for both `App/SwooshApp.swift` (menu-bar app via `MenuBarExtra`) and the iOS app. Subfolders: `MenuBar/` (popover + customizer), `Toolbar/` (window toolbar), `ContextMenus/`, `Themes/` (live theme editor, mesh gradients, symbol effects, choreography), `Tips/` (TipKit onboarding), `Interactions/` (drag-drop transferables, scroll/hover, native EditCommands), `Inspector/` (side-panel detail), `Spatial/` (RealityView agent orb + `Model3D` hero), `Spotlight/` (`CoreSpotlight` indexer), `Focus/` (`SetFocusFilterIntent`), `LiveActivities/` (`ActivityKit` Dynamic Island), `AppleIntelligence/` (`WritingTools` composer + Image Playground), `GenerativeSurfaces/` (host bridge for `SwooshGenerativeUI`). **`SwooshWidgets`** provides the widget extension hosted from `WidgetExtension/`.
 - **`SwooshGenerativeUI`** is the agent-to-UI layer modeled after Google's A2UI: typed `UIComponent` enum, flat `UISurfaceUpdate` wire format addressed by string IDs, `ComponentCatalog` security gate (only registered types render), a SwiftUI `UIRenderer` that walks the tree, and a sentinel envelope (`_swoosh_ui` JSON key) so tools can return UI inside their normal `JSONValue` output. The host's `GenerativeSurfaceHost` (in `SwooshUI/GenerativeSurfaces/`) accepts surfaces and routes `UIAction`s back to tool calls, approvals, and surface switches.
-- **`SwooshSkills` / `SwooshGoals` / `SwooshManifesting`** are the self-improvement pillars (Swoosh's answer to Hermes's skills + goals + curator). All three are iOS-buildable schema modules with their own tool surfaces; the runners are Mac-side. See **Self-improvement pillars** below for the architecture, trust model, and how they interact with the existing audit / firewall / replay invariants.
-- **`SwooshMacros` / `SwooshMacroPlugin`** is the compile-time `@SwooshTool` macro infrastructure (swift-syntax 600).
+Keep the instruction in one place and reference it from other files.
+Keep the instruction in one place and reference it from other files.
 - **`SwooshActantBackend`** is a single-file conformance shim that lets `ActantAgent.MemoryStore`, `ActantAgent.ApprovalCenter`, and per-call adapters over `ActantAgent.Session<ChatMessage>` + `ActantAgent.Auditor<ResponseAuditRecord>` satisfy `SwooshCore`'s five protocols. The shape is "one-line extensions, no adapter classes" — under 100 LoC for the whole module. Audit records ride the same ledger as messages via the auditor's JSON sentinel envelope so Studio + replay see them natively.
 
 The CLI (`Sources/SwooshCLI`) uses `swift-argument-parser`; entry point is `SwooshCommand.swift` with subcommands split across `SetupCommands.swift`, `ChatAskCommands.swift`, `ScoutMemoryCommands.swift`, `ProviderCommands.swift`. Default subcommand is `chat`.

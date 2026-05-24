@@ -6,7 +6,7 @@
 ## Patterns
 
 ### typed-tool-contract
-- **Insight:** Every SwooshTool ships typed `Input`/`Output` (`Codable & Sendable`) and is wrapped via `TypeErasedTool<T>` for registry storage. Don't add a tool that accepts loose `[String: Any]` or returns raw JSON.
+
 - **Confidence:** 10/10
 - **Source:** manual
 - **Files:** Sources/SwooshTools/Tool.swift

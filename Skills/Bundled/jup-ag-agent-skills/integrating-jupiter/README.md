@@ -23,7 +23,7 @@ Skills for AI coding agents in the Jupiter ecosystem.
 | Routing | DEX aggregation (Iris), RFQ (JupiterZ), and market listing |
 
 ## Examples
-
+- `swap.md` â Swap order â sign â execute â confirm
 Production-ready code snippets in `examples/`:
 - `swap.md` — Swap order → sign → execute → confirm
 - `lend.md` — USDC deposit into Jupiter Lend

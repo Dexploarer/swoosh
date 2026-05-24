@@ -32,14 +32,14 @@ const chainId = Number(process.env.CHAIN_ID)
 const chain = CHAIN_MAP[chainId]
 if (!chain) {
   const supported = Object.keys(CHAIN_MAP).join(', ')
-  throw new Error(`Unsupported CHAIN_ID: ${chainId}. Supported chain IDs: ${supported}`)
+  throw new Error("Unsupported CHAIN_ID: "+chainId+". Supported chain IDs: "+supported)
 }
 
 const chainName = CHAIN_NAME_MAP[chainId]
 
 const WALLET = process.env.WALLET
 if (!/^0x[0-9a-fA-F]{40}$/.test(WALLET)) {
-  throw new Error(`Invalid WALLET address: ${WALLET}`)
+  throw new Error("Invalid WALLET address: "+WALLET)
 }
 
 const RPC = process.env.RPC
@@ -73,8 +73,8 @@ function computePoolId(poolKey) {
         poolKey.poolManager,
         poolKey.fee,
         poolKey.parameters,
-      ],
-    ),
+      ]
+    )
   )
 }
 
@@ -90,7 +90,7 @@ async function fetchAllPages(urlBase) {
   const rows = []
   let after = ''
   do {
-    const url = `${urlBase}?before=&after=${after}`
+    const url = ""+urlBase+"?before=&after="+after
     const res = await fetch(url)
     if (!res.ok) throw new Error(`Explorer API error ${res.status}: ${url}`)
     const data = await res.json()

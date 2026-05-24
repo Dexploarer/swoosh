@@ -61,8 +61,8 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 const INCENTRA_API = 'https://incentra-prd.brevis.network/sdk/v1'
 const INCENTRA_CAMPAIGN_TYPES = [3, 4, 8]
 const MERKL_CHAIN_IDS = [1, 56, 8453, 42161, 324, 59144, 143]
-const SECONDS_PER_YEAR = 31_536_000
-const FEE_BASE = 10_000
+const SECONDS_PER_YEAR = 31536000
+const FEE_BASE = 10000
 
 // ─── Input parsing ─────────────────────────────────────────────────────────────
 
@@ -74,27 +74,27 @@ const ORDER_BY = process.env.ORDER_BY || 'tvlUSD'
 const ALL_PROTOCOLS = ['v2', 'v3', 'stable', 'infinityCl', 'infinityBin', 'infinityStable']
 const PROTOCOLS_INPUT = process.env.PROTOCOLS
   ? process.env.PROTOCOLS.split(',')
-      .map((p) => p.trim())
+      .map(function(p) { return p.trim() })
       .filter(Boolean)
   : ALL_PROTOCOLS
 
 if (!CHAIN_STRING_TO_ID[CHAIN]) {
   throw new Error(
-    `Unsupported CHAIN: "${CHAIN}". Supported: ${Object.keys(CHAIN_STRING_TO_ID).join(', ')}`,
+    "Unsupported CHAIN: \""+CHAIN+"\". Supported: "+Object.keys(CHAIN_STRING_TO_ID).join(', '),
   )
 }
 
 const ORDER = ['tvlUSD', 'apr24h', 'volumeUSD24h']
 if (!ORDER.includes(ORDER_BY)) {
-  throw new Error(`Unsupported ORDER_BY: "${ORDER_BY}". Supported: ${ORDER.join(', ')}`)
+  throw new Error("Unsupported ORDER_BY: \""+ORDER_BY+"\". Supported: "+ORDER.join(', '))
 }
 
-const invalidProtocols = PROTOCOLS_INPUT.filter((p) => !ALL_PROTOCOLS.includes(p))
+const invalidProtocols = PROTOCOLS_INPUT.filter(function(p) { return !ALL_PROTOCOLS.includes(p) })
 if (invalidProtocols.length > 0) {
   throw new Error(
     `Unsupported PROTOCOLS: "${invalidProtocols.join(', ')}". Supported: ${ALL_PROTOCOLS.join(
-      ', ',
-    )}`,
+      ', '
+    )}`
   )
 }
 

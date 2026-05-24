@@ -14,7 +14,7 @@ const merklChainIds = [
 
 async function getIncentraApr() {
   try {
-    const resp = await fetch(`${INCENTRA_API}/liquidityCampaigns`, {
+    const resp = await fetch(""+INCENTRA_API+"/liquidityCampaigns", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -46,8 +46,8 @@ async function getMerklApr() {
   try {
     const resp = await fetch(
       `https://api.merkl.xyz/v4/opportunities/?chainId=${merklChainIds.join(
-        ',',
-      )}&test=false&mainProtocolId=pancake-swap&action=POOL,HOLD&status=LIVE&items=100`,
+        ','
+      )}&test=false&mainProtocolId=pancake-swap&action=POOL,HOLD&status=LIVE&items=100`
     )
 
     const result = await resp.json()
@@ -55,7 +55,7 @@ async function getMerklApr() {
       (opportunity) =>
         opportunity?.tokens?.[0]?.symbol?.toLowerCase().startsWith('cake-lp') ||
         opportunity?.protocol?.id?.toLowerCase().startsWith('pancake-swap') ||
-        opportunity?.protocol?.id?.toLowerCase().startsWith('pancakeswap'),
+        opportunity?.protocol?.id?.toLowerCase().startsWith('pancakeswap')
     )
 
     return pancakeResult.map((c) => ({
@@ -72,4 +72,4 @@ async function getMerklApr() {
 }
 
 const [merklApr, incentraApr] = await Promise.all([getMerklApr(), getIncentraApr()])
-console.log(JSON.stringify({ merklApr, incentraApr }))
+console.log(JSON.stringify({ merklApr: merklApr, incentraApr }))

@@ -47,5 +47,5 @@ Use this skill when the user wants BNB Chain meme token launches or integration 
 
 - How it works: https://four-meme.gitbook.io/four.meme/guide/how-it-works
 - Tax tokens: https://four-meme.gitbook.io/four.meme/guide/introducing-tax-tokens-on-four.meme
-- Protocol integration: https://four-meme.gitbook.io/four.meme/brand/protocol-integration
+- Protocol integration: <https://four-meme.gitbook.io/four.meme/brand/protocol-integration>
 - API docs: https://1270958763-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FMKYhtLfncF7vyCOOt0Ef%2Fuploads%2F62o7mCRr1omQzpSdmYMW%2FAPI-Documents.03-03-2026.md?alt=media&token=5267cf33-b7de-43fa-a852-5a37e4a5cd8c

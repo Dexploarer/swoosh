@@ -49,7 +49,7 @@ Use when:
 - The user needs debugging help for Jupiter API calls.
 
 Do not use when:
-- The task is generic Solana setup with no Jupiter API usage.
+
 - The task is UI-only with no API behavior decisions.
 - The agent context is not DeFi/crypto (generic triggers like `buy`, `sell`, `trade` assume a DeFi domain).
 

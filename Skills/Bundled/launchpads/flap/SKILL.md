@@ -49,5 +49,5 @@ Use this skill when the user wants BNB Chain launchpad or trading coverage throu
 - Deployed contracts: https://docs.flap.sh/flap/developers/deployed-contract-addresses
 - Wallet, terminal, bot quickstart: https://docs.flap.sh/flap/developers/wallet-and-terminal-and-bot-developers/a-quick-start-for-wallet-terminal-bot-developers
 - Trade tokens: https://docs.flap.sh/flap/developers/wallet-and-terminal-and-bot-developers/trade-tokens
-- Token launcher quickstart: https://docs.flap.sh/flap/developers/token-launcher-developers/quick-start-token-launcher-developers
-- VaultPortal launch: https://docs.flap.sh/flap/developers/token-launcher-developers/launch-token-through-vaultportal
+- Token launcher quickstart: <https://docs.flap.sh/flap/developers/token-launcher-developers/quick-start-token-launcher-developers>
+- VaultPortal launch: <https://docs.flap.sh/flap/developers/token-launcher-developers/launch-token-through-vaultportal>

@@ -43,8 +43,8 @@ Use this skill when the user wants to launch or prepare a Solana token through B
 
 ## References
 
-- Docs index: https://docs.bags.fm/llms.txt
-- Launch token guide: https://docs.bags.fm/how-to-guides/launch-token
+- Docs index: <https://docs.bags.fm/llms.txt>
+- Launch token guide: <https://docs.bags.fm/how-to-guides/launch-token>
 - Agent authentication: https://docs.bags.fm/how-to-guides/agent-authentication
 - Create launch intent: https://docs.bags.fm/how-to-guides/create-launch-intent
-- Create token launch transaction: https://docs.bags.fm/api-reference/create-token-launch-transaction
+- Create token launch transaction: <https://docs.bags.fm/api-reference/create-token-launch-transaction>

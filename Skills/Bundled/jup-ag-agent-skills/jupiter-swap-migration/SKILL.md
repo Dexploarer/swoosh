@@ -29,7 +29,7 @@ Use when:
 - Switching from Metis two-step flow to the unified `/build` or `/order` endpoint.
 
 Do not use when:
-- Building a new Jupiter integration from scratch (use `integrating-jupiter` skill instead).
+
 - Working with non-swap Jupiter APIs (Lend, Trigger, Recurring, etc.).
 
 **Triggers**: `ultra`, `metis`, `ultra swap`, `ultra api`, `ultra-api.jup.ag`, `/ultra/v1`, `swap/v1`, `swap-instructions`, `migrate swap`, `ultra migration`, `metis migration`, `swap v1 to v2`, `v1 to v2`, `upgrade jupiter`, `swap-instructions deprecated`, `deprecated swap`, `old jupiter api`, `swap upgrade`, `update swap api`, `quote endpoint deprecated`, `swap stopped working`, `swap broken`, `ExactOut removed`, `swapMode removed`, `userPublicKey`, `parameter rename`, `addressLookupTable`, `response format changed`

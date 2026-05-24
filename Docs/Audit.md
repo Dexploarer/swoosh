@@ -294,7 +294,7 @@ make the README tell the truth about the rest.**
 
 Findings are being worked in priority bands; the build and test suite are
 kept green at every band boundary.
-
+- **ProviderRouter health probe** â `testProvider` no longer probes with
 ### Band A — bugs + Skills wiring ✅ (done, verified: build + 1030 tests green)
 - **ProviderRouter health probe** — `testProvider` no longer probes with
   an empty model name; it uses the highest-priority route's model, so a

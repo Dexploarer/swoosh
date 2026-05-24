@@ -63,5 +63,5 @@ Pay is for wallet-approved API payments. It is not a Swoosh private-key custody 
 ## References
 
 - Pay docs: https://pay.sh/docs
-- Agent quickstart: https://pay.sh/docs/get-started/agent-quickstart
-- Provider discovery: https://pay.sh/docs/pay-for-apis/discover-providers
+- Agent quickstart: <https://pay.sh/docs/get-started/agent-quickstart>
+- Provider discovery: <https://pay.sh/docs/pay-for-apis/discover-providers>

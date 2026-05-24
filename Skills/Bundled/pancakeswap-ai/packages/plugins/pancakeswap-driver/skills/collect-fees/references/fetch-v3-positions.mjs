@@ -40,14 +40,14 @@ const chainId = Number(process.env.CHAIN_ID)
 const chain = CHAIN_MAP[chainId]
 if (!chain) {
   const supported = Object.keys(CHAIN_MAP).join(', ')
-  throw new Error(`Unsupported CHAIN_ID: ${chainId}. Supported chain IDs: ${supported}`)
+  throw new Error("Unsupported CHAIN_ID: "+chainId+". Supported chain IDs: "+supported)
 }
 
 const WALLET = process.env.WALLET
 const POSITION_MANAGER = NFT_POSITION_MANAGER_ADDRESSES[chainId]
 const masterchefAddress = masterChefV3Addresses[chainId]
 
-const client = createPublicClient({ chain, transport: http(process.env.RPC) })
+const client = createPublicClient({ chain: chain, transport: http(process.env.RPC) })
 
 const MAX_UINT128 = 2n ** 128n - 1n
 const CONCURRENCY = Number(process.env.CONCURRENCY ?? 5)
@@ -57,7 +57,7 @@ async function mapWithConcurrency(items, limit, fn) {
   for (let i = 0; i < items.length; i += limit) {
     results.push(...(await Promise.all(items.slice(i, i + limit).map(fn))))
     // Delay to avoid rate limits
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    await new Promise((resolve) => {setTimeout(resolve, 500)})
   }
   return results
 }

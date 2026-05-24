@@ -42,7 +42,7 @@ xcodebuild -project Swoosh.xcodeproj -scheme SwooshiOS \
 
 ## Signing facts (don't re-derive these)
 
-- `DEVELOPMENT_TEAM` = `GY5597YK9P` (Apple Development: dexploarer@gmail.com), set in `project.yml`.
+- `DEVELOPMENT_TEAM` = `GY5597YK9P` (Apple Development: <dexploarer@gmail.com>), set in `project.yml`.
 - iOS bundle ID: `ai.swoosh.app.ios`.
 - The matching provisioning profile is already in `~/Library/Developer/Xcode/UserData/Provisioning Profiles/`. **Do not** re-download or re-create unless Xcode complains it's expired.
 - macOS app sandbox is **disabled** for both the app and widget (`ENABLE_APP_SANDBOX: false`); app group is `group.ai.swoosh.shared`. Don't add a sandbox entitlement without discussing.

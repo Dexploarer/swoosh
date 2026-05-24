@@ -45,7 +45,7 @@ Use this skill when the user wants Solana launchpad coverage through PumpPortal:
 ## References
 
 - Docs home: https://pumpportal.fun/
-- Trading API overview: https://pumpportal.fun/trading-api/
-- Trading API setup: https://pumpportal.fun/trading-api/setup
-- Fees: https://pumpportal.fun/fees/
+- Trading API overview: <https://pumpportal.fun/trading-api/>
+- Trading API setup: <https://pumpportal.fun/trading-api/setup>
+- Fees: <https://pumpportal.fun/fees/>
 - Wallet docs: https://pumpportal.fun/create-wallet
