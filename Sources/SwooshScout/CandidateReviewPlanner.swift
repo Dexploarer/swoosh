@@ -1,4 +1,8 @@
-// SwooshScout/CandidateReviewPlanner.swift — Memory candidate consolidation
+// SwooshScout/CandidateReviewPlanner.swift — 0.9S Memory candidate consolidation
+//
+// Dedupes candidates by normalised (category, text), keeps the highest-
+// confidence variant of each, and drops any candidate whose normalised
+// text already exists in the user's approved or pending memories.
 
 import Foundation
 

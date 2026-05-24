@@ -1,4 +1,9 @@
-// SwooshScout/ScoutSourceCatalog.swift — Operational Scout source catalog
+// SwooshScout/ScoutSourceCatalog.swift — 0.9S Operational Scout source catalog
+//
+// One canonical place for the daemon, the CLI, and the agent-facing
+// scout tools to ask "what sources should we run?" — keeps source
+// composition out of every call site so a new source ships from one
+// edit here.
 
 import Foundation
 

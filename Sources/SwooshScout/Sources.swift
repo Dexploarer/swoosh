@@ -1,6 +1,10 @@
-// SwooshScout/Sources.swift — Built-in Scout data sources
+// SwooshScout/Sources.swift — 0.9S Built-in Scout data sources
 //
-// Device, apps, files, calendar, browser, Git, Xcode, shell, Hermes import
+// Device, apps, files, calendar, browser, Git, Xcode, shell, Hermes import.
+// Personal (deep-personalization) sources live under
+// `PersonalSources/` — one file per source — so this file stays focused
+// on the low- and medium-sensitivity sources that ship with `.minimal`
+// and `.recommended` depths.
 
 import Foundation
 #if canImport(AppKit)

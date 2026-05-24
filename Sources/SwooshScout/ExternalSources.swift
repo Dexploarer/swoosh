@@ -1,4 +1,8 @@
-// SwooshScout/ExternalSources.swift — Git, Shell, and Hermes scout sources
+// SwooshScout/ExternalSources.swift — 0.9S Git, Shell, and Hermes scout sources
+//
+// Low-sensitivity sources that read shell-visible artifacts (`.git`,
+// `PATH`, Hermes imports). Run at `.minimal` depth and above. No OS
+// permission prompts.
 import Foundation
 
 // MARK: - Git repos source

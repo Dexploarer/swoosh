@@ -1,4 +1,4 @@
-// SwooshScout/AppUsageRecorder.swift — macOS app-focus history recorder
+// SwooshScout/AppUsageRecorder.swift — 0.9S macOS app-focus history recorder
 //
 // The Mac equivalent of iOS Screen Time. NSWorkspace fires a
 // notification every time the frontmost app changes; we accumulate

@@ -24,4 +24,6 @@ Every personal source has a `Sensitivity` (`.low`/`.medium`/`.high`). `Personali
 
 ## Permission flow per source
 
-`ScoutSource.checkPermission` returns `.granted | .denied | .needsRequest | .unavailable`. The autopilot in `swooshd` uses `ScoutPermissionMode.skipUnavailable` so passive personalization never opens OS permission prompts while unattended. Don't change the autopilot mode to `.requestImmediately` — that breaks the unattended invariant.
+`ScoutSource.checkPermission` returns `SourcePermissionStatus`: one of `.granted | .denied | .notDetermined | .restricted`. `.notDetermined` means the user has never been asked; `.restricted` means the OS denies regardless of consent (parental controls, MDM, missing entitlement, unsupported platform). Only `.granted` lets a source's `scan(...)` run.
+
+The autopilot in `swooshd` uses `ScoutPermissionMode.skipUnavailable` so passive personalization never opens OS permission prompts while unattended. The default value of `ScoutPipelineOptions.permissionMode` is also `.skipUnavailable` (changed in 0.9S) — foreground callers that genuinely want to prompt the user must pass `.requestIfNeeded` explicitly. Don't flip the autopilot mode to `.requestIfNeeded` — that breaks the unattended invariant.
