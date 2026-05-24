@@ -195,7 +195,7 @@ struct MemoryListCommand: AsyncParsableCommand {
     /// behaviour without needing a live ActantDB.
     static func rejectedCandidates(from rows: [ActantDB.MemoryRow]) -> [ActantDB.MemoryCandidate] {
         rows.compactMap {
-            if case let .rejected(c) = $0 { return c } else { return nil }
+            if case let .rejected(candidate) = $0 { return candidate } else { return nil }
         }
     }
 }

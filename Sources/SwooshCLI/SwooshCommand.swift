@@ -1,4 +1,4 @@
-// SwooshCLI/SwooshCommand.swift — 0.5B CLI entry point + Doctor/Model/Daemon
+// SwooshCLI/SwooshCommand.swift — 0.5C CLI entry point + Doctor/Model/Daemon
 //
 // swoosh <subcommand>  — see subcommands below.
 // The DaemonPair subcommand and its QR/IP helpers live in
@@ -10,6 +10,11 @@
 // resolved at install time (override → sibling-of-swoosh → $PATH →
 // /usr/local/bin), and the command refuses to write a plist that points
 // at a non-existent executable.
+//
+// 0.5C revision: Codacy follow-ups — rename `fm` → `fileManager`, wrap
+// the >120-char `--swooshd-path` help string into `ArgumentHelp`, and
+// extract the LaunchAgent plist template into a private constant so
+// `makeLaunchAgentPlist` stays under the per-method LOC limit.
 
 import ArgumentParser
 import SwooshKit
@@ -100,7 +105,10 @@ struct DaemonInstallCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "install", abstract: "Install swooshd LaunchAgent.")
 
     @Option(name: .customLong("swooshd-path"),
-            help: "Absolute path to the swooshd binary the LaunchAgent should run. If omitted, swoosh searches the swoosh sibling directory, $PATH, and /usr/local/bin.")
+            help: ArgumentHelp(
+                "Absolute path to the swooshd binary the LaunchAgent should run.",
+                discussion: "If omitted, swoosh searches the swoosh sibling directory, $PATH, and /usr/local/bin."
+            ))
     var swooshdPath: String?
 
     func run() async throws {
@@ -136,18 +144,18 @@ struct DaemonInstallCommand: AsyncParsableCommand {
     /// actionable error instead of writing a plist that points at a
     /// non-existent path.
     static func resolveSwooshdURL(override: String?) -> URL? {
-        let fm = FileManager.default
+        let fileManager = FileManager.default
 
         if let override, !override.isEmpty {
             let url = URL(fileURLWithPath: override).standardizedFileURL
-            return fm.isExecutableFile(atPath: url.path) ? url : nil
+            return fileManager.isExecutableFile(atPath: url.path) ? url : nil
         }
 
         // 1. Sibling of the currently-running swoosh binary.
         let invokedPath = CommandLine.arguments.first ?? ""
         let resolvedInvoked = URL(fileURLWithPath: invokedPath).standardizedFileURL
         let sibling = resolvedInvoked.deletingLastPathComponent().appendingPathComponent("swooshd")
-        if fm.isExecutableFile(atPath: sibling.path) {
+        if fileManager.isExecutableFile(atPath: sibling.path) {
             return sibling
         }
 
@@ -158,7 +166,7 @@ struct DaemonInstallCommand: AsyncParsableCommand {
 
         // 3. The legacy convention path.
         let legacy = URL(fileURLWithPath: "/usr/local/bin/swooshd")
-        return fm.isExecutableFile(atPath: legacy.path) ? legacy : nil
+        return fileManager.isExecutableFile(atPath: legacy.path) ? legacy : nil
     }
 
     /// `/usr/bin/which swooshd` — used as a fallback when the swooshd
@@ -187,31 +195,40 @@ struct DaemonInstallCommand: AsyncParsableCommand {
     }
 
     /// Build the LaunchAgent plist body. Extracted so tests can pin the
-    /// generated XML without writing to `~/Library/LaunchAgents`.
+    /// generated XML without writing to `~/Library/LaunchAgents`. The
+    /// body itself lives in `launchAgentPlistTemplate` so this method
+    /// stays small enough for Codacy's per-method LOC limit.
     static func makeLaunchAgentPlist(swooshdPath: String, logsDir: String) -> String {
-        """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>Label</key>
-            <string>ai.swoosh.daemon</string>
-            <key>ProgramArguments</key>
-            <array>
-                <string>\(swooshdPath)</string>
-            </array>
-            <key>RunAtLoad</key>
-            <true/>
-            <key>KeepAlive</key>
-            <true/>
-            <key>StandardOutPath</key>
-            <string>\(logsDir)/swooshd.log</string>
-            <key>StandardErrorPath</key>
-            <string>\(logsDir)/swooshd.err</string>
-        </dict>
-        </plist>
-        """
+        launchAgentPlistTemplate
+            .replacingOccurrences(of: "{SWOOSHD_PATH}", with: swooshdPath)
+            .replacingOccurrences(of: "{LOGS_DIR}", with: logsDir)
     }
+
+    /// LaunchAgent plist template with `{SWOOSHD_PATH}` / `{LOGS_DIR}`
+    /// placeholders. Kept as a file-scoped constant so the multi-line
+    /// literal doesn't blow the per-method LOC budget.
+    private static let launchAgentPlistTemplate: String = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>ai.swoosh.daemon</string>
+        <key>ProgramArguments</key>
+        <array>
+            <string>{SWOOSHD_PATH}</string>
+        </array>
+        <key>RunAtLoad</key>
+        <true/>
+        <key>KeepAlive</key>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>{LOGS_DIR}/swooshd.log</string>
+        <key>StandardErrorPath</key>
+        <string>{LOGS_DIR}/swooshd.err</string>
+    </dict>
+    </plist>
+    """
 }
 
 struct DaemonStartCommand: AsyncParsableCommand {
