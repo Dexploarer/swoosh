@@ -1,4 +1,4 @@
-// SwooshSkills/BundledSkillLoader.swift — Read markdown skills off disk
+// SwooshSkills/BundledSkillLoader.swift — 0.9S Read markdown skills off disk
 //
 // Bundled skills ship as plain markdown files with a YAML frontmatter
 // header — the same shape the Hermes / agentskills.io convention uses,

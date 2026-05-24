@@ -1,4 +1,4 @@
-// SwooshSkills/SkillMatcher.swift — Contextual skill matching
+// SwooshSkills/SkillMatcher.swift — 0.9S Contextual skill matching
 //
 // Given a task description, find the most relevant skills from the store.
 // Uses keyword matching, category inference, and usage statistics.

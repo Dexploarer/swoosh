@@ -1,4 +1,4 @@
-// SwooshSkills/SkillStore.swift — Persistent skill storage with FTS5 search
+// SwooshSkills/SkillStore.swift — 0.9S Persistent skill storage with FTS5 search
 //
 // SQLite-backed store with full-text search for contextual skill matching.
 // Hermes uses FTS5 for cross-session recall; we do the same.

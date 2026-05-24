@@ -1,4 +1,4 @@
-// SwooshSkills/SkillTrust.swift — Trust gating for skills
+// SwooshSkills/SkillTrust.swift — 0.9S Trust gating for skills
 //
 // Skills enter the agent's prompt only after the user has accepted them,
 // the same rule the memory pipeline already enforces. Model-proposed

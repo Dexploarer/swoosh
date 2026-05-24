@@ -1,4 +1,4 @@
-// SwooshSkills/SkillInstaller.swift — Install skills from files, URLs, and hubs
+// SwooshSkills/SkillInstaller.swift — 0.9S Install skills from files, URLs, and hubs
 import Foundation
 
 public enum SkillInstallTrust: String, Codable, Sendable {

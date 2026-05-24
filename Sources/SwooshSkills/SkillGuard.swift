@@ -1,4 +1,4 @@
-// SwooshSkills/SkillGuard.swift — Skill safety validation
+// SwooshSkills/SkillGuard.swift — 0.9S Skill safety validation
 //
 // Validates skills before execution. Checks tool permissions,
 // ensures steps don't violate firewall rules, and prevents

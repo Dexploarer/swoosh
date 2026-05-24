@@ -1,4 +1,4 @@
-// SwooshSkills/SkillDocument.swift — Self-improving skill model
+// SwooshSkills/SkillDocument.swift — 0.9S Self-improving skill model
 //
 // Hermes-inspired closed learning loop: the agent writes skill
 // documents from completed tasks, stores them, and loads them

@@ -1,4 +1,4 @@
-// SwooshSkills/SkillMarkdownParser.swift — Parse agentskills-style markdown
+// SwooshSkills/SkillMarkdownParser.swift — 0.9S Parse agentskills-style markdown
 import Foundation
 
 public struct ParsedSkillMarkdown: Sendable {

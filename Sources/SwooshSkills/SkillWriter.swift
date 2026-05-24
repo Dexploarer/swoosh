@@ -1,4 +1,4 @@
-// SwooshSkills/SkillWriter.swift — Agent writes skills from experience
+// SwooshSkills/SkillWriter.swift — 0.9S Agent writes skills from experience
 //
 // The closed learning loop: after the agent completes a complex task,
 // it can synthesize the approach into a reusable SkillDocument.

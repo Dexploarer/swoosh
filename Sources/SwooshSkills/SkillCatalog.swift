@@ -1,4 +1,4 @@
-// SwooshSkills/SkillCatalog.swift — Level-0 catalog view for prompt injection
+// SwooshSkills/SkillCatalog.swift — 0.9S Level-0 catalog view for prompt injection
 //
 // Hermes-style progressive disclosure: only the (name, description) pair
 // of every promotable skill enters the system prompt — the model decides
