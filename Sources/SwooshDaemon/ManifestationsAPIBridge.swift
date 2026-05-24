@@ -1,4 +1,4 @@
-// SwooshDaemon/ManifestationsAPIBridge.swift — Manifester ↔ HTTP API
+// SwooshDaemon/ManifestationsAPIBridge.swift — 0.9S Manifester ↔ HTTP API
 //
 // Maps `ManifestationStoring` + `Manifester` into the wire types the
 // API serves. Kept out of Daemon.swift so the long startup function

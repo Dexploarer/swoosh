@@ -1,4 +1,4 @@
-// SwooshDaemonSupport/CodexAuthManager.swift — Spawn-and-track `codex login`
+// SwooshDaemonSupport/CodexAuthManager.swift — 0.9S Spawn-and-track `codex login`
 //
 // `codex login` opens a browser and runs a local HTTP server to receive
 // the OAuth callback. The callback always lands on the Mac (where codex
@@ -172,7 +172,10 @@ public actor CodexAuthManager {
         }
     }
 
-    private nonisolated static func extractURL(_ text: String) -> String? {
+    /// Pull the first `https://…` token out of a codex login stdout/stderr
+    /// chunk. Marked internal (not private) so the test target can pin the
+    /// regex's behaviour against real codex output samples.
+    internal nonisolated static func extractURL(_ text: String) -> String? {
         let pattern = #"https://[^\s]+"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let range = NSRange(text.startIndex..., in: text)

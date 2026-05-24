@@ -1,4 +1,4 @@
-// SwooshDaemon/GoalsAPIBridge.swift — Goal store ↔ HTTP API
+// SwooshDaemon/GoalsAPIBridge.swift — 0.9S Goal store ↔ HTTP API
 //
 // Maps the `GoalStoring` actor surface into the wire types the API
 // serves. Kept out of Daemon.swift so the long startup function stays

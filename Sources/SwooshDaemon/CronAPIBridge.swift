@@ -1,4 +1,4 @@
-// SwooshDaemon/CronAPIBridge.swift — Cron store ↔ HTTP API
+// SwooshDaemon/CronAPIBridge.swift — 0.9S Cron store ↔ HTTP API
 //
 // CRUD on `FileCronJobStore` plus a force-run that goes through the
 // same `CronScheduler` + executor closure the daemon's tick task uses.

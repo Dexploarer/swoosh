@@ -1,4 +1,4 @@
-// SwooshDaemon/MemoriesAPIBridge.swift — Memory store ↔ HTTP API
+// SwooshDaemon/MemoriesAPIBridge.swift — 0.9S Memory store ↔ HTTP API
 //
 // Maps the ActantAgent `MemoryStore` propose/approve/reject + the
 // underlying client query into the wire types the API serves. Same

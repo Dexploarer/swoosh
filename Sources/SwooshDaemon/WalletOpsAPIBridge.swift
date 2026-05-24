@@ -1,4 +1,4 @@
-// SwooshDaemon/WalletOpsAPIBridge.swift — Wallet ops ↔ HTTP API
+// SwooshDaemon/WalletOpsAPIBridge.swift — 0.9S Wallet ops ↔ HTTP API
 //
 // CRUD on `WalletStore` accounts plus balance refresh. Higher-level
 // ops (sign / send / swap) flow through the agent tool surface; the

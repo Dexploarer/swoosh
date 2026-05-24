@@ -1,4 +1,4 @@
-// SwooshDaemon/FirewallAPIBridge.swift — Firewall ↔ HTTP API
+// SwooshDaemon/FirewallAPIBridge.swift — 0.9S Firewall ↔ HTTP API
 //
 // Exposes `SwooshFirewallActor` over HTTP for grant / revoke /
 // check / list. The same actor every tool call routes through — no

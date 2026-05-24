@@ -1,4 +1,4 @@
-// SwooshDaemon/LocalWalletBridge.swift - SwooshWallet-backed tool bridge
+// SwooshDaemon/LocalWalletBridge.swift — 0.9S SwooshWallet-backed tool bridge
 import Foundation
 import BigInt
 import CryptoKit
