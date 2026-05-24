@@ -109,13 +109,3 @@ struct ScoutPipelineOptionsDefaultsTests {
     }
 }
 
-extension ScoutPermissionMode: Equatable {
-    public static func == (lhs: ScoutPermissionMode, rhs: ScoutPermissionMode) -> Bool {
-        switch (lhs, rhs) {
-        case (.requestIfNeeded, .requestIfNeeded), (.skipUnavailable, .skipUnavailable):
-            return true
-        default:
-            return false
-        }
-    }
-}

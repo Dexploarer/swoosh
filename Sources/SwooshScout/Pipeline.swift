@@ -19,7 +19,7 @@ public struct ScoutPipelineResult: Sendable {
     public let candidates: [MemoryCandidate]
 }
 
-public enum ScoutPermissionMode: Sendable {
+public enum ScoutPermissionMode: Sendable, Equatable {
     /// Synchronously call `requestPermission()` on any source whose
     /// `checkPermission()` came back non-`.granted`. Suitable for
     /// foreground user-attended flows (e.g. `swoosh setup` in a TTY).
