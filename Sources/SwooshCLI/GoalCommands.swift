@@ -53,10 +53,10 @@ struct GoalListCommand: AsyncParsableCommand {
         for goal in response.goals {
             // `padding(toLength:)` already truncates when the source is
             // longer — matches the pattern used by `swoosh plugin list`.
-            let id = goal.id.padding(toLength: 24, withPad: " ", startingAt: 0)
-            let state = goal.state.padding(toLength: 9, withPad: " ", startingAt: 0)
-            let progress = goal.progress.padding(toLength: 9, withPad: " ", startingAt: 0)
-            print("\(id) \(state) \(progress) \(goal.statement)")
+            let idCol = goal.id.padding(toLength: 24, withPad: " ", startingAt: 0)
+            let stateCol = goal.state.padding(toLength: 9, withPad: " ", startingAt: 0)
+            let progressCol = goal.progress.padding(toLength: 9, withPad: " ", startingAt: 0)
+            print("\(idCol) \(stateCol) \(progressCol) \(goal.statement)")
         }
     }
 }
@@ -72,14 +72,14 @@ struct GoalShowCommand: AsyncParsableCommand {
     @OptionGroup var daemon: DaemonConnectionOptions
 
     @Argument(help: "Goal id.")
-    var id: String
+    var goalID: String
 
     @Flag(name: .long, help: "Output JSON.")
     var json = false
 
     func run() async throws {
         let client = try daemon.makeClient()
-        let detail = try await client.goal(id: id)
+        let detail = try await client.goal(id: goalID)
         if json {
             try printAsJSON(detail)
             return
@@ -99,7 +99,9 @@ struct GoalShowCommand: AsyncParsableCommand {
         print("Iterations:")
         for iteration in detail.iterations {
             let when = ISO8601DateFormatter().string(from: iteration.createdAt)
-            print("  \(when)  \(iteration.iteration)/\(detail.maxIterations)  [\(iteration.judgement)] \(iteration.observation)")
+            let counter = "\(iteration.iteration)/\(detail.maxIterations)"
+            let verdict = "[\(iteration.judgement)]"
+            print("  \(when)  \(counter)  \(verdict) \(iteration.observation)")
             if let rationale = iteration.judgeRationale {
                 print("      ↳ \(rationale)")
             }
@@ -150,7 +152,7 @@ struct GoalAbandonCommand: AsyncParsableCommand {
     @OptionGroup var daemon: DaemonConnectionOptions
 
     @Argument(help: "Goal id.")
-    var id: String
+    var goalID: String
 
     @Flag(name: .long, help: "Skip confirmation prompt.")
     var force = false
@@ -158,13 +160,13 @@ struct GoalAbandonCommand: AsyncParsableCommand {
     func run() async throws {
         let client = try daemon.makeClient()
         if !force {
-            print("Abandon goal \(id)? [y/N] ", terminator: "")
+            print("Abandon goal \(goalID)? [y/N] ", terminator: "")
             guard let input = readLine()?.lowercased(), input == "y" || input == "yes" else {
                 print("Aborted.")
                 return
             }
         }
-        let response = try await client.abandonGoal(id: id)
+        let response = try await client.abandonGoal(id: goalID)
         print(response.message)
     }
 }
@@ -188,20 +190,22 @@ struct GoalUpdateCommand: AsyncParsableCommand {
     @OptionGroup var daemon: DaemonConnectionOptions
 
     @Argument(help: "Goal id.")
-    var id: String
+    var goalID: String
 
     @Option(name: .long, help: "New state (pending, active, paused, completed, abandoned).")
     var state: String
 
     mutating func validate() throws {
         guard GoalUpdateCommand.allowedStates.contains(state.lowercased()) else {
-            throw ValidationError("Invalid state '\(state)'. Must be one of: \(GoalUpdateCommand.allowedStates.joined(separator: ", ")).")
+            let valid = GoalUpdateCommand.allowedStates.joined(separator: ", ")
+            throw ValidationError("Invalid state '\(state)'. Must be one of: \(valid).")
         }
     }
 
     func run() async throws {
         let client = try daemon.makeClient()
-        let response = try await client.updateGoal(id: id, body: GoalUpdateRequest(state: state.lowercased()))
+        let body = GoalUpdateRequest(state: state.lowercased())
+        let response = try await client.updateGoal(id: goalID, body: body)
         print(response.message)
     }
 }

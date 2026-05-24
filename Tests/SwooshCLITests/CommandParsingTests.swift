@@ -359,7 +359,7 @@ struct GoalManifestParsingTests {
     func goalShow() throws {
         let command = try SwooshCommand.parseAsRoot(["goal", "show", "abc123"])
         let show = try #require(command as? GoalShowCommand)
-        #expect(show.id == "abc123")
+        #expect(show.goalID == "abc123")
     }
 
     @Test("swoosh goal abandon <id> --force parses")
@@ -368,7 +368,7 @@ struct GoalManifestParsingTests {
             "goal", "abandon", "abc123", "--force",
         ])
         let abandon = try #require(command as? GoalAbandonCommand)
-        #expect(abandon.id == "abc123")
+        #expect(abandon.goalID == "abc123")
         #expect(abandon.force == true)
     }
 
@@ -378,7 +378,7 @@ struct GoalManifestParsingTests {
             "goal", "update", "abc123", "--state", "paused",
         ])
         let update = try #require(command as? GoalUpdateCommand)
-        #expect(update.id == "abc123")
+        #expect(update.goalID == "abc123")
         #expect(update.state == "paused")
     }
 
@@ -399,7 +399,7 @@ struct GoalManifestParsingTests {
     func manifestShow() throws {
         let command = try SwooshCommand.parseAsRoot(["manifest", "show", "abc123"])
         let show = try #require(command as? ManifestShowCommand)
-        #expect(show.id == "abc123")
+        #expect(show.manifestationID == "abc123")
     }
 
     @Test("swoosh manifest now --reason parses")
@@ -417,7 +417,7 @@ struct GoalManifestParsingTests {
             "manifest", "delete", "abc123", "--force",
         ])
         let delete = try #require(command as? ManifestDeleteCommand)
-        #expect(delete.id == "abc123")
+        #expect(delete.manifestationID == "abc123")
         #expect(delete.force == true)
     }
 

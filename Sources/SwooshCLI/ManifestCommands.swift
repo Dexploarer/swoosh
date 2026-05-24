@@ -53,12 +53,12 @@ struct ManifestHistoryCommand: AsyncParsableCommand {
         for record in response.manifestations {
             // `padding(toLength:)` already truncates when the source is
             // longer — matches the pattern used by `swoosh plugin list`.
-            let id = record.id.padding(toLength: 24, withPad: " ", startingAt: 0)
-            let status = record.status.padding(toLength: 10, withPad: " ", startingAt: 0)
-            let started = ISO8601DateFormatter().string(from: record.startedAt)
+            let idCol = record.id.padding(toLength: 24, withPad: " ", startingAt: 0)
+            let statusCol = record.status.padding(toLength: 10, withPad: " ", startingAt: 0)
+            let startedCol = ISO8601DateFormatter().string(from: record.startedAt)
                 .padding(toLength: 20, withPad: " ", startingAt: 0)
-            let proposals = "\(record.proposalCount)".padding(toLength: 10, withPad: " ", startingAt: 0)
-            print("\(id) \(status) \(started) \(proposals) \(record.triggerReason)")
+            let proposalsCol = "\(record.proposalCount)".padding(toLength: 10, withPad: " ", startingAt: 0)
+            print("\(idCol) \(statusCol) \(startedCol) \(proposalsCol) \(record.triggerReason)")
         }
     }
 }
@@ -74,18 +74,25 @@ struct ManifestShowCommand: AsyncParsableCommand {
     @OptionGroup var daemon: DaemonConnectionOptions
 
     @Argument(help: "Manifestation id.")
-    var id: String
+    var manifestationID: String
 
     @Flag(name: .long, help: "Output JSON.")
     var json = false
 
     func run() async throws {
         let client = try daemon.makeClient()
-        let detail = try await client.manifestation(id: id)
+        let detail = try await client.manifestation(id: manifestationID)
         if json {
             try printAsJSON(detail)
             return
         }
+        printHeader(detail)
+        printSummary(detail.manifestation.summary)
+        printPhases(detail.phases)
+        printProposals(detail.proposals)
+    }
+
+    private func printHeader(_ detail: ManifestationDetailResponse) {
         print("Manifestation: \(detail.manifestation.id)")
         print("Status:        \(detail.manifestation.status)")
         print("Trigger:       \(detail.manifestation.triggerReason)")
@@ -93,26 +100,32 @@ struct ManifestShowCommand: AsyncParsableCommand {
         if let finished = detail.finishedAt {
             print("Finished:      \(ISO8601DateFormatter().string(from: finished))")
         }
-        if let summary = detail.manifestation.summary {
-            print("Summary:")
-            for line in summary.components(separatedBy: "\n") {
-                print("  \(line)")
-            }
+    }
+
+    private func printSummary(_ summary: String?) {
+        guard let summary else { return }
+        print("Summary:")
+        for line in summary.components(separatedBy: "\n") {
+            print("  \(line)")
         }
-        if !detail.phases.isEmpty {
-            print("Phases:")
-            for phase in detail.phases {
-                let when = ISO8601DateFormatter().string(from: phase.startedAt)
-                print("  \(when)  \(phase.name) — \(phase.observation ?? "")")
-            }
+    }
+
+    private func printPhases(_ phases: [ManifestationPhaseSummary]) {
+        guard !phases.isEmpty else { return }
+        print("Phases:")
+        for phase in phases {
+            let when = ISO8601DateFormatter().string(from: phase.startedAt)
+            print("  \(when)  \(phase.name) — \(phase.observation ?? "")")
         }
-        if !detail.proposals.isEmpty {
-            print("Proposals (\(detail.proposals.count)):")
-            for proposal in detail.proposals {
-                let confidence = String(format: "%.2f", proposal.confidence)
-                print("  [\(proposal.kind)] \(proposal.title)  (confidence \(confidence))")
-                print("      ↳ \(proposal.rationale)")
-            }
+    }
+
+    private func printProposals(_ proposals: [ManifestationProposalSummary]) {
+        guard !proposals.isEmpty else { return }
+        print("Proposals (\(proposals.count)):")
+        for proposal in proposals {
+            let confidence = String(format: "%.2f", proposal.confidence)
+            print("  [\(proposal.kind)] \(proposal.title)  (confidence \(confidence))")
+            print("      ↳ \(proposal.rationale)")
         }
     }
 }
@@ -155,7 +168,7 @@ struct ManifestDeleteCommand: AsyncParsableCommand {
     @OptionGroup var daemon: DaemonConnectionOptions
 
     @Argument(help: "Manifestation id.")
-    var id: String
+    var manifestationID: String
 
     @Flag(name: .long, help: "Skip confirmation prompt.")
     var force = false
@@ -163,13 +176,13 @@ struct ManifestDeleteCommand: AsyncParsableCommand {
     func run() async throws {
         let client = try daemon.makeClient()
         if !force {
-            print("Delete manifestation \(id)? [y/N] ", terminator: "")
+            print("Delete manifestation \(manifestationID)? [y/N] ", terminator: "")
             guard let input = readLine()?.lowercased(), input == "y" || input == "yes" else {
                 print("Aborted.")
                 return
             }
         }
-        _ = try await client.deleteManifestation(id: id)
-        print("Deleted \(id).")
+        _ = try await client.deleteManifestation(id: manifestationID)
+        print("Deleted \(manifestationID).")
     }
 }

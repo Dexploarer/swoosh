@@ -21,15 +21,15 @@ struct AuditLogManifestationSourceTests {
 
     @Test("projects audit entries and windows by cursor")
     func projectsAndWindows() async throws {
-        let t0 = Date(timeIntervalSince1970: 1_000)
-        let t1 = Date(timeIntervalSince1970: 2_000)
-        let t2 = Date(timeIntervalSince1970: 3_000)
+        let early = Date(timeIntervalSince1970: 1_000)
+        let middle = Date(timeIntervalSince1970: 2_000)
+        let late = Date(timeIntervalSince1970: 3_000)
         let log = MockAuditLog([
-            AuditEntry(id: "e0", timestamp: t0, kind: .toolCallStarted,
+            AuditEntry(id: "e0", timestamp: early, kind: .toolCallStarted,
                        toolName: "git.status", detail: "old"),
-            AuditEntry(id: "e1", timestamp: t1, kind: .toolCallSucceeded,
+            AuditEntry(id: "e1", timestamp: middle, kind: .toolCallSucceeded,
                        toolName: "file.read", detail: "mid"),
-            AuditEntry(id: "e2", timestamp: t2, kind: .toolCallSucceeded,
+            AuditEntry(id: "e2", timestamp: late, kind: .toolCallSucceeded,
                        toolName: "file.write", detail: "new"),
         ])
         let source = AuditLogManifestationSource(audit: log)
@@ -42,7 +42,7 @@ struct AuditLogManifestationSourceTests {
         #expect(all[0].summary == "old")
 
         // Cursor → only strictly-later events.
-        let since = try await source.eventsSince(t1)
+        let since = try await source.eventsSince(middle)
         #expect(since.map(\.id) == ["e2"])
     }
 
@@ -54,18 +54,18 @@ struct AuditLogManifestationSourceTests {
 
     @Test("cursor equal to a known timestamp is exclusive")
     func cursorIsStrictlyAfter() async throws {
-        let t0 = Date(timeIntervalSince1970: 1_000)
-        let t1 = Date(timeIntervalSince1970: 2_000)
+        let early = Date(timeIntervalSince1970: 1_000)
+        let late = Date(timeIntervalSince1970: 2_000)
         let log = MockAuditLog([
-            AuditEntry(id: "e0", timestamp: t0, kind: .toolCallStarted,
+            AuditEntry(id: "e0", timestamp: early, kind: .toolCallStarted,
                        toolName: "git.status", detail: "old"),
-            AuditEntry(id: "e1", timestamp: t1, kind: .toolCallSucceeded,
+            AuditEntry(id: "e1", timestamp: late, kind: .toolCallSucceeded,
                        toolName: "file.read", detail: "mid"),
         ])
         let source = AuditLogManifestationSource(audit: log)
         // Cursor at the latest event must drop everything at-or-before.
-        #expect(try await source.eventsSince(t1).isEmpty)
-        // Cursor strictly between t0 and t1 keeps only e1.
+        #expect(try await source.eventsSince(late).isEmpty)
+        // Cursor strictly between early and late keeps only e1.
         let between = Date(timeIntervalSince1970: 1_500)
         let result = try await source.eventsSince(between)
         #expect(result.map(\.id) == ["e1"])
