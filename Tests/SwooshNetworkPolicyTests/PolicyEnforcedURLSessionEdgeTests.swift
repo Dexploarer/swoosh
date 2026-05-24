@@ -69,20 +69,24 @@ struct PolicyEnforcedURLSessionHostlessTests {
     }
 }
 
+/// Sentinel error raised by `ThrowingAuditor.append`. File-scoped (not
+/// nested inside the auditor) so SwiftLint's `nesting` rule stays
+/// happy (1-level max).
+private struct AuditWriteFailure: Error {}
+
+/// Auditor whose `append` always throws. The gate must still produce
+/// a deterministic decision (not crash, not swallow the decision) —
+/// audit-log failures are tolerated by design via `try?` in the
+/// fanout, and this test pins that contract.
+private actor ThrowingAuditor: AuditLogging {
+    func append(_ event: AuditEntry) async throws { throw AuditWriteFailure() }
+    func tail(limit: Int) async -> [AuditEntry] { [] }
+    func search(query: String, limit: Int) async -> [AuditEntry] { [] }
+    func getEvent(id: String) async -> AuditEntry? { nil }
+}
+
 @Suite("EgressGate — audit failure tolerance")
 struct EgressGateAuditFailureTests {
-
-    /// Auditor whose `append` always throws. The gate must still
-    /// produce a deterministic decision (not crash, not swallow the
-    /// decision) — audit-log failures are tolerated by design via
-    /// `try?` in the fanout, and this test pins that contract.
-    actor ThrowingAuditor: AuditLogging {
-        struct WriteFailure: Error {}
-        func append(_ event: AuditEntry) async throws { throw WriteFailure() }
-        func tail(limit: Int) async -> [AuditEntry] { [] }
-        func search(query: String, limit: Int) async -> [AuditEntry] { [] }
-        func getEvent(id: String) async -> AuditEntry? { nil }
-    }
 
     @Test("evaluate still returns the decision when auditor.append throws")
     func auditFailureTolerated() async {
