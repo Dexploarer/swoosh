@@ -112,7 +112,12 @@ extension AgentToolLoop {
             setupReportUsed: context.setupReportUsed,
             permissionSummaryUsed: context.permSummaryUsed
         )
-        try await auditLogger.logResponseAudit(auditRecord)
+        // Audit-log write swallowed for the same reason as the
+        // intermediate tool-message persistence above: failing to
+        // log the audit row should NOT abort returning a successful
+        // agent response. `AgentKernel.run` (the non-tool-calling
+        // variant) does the same — see AgentKernel.swift:350.
+        try? await auditLogger.logResponseAudit(auditRecord)
 
         let response = AgentToolResponse(
             message: text,
