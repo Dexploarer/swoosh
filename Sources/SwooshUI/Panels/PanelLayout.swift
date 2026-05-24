@@ -61,6 +61,226 @@ public struct PanelLayout: Codable, Sendable, Equatable {
     }
 }
 
+public struct PanelLayoutPreset: Codable, Sendable, Identifiable, Hashable {
+    public let id: String
+    public let surface: String
+    public let name: String
+    public let description: String
+    public let systemImage: String
+    public let kinds: [PanelKind]
+
+    public init(
+        id: String,
+        surface: String,
+        name: String,
+        description: String,
+        systemImage: String,
+        kinds: [PanelKind]
+    ) {
+        self.id = id
+        self.surface = surface
+        self.name = name
+        self.description = description
+        self.systemImage = systemImage
+        self.kinds = kinds
+    }
+
+    public func makeLayout(surface: String? = nil) -> PanelLayout {
+        PanelLayout(
+            surface: surface ?? self.surface,
+            panels: kinds.map { PanelInstance(kind: $0) }
+        )
+    }
+
+    public static func defaultPreset(for surface: String) -> PanelLayoutPreset {
+        switch surface {
+        case "dashboard":
+            return dashboardOperator
+        case "ios":
+            return iOSControl
+        case "tray":
+            return trayBriefing
+        case "pill":
+            return pillAgent
+        default:
+            return PanelLayoutPreset(
+                id: "\(surface).agent",
+                surface: surface,
+                name: "Agent",
+                description: "Single agent shell surface.",
+                systemImage: "bubble.left.and.bubble.right",
+                kinds: [.agentShell]
+            )
+        }
+    }
+
+    public static func options(for surface: String) -> [PanelLayoutPreset] {
+        switch surface {
+        case "dashboard":
+            return [dashboardOperator, dashboardObserver, dashboardBuilder, dashboardMinimal]
+        case "ios":
+            return [iOSControl, iOSAgent, iOSValue]
+        case "tray":
+            return [trayBriefing]
+        case "pill":
+            return [pillAgent]
+        default:
+            return [defaultPreset(for: surface)]
+        }
+    }
+
+    public static let dashboardOperator = PanelLayoutPreset(
+        id: "dashboard.operator",
+        surface: "dashboard",
+        name: "Operator",
+        description: "Agent shell, approvals, work, models, memory, and audit in one command center.",
+        systemImage: "rectangle.3.group",
+        kinds: [
+            .agentShell,
+            .approvals,
+            .board,
+            .goals,
+            .workflows,
+            .providerStatus,
+            .localModels,
+            .skills,
+            .memories,
+            .auditLog,
+            .metrics,
+            .agentOrb
+        ]
+    )
+
+    public static let dashboardObserver = PanelLayoutPreset(
+        id: "dashboard.observer",
+        surface: "dashboard",
+        name: "Observer",
+        description: "Runtime, audit, usage, traces, providers, and firewall state for monitoring.",
+        systemImage: "waveform.path.ecg.rectangle",
+        kinds: [
+            .agentShell,
+            .providerStatus,
+            .approvals,
+            .auditLog,
+            .usage,
+            .costs,
+            .observabilitySpans,
+            .firewallSummary,
+            .localModels,
+            .mcpServers
+        ]
+    )
+
+    public static let dashboardBuilder = PanelLayoutPreset(
+        id: "dashboard.builder",
+        surface: "dashboard",
+        name: "Builder",
+        description: "Skills, goals, workflows, tools, plugins, and custom generative surfaces.",
+        systemImage: "hammer",
+        kinds: [
+            .agentShell,
+            .skills,
+            .goals,
+            .manifests,
+            .workflows,
+            .triggers,
+            .toolCatalog,
+            .plugins,
+            .mcpServers,
+            .mediaGallery,
+            .themePalette
+        ]
+    )
+
+    public static let dashboardMinimal = PanelLayoutPreset(
+        id: "dashboard.minimal",
+        surface: "dashboard",
+        name: "Minimal",
+        description: "Quiet agent surface with only approvals, providers, and audit nearby.",
+        systemImage: "rectangle.compress.vertical",
+        kinds: [
+            .agentShell,
+            .approvals,
+            .providerStatus,
+            .auditLog
+        ]
+    )
+
+    public static let iOSControl = PanelLayoutPreset(
+        id: "ios.control",
+        surface: "ios",
+        name: "Control",
+        description: "Compact controls that sit beside the chat-first iPhone shell.",
+        systemImage: "square.grid.2x2",
+        kinds: [
+            .recentChats,
+            .providerStatus,
+            .approvals,
+            .goals,
+            .localModels,
+            .skills,
+            .voiceTranscript,
+            .wallet
+        ]
+    )
+
+    public static let iOSAgent = PanelLayoutPreset(
+        id: "ios.agent",
+        surface: "ios",
+        name: "Agent",
+        description: "Recent chats, voice, skills, memory, and active goals.",
+        systemImage: "bubble.left.and.bubble.right",
+        kinds: [
+            .recentChats,
+            .voiceTranscript,
+            .skills,
+            .memories,
+            .goals,
+            .approvals
+        ]
+    )
+
+    public static let iOSValue = PanelLayoutPreset(
+        id: "ios.value",
+        surface: "ios",
+        name: "Value",
+        description: "Wallet, trading, providers, and approvals for mobile control.",
+        systemImage: "creditcard",
+        kinds: [
+            .wallet,
+            .walletAnalytics,
+            .walletAssets,
+            .providerStatus,
+            .approvals,
+            .tradingCapabilities
+        ]
+    )
+
+    public static let trayBriefing = PanelLayoutPreset(
+        id: "tray.briefing",
+        surface: "tray",
+        name: "Briefing",
+        description: "Agent shell, recent chats, and provider state for the menu bar.",
+        systemImage: "menubar.rectangle",
+        kinds: [
+            .agentShell,
+            .recentChats,
+            .providerStatus
+        ]
+    )
+
+    public static let pillAgent = PanelLayoutPreset(
+        id: "pill.agent",
+        surface: "pill",
+        name: "Agent",
+        description: "Single compact agent shell for the voice pill.",
+        systemImage: "capsule",
+        kinds: [
+            .agentShell
+        ]
+    )
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Store
 // ═══════════════════════════════════════════════════════════════════
@@ -132,48 +352,15 @@ public final class PanelLayoutStore {
         setLayout(fresh)
     }
 
+    public func applyPreset(_ preset: PanelLayoutPreset, to surface: String? = nil) {
+        setLayout(preset.makeLayout(surface: surface ?? preset.surface))
+    }
+
     // ── Defaults ─────────────────────────────────────────────────────
 
     /// Stock layout for surfaces that have no saved customization yet.
     private func defaultLayout(for surface: String) -> PanelLayout {
-        switch surface {
-        case "tray":
-            return PanelLayout(surface: surface, panels: [
-                .init(kind: .agentShell),
-                .init(kind: .recentChats),
-                .init(kind: .providerStatus),
-            ])
-        case "dashboard":
-            return PanelLayout(surface: surface, panels: [
-                .init(kind: .agentShell),
-                .init(kind: .recentChats),
-                .init(kind: .wallet),
-                .init(kind: .walletAnalytics),
-                .init(kind: .modelPicker),
-                .init(kind: .skills),
-                .init(kind: .providerStatus),
-                .init(kind: .auditLog),
-            ])
-        case "pill":
-            return PanelLayout(surface: surface, panels: [
-                .init(kind: .agentShell),
-            ])
-        case "ios":
-            // iPhone Workspace shows *complementary* surfaces — the chat
-            // itself already lives on the main screen, so the workspace
-            // is where the user reaches recent chats, provider status,
-            // skills, and wallet at a glance. No agentShell hero here.
-            return PanelLayout(surface: surface, panels: [
-                .init(kind: .recentChats),
-                .init(kind: .providerStatus),
-                .init(kind: .skills),
-                .init(kind: .wallet),
-            ])
-        default:
-            return PanelLayout(surface: surface, panels: [
-                .init(kind: .agentShell),
-            ])
-        }
+        PanelLayoutPreset.defaultPreset(for: surface).makeLayout(surface: surface)
     }
 
     // ── Disk ─────────────────────────────────────────────────────────
@@ -186,7 +373,8 @@ public final class PanelLayoutStore {
     private func loadFromDisk(surface: String) -> PanelLayout? {
         let url = file(surface: surface)
         guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(PanelLayout.self, from: data)
+        guard let layout = try? JSONDecoder().decode(PanelLayout.self, from: data) else { return nil }
+        return layout.panels.isEmpty ? nil : layout
     }
 
     private func writeToDisk(_ layout: PanelLayout) {

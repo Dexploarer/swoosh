@@ -13,11 +13,9 @@ import Testing
 struct SkillCatalogTests {
 
     private func sampleSkill(
-        id: String = "test.skill",
         trust: SkillTrust = .promoted
     ) -> SkillDocument {
         SkillDocument(
-            id: id,
             title: "Test skill",
             description: "Used by SkillCatalogTests.",
             category: .general,
@@ -33,7 +31,7 @@ struct SkillCatalogTests {
     func projection() {
         let skill = sampleSkill()
         let entry = SkillCatalogEntry(skill)
-        #expect(entry.id == "test.skill")
+        #expect(entry.id == skill.id)
         #expect(entry.title == "Test skill")
         #expect(entry.description == "Used by SkillCatalogTests.")
         #expect(entry.trust == .promoted)

@@ -6,6 +6,7 @@
 // never do. A silent drift in either would widen or narrow what the
 // model sees from its catalog.
 
+import Foundation
 import Testing
 @testable import SwooshSkills
 

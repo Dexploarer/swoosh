@@ -33,6 +33,10 @@ public struct SkillGuard: Sendable {
     public func validate(_ skill: SkillDocument) -> [SkillViolation] {
         var violations: [SkillViolation] = []
 
+        if skill.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            violations.append(.emptyBody)
+        }
+
         // Check step count
         if skill.steps.count > maxSteps {
             violations.append(.tooManySteps(count: skill.steps.count, max: maxSteps))
@@ -102,6 +106,7 @@ public struct SkillGuard: Sendable {
 // ═══════════════════════════════════════════════════════════════════
 
 public enum SkillViolation: Sendable, CustomStringConvertible {
+    case emptyBody
     case tooManySteps(count: Int, max: Int)
     case disallowedTool(toolID: String)
     case disallowedToolInStep(stepOrder: Int, toolID: String)
@@ -110,6 +115,8 @@ public enum SkillViolation: Sendable, CustomStringConvertible {
 
     public var description: String {
         switch self {
+        case .emptyBody:
+            return "Skill body is empty"
         case .tooManySteps(let count, let max):
             return "Skill has \(count) steps (max \(max))"
         case .disallowedTool(let toolID):
@@ -127,7 +134,7 @@ public enum SkillViolation: Sendable, CustomStringConvertible {
 extension SkillViolation {
     var blocksSkillInstall: Bool {
         switch self {
-        case .suspiciousInstruction:
+        case .emptyBody, .suspiciousInstruction:
             return true
         case .tooManySteps, .disallowedTool, .disallowedToolInStep, .importedSkillNotAllowed:
             return false

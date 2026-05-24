@@ -36,7 +36,7 @@ public struct DashboardView: View {
                 .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 280)
                 .background(SwooshNeonTokens.Canvas.bg)
         } detail: {
-            detailView
+            dashboardDetail
                 .background(SwooshNeonTokens.Canvas.bg)
         }
         .swooshToolbar(
@@ -82,6 +82,38 @@ public struct DashboardView: View {
     }
 
     // MARK: - Detail
+
+    private var dashboardDetail: some View {
+        HStack(spacing: 0) {
+            detailView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+                .background(SwooshNeonTokens.Line.rule)
+
+            DashboardInspectorPane(
+                selectedTab: selectedTab,
+                runtime: runtime,
+                layout: panelStore.layout(for: "dashboard"),
+                editingPanels: $editingPanels,
+                onApplyPreset: { preset in
+                    withAnimation(.spring(duration: 0.25)) {
+                        panelStore.applyPreset(preset, to: "dashboard")
+                    }
+                },
+                onResetLayout: {
+                    withAnimation(.spring(duration: 0.25)) {
+                        panelStore.reset(surface: "dashboard")
+                    }
+                },
+                onSelectTab: { tab in
+                    withAnimation(.spring(duration: 0.2)) {
+                        selectedTab = tab
+                    }
+                }
+            )
+        }
+    }
 
     @ViewBuilder
     private var detailView: some View {
