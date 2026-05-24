@@ -218,20 +218,28 @@ public actor AgentToolLoop {
         var lastModel = "unknown"
         let toolLimit = policy.effectiveToolLimit
 
+        // Snapshot factory — every call site that finishes a response
+        // needs a fresh TurnContext over the current loop state. Inlined
+        // 7 times before; extracted here to dedupe and shrink `run()`
+        // below the 100-LOC threshold.
+        let snapshot: () -> TurnContext = {
+            TurnContext(
+                request: request,
+                memoryIDs: memoryIDs,
+                toolTraces: toolCallsUsed,
+                setupReportUsed: report != nil,
+                permSummaryUsed: !permSummary.isEmpty,
+                model: lastModel,
+                toolCallCount: toolCallCount
+            )
+        }
+
         while true {
             // Enforce tool-call limit
             if policy.allowModelToolCalls && toolCallCount >= toolLimit {
                 return try await finishResponse(
                     text: "I've reached the maximum number of tool calls (\(toolLimit)) for this turn. Here's what I know so far based on the tool results above.",
-                    context: TurnContext(
-                        request: request,
-                        memoryIDs: memoryIDs,
-                        toolTraces: toolCallsUsed,
-                        setupReportUsed: report != nil,
-                        permSummaryUsed: !permSummary.isEmpty,
-                        model: lastModel,
-                        toolCallCount: toolCallCount
-                    ),
+                    context: snapshot(),
                     transcript: &transcript
                 )
             }
@@ -256,15 +264,7 @@ public actor AgentToolLoop {
             case .assistantText(let text):
                 return try await finishResponse(
                     text: text,
-                    context: TurnContext(
-                        request: request,
-                        memoryIDs: memoryIDs,
-                        toolTraces: toolCallsUsed,
-                        setupReportUsed: report != nil,
-                        permSummaryUsed: !permSummary.isEmpty,
-                        model: lastModel,
-                        toolCallCount: toolCallCount
-                    ),
+                    context: snapshot(),
                     transcript: &transcript
                 )
 
@@ -272,15 +272,7 @@ public actor AgentToolLoop {
                 guard policy.allowModelToolCalls else {
                     return try await finishResponse(
                         text: "Tool calls are disabled by the current runtime policy.",
-                        context: TurnContext(
-                            request: request,
-                            memoryIDs: memoryIDs,
-                            toolTraces: toolCallsUsed,
-                            setupReportUsed: report != nil,
-                            permSummaryUsed: !permSummary.isEmpty,
-                            model: lastModel,
-                            toolCallCount: toolCallCount
-                        ),
+                        context: snapshot(),
                         transcript: &transcript
                     )
                 }
@@ -296,15 +288,7 @@ public actor AgentToolLoop {
                     return try await finishPendingApprovalResponse(
                         toolRequest: toolRequest,
                         result: result,
-                        context: TurnContext(
-                            request: request,
-                            memoryIDs: memoryIDs,
-                            toolTraces: toolCallsUsed,
-                            setupReportUsed: report != nil,
-                            permSummaryUsed: !permSummary.isEmpty,
-                            model: lastModel,
-                            toolCallCount: toolCallCount
-                        ),
+                        context: snapshot(),
                         transcript: &transcript
                     )
                 }
@@ -313,15 +297,7 @@ public actor AgentToolLoop {
                 guard policy.allowModelToolCalls else {
                     return try await finishResponse(
                         text: "Tool calls are disabled by the current runtime policy.",
-                        context: TurnContext(
-                            request: request,
-                            memoryIDs: memoryIDs,
-                            toolTraces: toolCallsUsed,
-                            setupReportUsed: report != nil,
-                            permSummaryUsed: !permSummary.isEmpty,
-                            model: lastModel,
-                            toolCallCount: toolCallCount
-                        ),
+                        context: snapshot(),
                         transcript: &transcript
                     )
                 }
@@ -340,15 +316,7 @@ public actor AgentToolLoop {
                         return try await finishPendingApprovalResponse(
                             toolRequest: toolRequest,
                             result: result,
-                            context: TurnContext(
-                                request: request,
-                                memoryIDs: memoryIDs,
-                                toolTraces: toolCallsUsed,
-                                setupReportUsed: report != nil,
-                                permSummaryUsed: !permSummary.isEmpty,
-                                model: lastModel,
-                                toolCallCount: toolCallCount
-                            ),
+                            context: snapshot(),
                             transcript: &transcript
                         )
                     }
