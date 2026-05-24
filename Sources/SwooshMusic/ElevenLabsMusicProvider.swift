@@ -25,8 +25,7 @@ public actor ElevenLabsMusicProvider: MusicProviding {
 
     private let apiKeyProvider: @Sendable () async throws -> String
     private let session: URLSession
-    private let firewall: (any Firewall)?
-    private let auditLog: (any AuditLogging)?
+    private let gate: MediaAuditGate
 
     public init(
         apiKeyProvider: @escaping @Sendable () async throws -> String,
@@ -36,44 +35,42 @@ public actor ElevenLabsMusicProvider: MusicProviding {
     ) {
         self.apiKeyProvider = apiKeyProvider
         self.session = session
-        self.firewall = firewall
-        self.auditLog = auditLog
-    }
-
-    private func audit(_ kind: AuditEntryKind, _ detail: String, success: Bool = true) async {
-        guard let auditLog else { return }
-        try? await auditLog.append(AuditEntry(
-            kind: kind, toolName: id, detail: detail, success: success
-        ))
-    }
-
-    private func requirePermission() async throws {
-        guard let firewall else { return }
-        do {
-            try await firewall.require(.musicGenerate)
-        } catch {
-            await audit(.toolCallDenied, "denied", success: false)
-            throw error
-        }
+        self.gate = MediaAuditGate(
+            toolName: "elevenlabs-music",
+            permission: .musicGenerate,
+            firewall: firewall,
+            auditLog: auditLog
+        )
     }
 
     public func generate(_ request: MusicRequest) async throws -> MusicJob {
-        try await requirePermission()
-        let promptHash = String(request.prompt.hash, radix: 16)
-        await audit(
-            .toolCallStarted,
-            "model=\(request.model ?? "music_v1") promptHash=\(promptHash)"
-        )
+        try await gate.requirePermission()
+        let promptHash = MediaAuditGate.promptDigest(request.prompt)
+        await gate.started("model=\(request.model ?? "music_v1") promptHash=\(promptHash)")
 
         let apiKey: String
         do { apiKey = try await apiKeyProvider() }
         catch {
-            await audit(.toolCallFailed, "missing API key", success: false)
+            await gate.failed("missing API key")
             throw MusicError.missingAPIKey(displayName)
         }
 
+        let data = try await postAndGet(request: request, apiKey: apiKey)
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("elevenlabs-music-\(UUID().uuidString).mp3")
+        try data.write(to: tmp)
+        await gate.succeeded("bytes=\(data.count)")
+        return InlineMusicJob(
+            id: tmp.lastPathComponent,
+            url: tmp,
+            modelUsed: request.model ?? "music_v1",
+            prompt: request.prompt
+        )
+    }
+
+    private func postAndGet(request: MusicRequest, apiKey: String) async throws -> Data {
         guard let url = URL(string: "https://api.elevenlabs.io/v1/music") else {
-            await audit(.toolCallFailed, "invalid URL", success: false)
+            await gate.failed("invalid URL")
             throw MusicError.requestFailed("invalid URL")
         }
         var req = URLRequest(url: url)
@@ -95,19 +92,9 @@ public actor ElevenLabsMusicProvider: MusicProviding {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
-            await audit(.toolCallFailed, "HTTP \(status)", success: false)
+            await gate.failed("HTTP \(status)")
             throw MusicError.requestFailed("HTTP \(status): \(preview)")
         }
-        // Direct response — write to a temp file and return its URL.
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("elevenlabs-music-\(UUID().uuidString).mp3")
-        try data.write(to: tmp)
-        await audit(.toolCallSucceeded, "bytes=\(data.count)")
-        return InlineMusicJob(
-            id: tmp.lastPathComponent,
-            url: tmp,
-            modelUsed: request.model ?? "music_v1",
-            prompt: request.prompt
-        )
+        return data
     }
 }

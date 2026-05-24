@@ -48,8 +48,7 @@ public actor SunoMusicProvider: MusicProviding {
     private let apiKeyProvider: @Sendable () async throws -> String
     private let host: URL
     private let session: URLSession
-    private let firewall: (any Firewall)?
-    private let auditLog: (any AuditLogging)?
+    private let gate: MediaAuditGate
 
     /// `callbackURL` is required by sunoapi.org even when you're polling.
     /// Any reachable URL works (it just won't be used). Pass nil to use
@@ -68,42 +67,70 @@ public actor SunoMusicProvider: MusicProviding {
         self.host = host
         self.callbackURL = callbackURL
         self.session = session
-        self.firewall = firewall
-        self.auditLog = auditLog
-    }
-
-    private func audit(_ kind: AuditEntryKind, _ detail: String, success: Bool = true) async {
-        guard let auditLog else { return }
-        try? await auditLog.append(AuditEntry(
-            kind: kind, toolName: id, detail: detail, success: success
-        ))
-    }
-
-    private func requirePermission() async throws {
-        guard let firewall else { return }
-        do {
-            try await firewall.require(.musicGenerate)
-        } catch {
-            await audit(.toolCallDenied, "denied", success: false)
-            throw error
-        }
+        self.gate = MediaAuditGate(
+            toolName: "suno",
+            permission: .musicGenerate,
+            firewall: firewall,
+            auditLog: auditLog
+        )
     }
 
     public func generate(_ request: MusicRequest) async throws -> MusicJob {
-        try await requirePermission()
-        let promptHash = String(request.prompt.hash, radix: 16)
-        await audit(
-            .toolCallStarted,
+        try await gate.requirePermission()
+        let promptHash = MediaAuditGate.promptDigest(request.prompt)
+        await gate.started(
             "model=\(request.model ?? "V5_5") promptHash=\(promptHash) instrumental=\(request.instrumentalOnly)"
         )
 
         let apiKey: String
         do { apiKey = try await apiKeyProvider() }
         catch {
-            await audit(.toolCallFailed, "missing API key", success: false)
+            await gate.failed("missing API key")
             throw MusicError.missingAPIKey(displayName)
         }
 
+        let taskID = try await submit(request: request, apiKey: apiKey)
+        await gate.succeeded("taskId=\(taskID)")
+        return SunoMusicJob(
+            id: taskID,
+            host: host,
+            apiKey: apiKey,
+            modelUsed: request.model ?? "V5_5",
+            prompt: request.prompt,
+            session: session
+        )
+    }
+
+    private func submit(request: MusicRequest, apiKey: String) async throws -> String {
+        let body = encodeBody(for: request)
+        var req = URLRequest(url: host.appendingPathComponent("api/v1/generate"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        MusicLogger.suno.info("submitting generation model=\(request.model ?? "V5_5", privacy: .public)")
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let preview = String(data: data.prefix(500), encoding: .utf8) ?? ""
+            MusicLogger.suno.error("generate failed HTTP \(status): \(preview, privacy: .public)")
+            await gate.failed("HTTP \(status)")
+            throw MusicError.requestFailed("HTTP \(status): \(preview)")
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let inner = json["data"] as? [String: Any],
+              let taskID = inner["taskId"] as? String else {
+            let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            MusicLogger.suno.error("missing data.taskId — preview: \(preview, privacy: .public)")
+            await gate.failed("missing data.taskId")
+            throw MusicError.requestFailed("missing data.taskId — got: \(preview)")
+        }
+        MusicLogger.suno.info("taskId=\(taskID, privacy: .public)")
+        return taskID
+    }
+
+    private func encodeBody(for request: MusicRequest) -> [String: Any] {
         // Per sunoapi.org spec: customMode + instrumental + model + callBackUrl
         // are always required. customMode=true unlocks style/title/lyrics.
         let useCustom = request.style != nil || request.lyrics != nil
@@ -118,40 +145,7 @@ public actor SunoMusicProvider: MusicProviding {
             if let style = request.style { body["style"] = style }
             if let lyrics = request.lyrics { body["lyrics"] = lyrics }
         }
-
-        var req = URLRequest(url: host.appendingPathComponent("api/v1/generate"))
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        MusicLogger.suno.info("submitting generation model=\(request.model ?? "V5_5", privacy: .public) customMode=\(useCustom)")
-        let (data, response) = try await session.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-            let preview = String(data: data.prefix(500), encoding: .utf8) ?? ""
-            MusicLogger.suno.error("generate failed HTTP \(status): \(preview, privacy: .public)")
-            await audit(.toolCallFailed, "HTTP \(status)", success: false)
-            throw MusicError.requestFailed("HTTP \(status): \(preview)")
-        }
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let inner = json["data"] as? [String: Any],
-              let taskID = inner["taskId"] as? String else {
-            let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
-            MusicLogger.suno.error("missing data.taskId — preview: \(preview, privacy: .public)")
-            await audit(.toolCallFailed, "missing data.taskId", success: false)
-            throw MusicError.requestFailed("missing data.taskId — got: \(preview)")
-        }
-        MusicLogger.suno.info("taskId=\(taskID, privacy: .public)")
-        await audit(.toolCallSucceeded, "taskId=\(taskID)")
-        return SunoMusicJob(
-            id: taskID,
-            host: host,
-            apiKey: apiKey,
-            modelUsed: (request.model ?? "V5_5"),
-            prompt: request.prompt,
-            session: session
-        )
+        return body
     }
 }
 

@@ -29,7 +29,11 @@ extension DefaultToolRegistrar {
             await registry.register(TypeErasedTool(Generate3DTool(provider: threeD, cacheDir: cacheDir)))
         }
         if let music = mediaGen.musicProvider {
-            await registry.register(TypeErasedTool(GenerateMusicTool(provider: music)))
+            await registry.register(TypeErasedTool(GenerateMusicTool(
+                provider: music,
+                cacheDir: cacheDir,
+                downloader: mediaGen.audioDownloader ?? URLSessionAudioDownloader()
+            )))
         }
     }
 }

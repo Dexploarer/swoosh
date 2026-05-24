@@ -55,19 +55,22 @@ public struct MediaGenDependencies: Sendable {
     public let threeDProvider: (any ThreeDGenProviding)?
     public let musicProvider: (any MusicProviding)?
     public let cacheDir: URL?
+    public let audioDownloader: (any AudioDownloading)?
 
     public init(
         imageProvider: (any ImageGenProviding)? = nil,
         videoProvider: (any VideoGenProviding)? = nil,
         threeDProvider: (any ThreeDGenProviding)? = nil,
         musicProvider: (any MusicProviding)? = nil,
-        cacheDir: URL? = nil
+        cacheDir: URL? = nil,
+        audioDownloader: (any AudioDownloading)? = nil
     ) {
         self.imageProvider = imageProvider
         self.videoProvider = videoProvider
         self.threeDProvider = threeDProvider
         self.musicProvider = musicProvider
         self.cacheDir = cacheDir
+        self.audioDownloader = audioDownloader
     }
 }
 

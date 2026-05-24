@@ -305,24 +305,27 @@ public struct GenerateMusicInput: Codable, Sendable {
 }
 
 public struct GenerateMusicOutput: Codable, Sendable {
-    public let jobID: String
-    public let audioURL: String
+    public let providerID: String
+    public let modelID: String
+    public let path: String
     public let mimeType: String
+    public let bytes: Int
     public let durationSeconds: Double?
-    public let modelUsed: String
 
     public init(
-        jobID: String,
-        audioURL: String,
+        providerID: String,
+        modelID: String,
+        path: String,
         mimeType: String,
-        durationSeconds: Double?,
-        modelUsed: String
+        bytes: Int,
+        durationSeconds: Double?
     ) {
-        self.jobID = jobID
-        self.audioURL = audioURL
+        self.providerID = providerID
+        self.modelID = modelID
+        self.path = path
         self.mimeType = mimeType
+        self.bytes = bytes
         self.durationSeconds = durationSeconds
-        self.modelUsed = modelUsed
     }
 }
 
@@ -338,9 +341,17 @@ public struct GenerateMusicTool: SwooshTool {
     public static let toolset = ToolsetID.mediaGen
 
     let provider: any MusicProviding
+    let cacheDir: URL
+    let downloader: any AudioDownloading
 
-    public init(provider: any MusicProviding) {
+    public init(
+        provider: any MusicProviding,
+        cacheDir: URL = MediaCacheDir.default(),
+        downloader: any AudioDownloading = URLSessionAudioDownloader()
+    ) {
         self.provider = provider
+        self.cacheDir = cacheDir
+        self.downloader = downloader
     }
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
@@ -354,12 +365,19 @@ public struct GenerateMusicTool: SwooshTool {
         )
         let job = try await provider.generate(request)
         let result = try await job.result
+        // Unify with image/video/3D: stage the bytes in MediaCacheDir
+        // regardless of whether the provider returned a remote CDN URL
+        // (Suno) or a local temp file (ElevenLabs, Stable Audio).
+        let bytes = try await downloader.bytes(from: result.audioURL)
+        let ext = MediaCacheDir.fileExtension(forMime: result.mimeType, fallback: "mp3")
+        let cached = try MediaCacheDir.write(bytes, extension: ext, in: cacheDir)
         return GenerateMusicOutput(
-            jobID: job.id,
-            audioURL: result.audioURL.absoluteString,
+            providerID: job.id,
+            modelID: result.modelUsed,
+            path: cached.path,
             mimeType: result.mimeType,
-            durationSeconds: result.durationSeconds,
-            modelUsed: result.modelUsed
+            bytes: bytes.count,
+            durationSeconds: result.durationSeconds
         )
     }
 }

@@ -38,10 +38,16 @@ private actor StubMusicProvider: MusicProviding {
     nonisolated let availableModels: [MusicModel] = [
         MusicModel(id: "stub-v1", displayName: "Stub v1", maxDuration: 60)
     ]
+    private let audioURL: URL
+
+    init(audioURL: URL) {
+        self.audioURL = audioURL
+    }
+
     func generate(_ request: MusicRequest) async throws -> MusicJob {
         StubMusicJob(
             id: "stub-job",
-            url: URL(string: "https://example.invalid/stub.mp3")!,
+            url: audioURL,
             modelUsed: request.model ?? "stub-v1",
             prompt: request.prompt
         )
@@ -60,6 +66,20 @@ private struct StubMusicJob: MusicJob, @unchecked Sendable {
     }
     func cancel() async {}
 }
+
+private struct StubAudioDownloader: AudioDownloading {
+    let payload: Data
+    func bytes(from url: URL) async throws -> Data { payload }
+}
+
+private func makeStubMusicProvider() throws -> StubMusicProvider {
+    guard let url = URL(string: "https://example.invalid/stub.mp3") else {
+        throw StubBuildError.invalidURL
+    }
+    return StubMusicProvider(audioURL: url)
+}
+
+private enum StubBuildError: Error { case invalidURL }
 
 // MARK: - Descriptor tests
 
@@ -149,13 +169,14 @@ struct MediaGenRegistrarTests {
     }
 
     @Test
-    func providersRegisterOnlyTheirOwnTools() async {
+    func providersRegisterOnlyTheirOwnTools() async throws {
         let (registry, _, _) = makeRegistry()
+        let music = try makeStubMusicProvider()
         await DefaultToolRegistrar.registerMediaGen(
             into: registry,
             mediaGen: MediaGenDependencies(
                 imageProvider: StubImageProvider(),
-                musicProvider: StubMusicProvider()
+                musicProvider: music
             )
         )
         let descriptors = await registry.listAvailable(context: ToolContext(sessionID: "t"))
@@ -212,5 +233,56 @@ struct MediaGenRegistrarTests {
             // Any error from the gate counts — the firewall throws its
             // own typed error before the tool runs.
         }
+    }
+
+    @Test
+    func generateMusicStagesIntoCacheDir() async throws {
+        let (registry, firewall, _) = makeRegistry()
+        await firewall.grant(.musicGenerate)
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("swoosh-media-music-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let music = try makeStubMusicProvider()
+        let downloader = StubAudioDownloader(payload: Data(repeating: 0xAB, count: 128))
+        await DefaultToolRegistrar.registerMediaGen(
+            into: registry,
+            mediaGen: MediaGenDependencies(
+                musicProvider: music,
+                cacheDir: tmp,
+                audioDownloader: downloader
+            )
+        )
+        let inputJSON = try JSONEncoder().encode(GenerateMusicInput(prompt: "lofi sunset"))
+        let input = try JSONDecoder().decode(JSONValue.self, from: inputJSON)
+        let output = try await registry.call(
+            name: "media.generate_music",
+            input: input,
+            context: ToolContext(sessionID: "t", isModelInvocation: false)
+        )
+        let decoded = try JSONDecoder().decode(
+            GenerateMusicOutput.self,
+            from: JSONEncoder().encode(output)
+        )
+        #expect(decoded.bytes == 128)
+        #expect(decoded.mimeType == "audio/mpeg")
+        #expect(decoded.modelID == "stub-v1")
+        #expect(FileManager.default.fileExists(atPath: decoded.path))
+        #expect(decoded.path.hasSuffix(".mp3"))
+    }
+}
+
+// MARK: - Helpers
+
+@Suite("MediaAuditGate helpers")
+struct MediaAuditGateHelperTests {
+
+    @Test
+    func promptDigestIsDeterministic() {
+        let a = MediaAuditGate.promptDigest("hello world")
+        let b = MediaAuditGate.promptDigest("hello world")
+        let c = MediaAuditGate.promptDigest("hello worlds")
+        #expect(a == b)
+        #expect(a != c)
+        #expect(a.count == 16)
     }
 }

@@ -42,21 +42,24 @@ public enum MediaCacheDir {
         return url
     }
 
-    /// Map common video / image MIME types to a sensible file extension.
-    /// Unknown types fall back to `fallback`.
+    /// Map common video / image / audio MIME types to a file extension.
+    /// Unknown types fall back to `fallback`. Dictionary lookup keeps
+    /// cyclomatic complexity flat as more types are added.
     public static func fileExtension(forMime mime: String, fallback: String) -> String {
-        let normalized = mime.lowercased()
-        switch normalized {
-        case "video/mp4":       return "mp4"
-        case "video/quicktime": return "mov"
-        case "video/webm":      return "webm"
-        case "image/png":       return "png"
-        case "image/jpeg":      return "jpg"
-        case "image/webp":      return "webp"
-        case "audio/mpeg":      return "mp3"
-        case "audio/wav":       return "wav"
-        case "audio/ogg":       return "ogg"
-        default:                return fallback
-        }
+        mimeToExtension[mime.lowercased()] ?? fallback
     }
+
+    private static let mimeToExtension: [String: String] = [
+        "video/mp4":       "mp4",
+        "video/quicktime": "mov",
+        "video/webm":      "webm",
+        "image/png":       "png",
+        "image/jpeg":      "jpg",
+        "image/webp":      "webp",
+        "audio/mpeg":      "mp3",
+        "audio/mp3":       "mp3",
+        "audio/wav":       "wav",
+        "audio/x-wav":     "wav",
+        "audio/ogg":       "ogg",
+    ]
 }

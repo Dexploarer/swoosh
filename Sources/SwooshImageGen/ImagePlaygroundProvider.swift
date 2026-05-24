@@ -26,15 +26,18 @@ import UniformTypeIdentifiers
 
 public actor ImagePlaygroundProvider: ImageGenProviding {
 
-    private let firewall: (any Firewall)?
-    private let auditLog: (any AuditLogging)?
+    private let gate: MediaAuditGate
 
     public init(
         firewall: (any Firewall)? = nil,
         auditLog: (any AuditLogging)? = nil
     ) {
-        self.firewall = firewall
-        self.auditLog = auditLog
+        self.gate = MediaAuditGate(
+            toolName: "apple-image-playground",
+            permission: .imageGenerate,
+            firewall: firewall,
+            auditLog: auditLog
+        )
     }
 
     public nonisolated var id: String { "apple-image-playground" }
@@ -50,37 +53,30 @@ public actor ImagePlaygroundProvider: ImageGenProviding {
         ]
     }
 
-    private func audit(_ kind: AuditEntryKind, _ detail: String, success: Bool = true) async {
-        guard let auditLog else { return }
-        try? await auditLog.append(AuditEntry(
-            kind: kind, toolName: id, detail: detail, success: success
-        ))
-    }
-
-    private func requirePermission() async throws {
-        guard let firewall else { return }
-        do {
-            try await firewall.require(.imageGenerate)
-        } catch {
-            await audit(.toolCallDenied, "denied", success: false)
-            throw error
-        }
-    }
-
     public func generate(_ request: ImageGenRequest) async throws -> ImageGenResult {
-        try await requirePermission()
-        let promptHash = String(request.prompt.hash, radix: 16)
-        await audit(.toolCallStarted, "local promptHash=\(promptHash) style=\(request.style?.id ?? "default")")
+        try await gate.requirePermission()
+        let promptHash = MediaAuditGate.promptDigest(request.prompt)
+        await gate.started("local promptHash=\(promptHash) style=\(request.style?.id ?? "default")")
         #if canImport(ImagePlayground)
         guard #available(macOS 15.2, iOS 18.2, *) else {
-            await audit(.toolCallFailed, "OS unsupported", success: false)
+            await gate.failed("OS unsupported")
             throw ImageGenError.unsupportedOSVersion
         }
+        return try await renderWithImagePlayground(request: request)
+        #else
+        await gate.failed("platform unsupported")
+        throw ImageGenError.unsupportedPlatform
+        #endif
+    }
+
+    #if canImport(ImagePlayground)
+    @available(macOS 15.2, iOS 18.2, *)
+    private func renderWithImagePlayground(request: ImageGenRequest) async throws -> ImageGenResult {
         let creator: ImageCreator
         do {
             creator = try await ImageCreator()
         } catch {
-            await audit(.toolCallFailed, "ImageCreator init failed", success: false)
+            await gate.failed("ImageCreator init failed")
             throw ImageGenError.generationFailed("ImageCreator init failed: \(error.localizedDescription)")
         }
         let style = mapStyle(request.style)
@@ -89,21 +85,18 @@ public actor ImagePlaygroundProvider: ImageGenProviding {
             let images = creator.images(for: concepts, style: style, limit: 1)
             for try await image in images {
                 if let png = pngData(from: image.cgImage) {
-                    await audit(.toolCallSucceeded, "bytes=\(png.count)")
+                    await gate.succeeded("bytes=\(png.count)")
                     return ImageGenResult(pngData: png, providerID: id, usedStyle: request.style?.id)
                 }
             }
         } catch {
-            await audit(.toolCallFailed, "generation failed", success: false)
+            await gate.failed("generation failed")
             throw ImageGenError.generationFailed(error.localizedDescription)
         }
-        await audit(.toolCallFailed, "no images returned", success: false)
+        await gate.failed("no images returned")
         throw ImageGenError.generationFailed("Image Playground returned no images")
-        #else
-        await audit(.toolCallFailed, "platform unsupported", success: false)
-        throw ImageGenError.unsupportedPlatform
-        #endif
     }
+    #endif
 
     #if canImport(ImagePlayground)
     @available(macOS 15.2, iOS 18.2, *)

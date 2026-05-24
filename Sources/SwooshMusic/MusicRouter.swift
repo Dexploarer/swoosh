@@ -37,8 +37,12 @@ public actor MusicRouter: MusicProviding {
         guard let first = providers.first else {
             throw MusicError.requestFailed("no music providers configured")
         }
+        // If the request names a specific model, prefer the provider
+        // that actually advertises it — avoids burning credit on
+        // earlier providers that would reject the model.
+        let ordered = orderedProviders(for: request.model)
         var lastError: Error?
-        for provider in providers {
+        for provider in ordered {
             do {
                 return try await provider.generate(request)
             } catch {
@@ -47,6 +51,20 @@ public actor MusicRouter: MusicProviding {
             }
         }
         throw lastError ?? MusicError.requestFailed("\(first.displayName) generate failed")
+    }
+
+    /// Move any provider that advertises `model` to the front. Order
+    /// among the remaining providers is preserved so the priority
+    /// order from `init` still governs fallbacks.
+    private func orderedProviders(for model: String?) -> [any MusicProviding] {
+        guard let model else { return providers }
+        let matches = providers.filter { provider in
+            provider.availableModels.contains { $0.id == model }
+        }
+        guard !matches.isEmpty else { return providers }
+        let matchIDs = Set(matches.map { ObjectIdentifier(type(of: $0)) })
+        let rest = providers.filter { !matchIDs.contains(ObjectIdentifier(type(of: $0))) }
+        return matches + rest
     }
 }
 
