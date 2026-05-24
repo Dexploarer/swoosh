@@ -1,4 +1,4 @@
-// SwooshCore/ToolResultFormatter.swift — Tool result formatter (0.4B)
+// SwooshCore/ToolResultFormatter.swift — 0.9S Tool result formatter
 //
 // Formats tool execution results for the model transcript.
 // Compact. Model should not receive giant logs.

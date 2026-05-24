@@ -1,4 +1,4 @@
-// SwooshCore/ToolCallParser.swift — Tool-call parser (0.4B)
+// SwooshCore/ToolCallParser.swift — 0.9S Tool-call parser
 //
 // Converts model output into either assistant text or a typed ToolExecutionRequest.
 // Supports native provider tool calls and strict fallback JSON.

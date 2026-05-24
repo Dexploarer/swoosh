@@ -1,4 +1,4 @@
-// SwooshCore/LocalDiagnosticProvider.swift — Deterministic fallback provider
+// SwooshCore/LocalDiagnosticProvider.swift — 0.9S Deterministic fallback provider
 //
 // Returns deterministic responses that use approved memories in the reply.
 // Used when no model provider is configured and by prompt-pipeline tests.

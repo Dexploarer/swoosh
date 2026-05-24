@@ -1,4 +1,4 @@
-// SwooshCore/ToolPromptBuilder.swift — Tool prompt builder (0.4B)
+// SwooshCore/ToolPromptBuilder.swift — 0.9S Tool prompt builder
 //
 // Adds tool schemas and policy instructions to the system prompt.
 // Only enabled/available tools are included.
