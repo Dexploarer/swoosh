@@ -1,12 +1,12 @@
-// SwooshSecrets/KeychainSecretStore.swift — 0.9P Real Keychain Integration
+// SwooshSecrets/KeychainSecretStore.swift — 0.9S Real Keychain Integration
 //
 // Actual macOS Keychain via Security.framework. No raw secrets in memory longer
 // than necessary. Never log, audit, or debug-bundle secret values.
+//
+// The SecItem dance lives in `KeychainItemOps` so the SwooshConfig
+// `KeychainCredentialStore` shares the same implementation path.
 
 import Foundation
-#if canImport(Security)
-import Security
-#endif
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Secret ref
@@ -65,96 +65,42 @@ public actor KeychainSecretStore: SecretStoring {
         guard let data = value.data(using: .utf8) else {
             throw SecretError.encodingFailed(ref.account)
         }
-
-        // Try update first
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: ref.account,
-        ]
-        let update: [String: Any] = [
-            kSecValueData as String: data,
-        ]
-
-        var status = SecItemUpdate(query as CFDictionary, update as CFDictionary)
-
-        if status == errSecItemNotFound {
-            // Add new
-            var addQuery = query
-            addQuery[kSecValueData as String] = data
-            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-            status = SecItemAdd(addQuery as CFDictionary, nil)
-        }
-
-        guard status == errSecSuccess else {
+        do {
+            try KeychainItemOps.set(data, service: service, account: ref.account)
+        } catch let KeychainItemError.saveFailed(_, status) {
             throw SecretError.saveFailed(ref.account, status)
         }
     }
 
     public func get(_ ref: SecretRef) throws -> String {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: ref.account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess, let data = result as? Data,
-              let value = String(data: data, encoding: .utf8) else {
-            if status == errSecItemNotFound {
-                throw SecretError.notFound(ref.account)
-            }
+        let data: Data?
+        do {
+            data = try KeychainItemOps.get(service: service, account: ref.account)
+        } catch {
             throw SecretError.accessDenied(ref.account)
+        }
+        guard let data, let value = String(data: data, encoding: .utf8) else {
+            throw SecretError.notFound(ref.account)
         }
         return value
     }
 
     public func delete(_ ref: SecretRef) throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: ref.account,
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
+        do {
+            try KeychainItemOps.delete(service: service, account: ref.account)
+        } catch let KeychainItemError.deleteFailed(_, status) {
             throw SecretError.deleteFailed(ref.account, status)
         }
     }
 
-    public func exists(_ ref: SecretRef) throws -> Bool {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: ref.account,
-            kSecReturnData as String: false,
-        ]
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
-        return status == errSecSuccess
+    public func exists(_ ref: SecretRef) -> Bool {
+        KeychainItemOps.exists(service: service, account: ref.account)
     }
 
     public func listRefs(namespace: String?) throws -> [SecretRef] {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitAll,
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess, let items = result as? [[String: Any]] else {
-            if status == errSecItemNotFound { return [] }
-            return []
-        }
-
+        let accounts = (try? KeychainItemOps.listAccounts(service: service)) ?? []
         var refs: [SecretRef] = []
-        for item in items {
-            guard let account = item[kSecAttrAccount as String] as? String else { continue }
+        for account in accounts {
             let parts = account.split(separator: ".", maxSplits: 1)
             guard parts.count == 2 else { continue }
             let ref = SecretRef(String(parts[0]), String(parts[1]))

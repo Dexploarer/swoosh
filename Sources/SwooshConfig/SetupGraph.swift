@@ -1,10 +1,11 @@
-// SwooshConfig/SetupGraph.swift — Typed setup graph with detect/configure/verify/rollback
+// SwooshConfig/SetupGraph.swift — 0.9S Typed setup graph with detect/configure/verify/rollback
 //
 // Every setup step is a Swift type with lifecycle phases.
 // The wizard can run in CLI, SwiftUI, or headless mode.
 // "Do not let users complete setup with broken credentials or untested gateways."
 
 import Foundation
+import SwooshSecrets
 
 // MARK: - Setup step protocol
 

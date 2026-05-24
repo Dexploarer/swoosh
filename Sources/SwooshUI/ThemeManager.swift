@@ -6,6 +6,7 @@
 
 import SwiftUI
 import Foundation
+import SwooshSecrets
 
 // MARK: - User-editable configuration (Codable from JSON)
 

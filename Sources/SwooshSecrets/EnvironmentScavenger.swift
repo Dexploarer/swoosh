@@ -1,4 +1,4 @@
-// SwooshSecrets/EnvironmentScavenger.swift — Env var credential discovery
+// SwooshSecrets/EnvironmentScavenger.swift — 0.9S Env var credential discovery
 //
 // Checks standard environment variables for API keys.
 // Mirrors CodexBar's ProviderTokenResolver.resolveEnv pattern.
