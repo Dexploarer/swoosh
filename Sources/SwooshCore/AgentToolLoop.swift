@@ -105,22 +105,22 @@ public struct AgentToolResponse: Sendable {
 /// The tool-calling agent loop. Extends AgentKernel functionality.
 /// Runs model → tool → model loops with Firewall enforcement.
 public actor AgentToolLoop {
-    private let memoryLoader: any MemoryContextLoading
-    private let reportLoader: any SetupReportLoading
-    private let permSummarizer: any PermissionSummarizing
-    private let sessionStore: any SessionStoring
-    private let auditLogger: any ResponseAuditing
-    private let modelProvider: any ModelProvider
-    private let toolRegistry: ToolRegistry
-    private let toolParser: ToolCallParsing
-    private let toolPromptBuilder: ToolPromptBuilder
-    private let promptBuilder: PromptBuilder
-    private let policy: ToolCallPolicy
-    private let skillCatalogProvider: SkillCatalogProviding?
+    let memoryLoader: any MemoryContextLoading
+    let reportLoader: any SetupReportLoading
+    let permSummarizer: any PermissionSummarizing
+    let sessionStore: any SessionStoring
+    let auditLogger: any ResponseAuditing
+    let modelProvider: any ModelProvider
+    let toolRegistry: ToolRegistry
+    let toolParser: ToolCallParsing
+    let toolPromptBuilder: ToolPromptBuilder
+    let promptBuilder: PromptBuilder
+    let policy: ToolCallPolicy
+    let skillCatalogProvider: SkillCatalogProviding?
 
     /// The most recent response's tool traces (for /why).
-    private var lastToolTraces: [ToolCallTrace] = []
-    private var lastResponse: AgentToolResponse?
+    var lastToolTraces: [ToolCallTrace] = []
+    var lastResponse: AgentToolResponse?
 
     public init(
         memoryLoader: any MemoryContextLoading,
