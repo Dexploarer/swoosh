@@ -1,8 +1,10 @@
-// SwooshTUI/SwooshShell.swift — Hermes-like interactive shell
+// SwooshTUI/SwooshShell.swift — 0.9S Hermes-like interactive shell
 //
 // The core REPL loop: banner → prompt → parse → execute → display.
 // Preserves Hermes-style flow with Swoosh-native commands.
-// 0.9P: Now wired to AgentKernel for real inference.
+// 0.9P: wired to AgentKernel for real inference.
+// 0.9S: `/help` now renders from the live registry; prose-stub
+//       commands removed; ToolCommandFactory deleted.
 
 import Foundation
 

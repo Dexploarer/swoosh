@@ -85,7 +85,7 @@ struct ChatCommand: AsyncParsableCommand {
         }
 
         let registry = SlashCommandRegistry()
-        await registry.registerAll(makeDefaultCommandDefinitions())
+        await registry.registerAll(makeDefaultCommandDefinitions(registry: registry))
 
         let shell = SwooshShell(registry: registry, status: status, agentHandler: agentHandler)
         await shell.run()

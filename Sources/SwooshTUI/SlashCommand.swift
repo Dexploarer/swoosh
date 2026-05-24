@@ -1,7 +1,11 @@
-// SwooshTUI/SlashCommand.swift — Slash command registry
+// SwooshTUI/SlashCommand.swift — 0.9S Slash command registry
 //
 // Reusable by CLI shell, future TUI, and future messaging gateway.
 // Commands are async-capable, protocol-based, and registry-managed.
+//
+// `helpText()` is the canonical help renderer. `/help` (defined in
+// DefaultCommands.swift) calls into it, so adding a new command via
+// `register(_:)` automatically surfaces in `/help` output.
 
 import Foundation
 
