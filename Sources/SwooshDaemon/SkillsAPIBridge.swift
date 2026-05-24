@@ -1,4 +1,4 @@
-// SwooshDaemon/SkillsAPIBridge.swift — Skill store ↔ HTTP API
+// SwooshDaemon/SkillsAPIBridge.swift — 0.9S Skill store ↔ HTTP API
 //
 // Maps the `SkillStoring` actor surface into the wire types the API
 // serves. Detail + search + propose + approve/reject + delete CRUD,

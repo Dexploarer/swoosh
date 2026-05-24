@@ -1,4 +1,4 @@
-// SwooshDaemon/MCPAPIBridge.swift — MCP registry ↔ HTTP API
+// SwooshDaemon/MCPAPIBridge.swift — 0.9S MCP registry ↔ HTTP API
 //
 // CRUD on `MCPServerRegistry` server profiles plus per-server tool
 // listing. Connect/disconnect map to enable/disable so the existing

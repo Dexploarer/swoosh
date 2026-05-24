@@ -1,4 +1,4 @@
-// SwooshDaemonSupport/DaemonTokenResolver.swift — swooshd bearer token resolution
+// SwooshDaemonSupport/DaemonTokenResolver.swift — 0.9S swooshd bearer token resolution
 
 import Foundation
 #if canImport(Security)

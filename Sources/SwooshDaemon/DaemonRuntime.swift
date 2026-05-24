@@ -1,4 +1,4 @@
-// SwooshDaemon/DaemonRuntime.swift — Long-lived daemon resources
+// SwooshDaemon/DaemonRuntime.swift — 0.9S Long-lived daemon resources
 import Foundation
 import SwooshCron
 import SwooshGoals

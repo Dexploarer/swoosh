@@ -1,4 +1,4 @@
-// SwooshDaemon/ToolExecAPIBridge.swift — Tool execution ↔ HTTP API
+// SwooshDaemon/ToolExecAPIBridge.swift — 0.9S Tool execution ↔ HTTP API
 //
 // POST /api/tools/:name/execute invokes a registered tool by name.
 // The bearer-token caller represents the user, so the context uses
