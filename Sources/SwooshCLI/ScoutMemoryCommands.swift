@@ -164,10 +164,11 @@ struct MemoryListCommand: AsyncParsableCommand {
             return
         case "rejected":
             // The facade exposes pending only; pull all and filter by status.
+            // `MemoryRow.rejected(MemoryCandidate)` is a distinct case from
+            // `.pending` — a prior revision matched `.pending` here, which
+            // silently dropped every rejected row.
             let rows = try await backend.client.memories(workspaceID: await backend.workspaceID, status: "rejected")
-            candidates = rows.compactMap {
-                if case let .pending(c) = $0 { return c } else { return nil }
-            }
+            candidates = MemoryListCommand.rejectedCandidates(from: rows)
         default:
             candidates = try await memory.listPending()
         }
@@ -186,6 +187,15 @@ struct MemoryListCommand: AsyncParsableCommand {
         if status == "pending" {
             print("  Run `swoosh memory approve` to approve all.")
             print("  Run `swoosh memory reject --id <id>` to reject one.")
+        }
+    }
+
+    /// Extracts the `MemoryCandidate` payloads from rejected `MemoryRow`s.
+    /// `internal` so the SwooshCLI test target can pin the pattern-match
+    /// behaviour without needing a live ActantDB.
+    static func rejectedCandidates(from rows: [ActantDB.MemoryRow]) -> [ActantDB.MemoryCandidate] {
+        rows.compactMap {
+            if case let .rejected(c) = $0 { return c } else { return nil }
         }
     }
 }

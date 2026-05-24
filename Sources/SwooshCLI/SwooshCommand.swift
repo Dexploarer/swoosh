@@ -1,9 +1,15 @@
-// SwooshCLI/SwooshCommand.swift — 0.5A CLI entry point + Doctor/Model/Daemon
+// SwooshCLI/SwooshCommand.swift — 0.5B CLI entry point + Doctor/Model/Daemon
 //
 // swoosh <subcommand>  — see subcommands below.
 // The DaemonPair subcommand and its QR/IP helpers live in
 // DaemonPairCommand.swift. All commissioning runtime (writeSetupReport,
 // commissionLocalRuntime, etc) lives in SetupCommissioning.swift.
+//
+// 0.5B revision: `swoosh daemon install` no longer hardcodes
+// `/usr/local/bin/swooshd` in the LaunchAgent plist. The binary path is
+// resolved at install time (override → sibling-of-swoosh → $PATH →
+// /usr/local/bin), and the command refuses to write a plist that points
+// at a non-existent executable.
 
 import ArgumentParser
 import SwooshKit
@@ -92,11 +98,98 @@ struct DaemonCommand: AsyncParsableCommand {
 
 struct DaemonInstallCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "install", abstract: "Install swooshd LaunchAgent.")
+
+    @Option(name: .customLong("swooshd-path"),
+            help: "Absolute path to the swooshd binary the LaunchAgent should run. If omitted, swoosh searches the swoosh sibling directory, $PATH, and /usr/local/bin.")
+    var swooshdPath: String?
+
     func run() async throws {
         let plistPath = FileManager.default.homeDirectoryForCurrentUser
             .appending(path: "Library/LaunchAgents/ai.swoosh.daemon.plist")
 
-        let plist = """
+        guard let swooshd = DaemonInstallCommand.resolveSwooshdURL(override: swooshdPath) else {
+            print("✗ Couldn't locate swooshd. Pass --swooshd-path <path>, or install swooshd")
+            print("  (e.g. `swift build -c release` then `cp .build/release/swooshd /usr/local/bin/`)")
+            print("  before running `swoosh daemon install`.")
+            throw ExitCode.failure
+        }
+
+        // launchd opens StandardOutPath / StandardErrorPath at load time
+        // and silently fails if the parent directory is missing — create
+        // it up front so the agent can start cleanly on a fresh machine.
+        let logsURL = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: ".swoosh/logs")
+        try FileManager.default.createDirectory(at: logsURL, withIntermediateDirectories: true)
+        let plist = DaemonInstallCommand.makeLaunchAgentPlist(swooshdPath: swooshd.path, logsDir: logsURL.path)
+
+        try plist.write(to: plistPath, atomically: true, encoding: .utf8)
+        print("✓ LaunchAgent installed at \(plistPath.path)")
+        print("  swooshd: \(swooshd.path)")
+        print("  Run `swoosh daemon start` to start.")
+    }
+
+    /// Resolve the absolute path to the swooshd binary the LaunchAgent
+    /// should invoke. Precedence: `--swooshd-path` override → swooshd
+    /// sibling next to the current swoosh binary → `$PATH` lookup via
+    /// `/usr/bin/which` → `/usr/local/bin/swooshd` last-resort. Returns
+    /// `nil` if no executable is found, so the caller can surface an
+    /// actionable error instead of writing a plist that points at a
+    /// non-existent path.
+    static func resolveSwooshdURL(override: String?) -> URL? {
+        let fm = FileManager.default
+
+        if let override, !override.isEmpty {
+            let url = URL(fileURLWithPath: override).standardizedFileURL
+            return fm.isExecutableFile(atPath: url.path) ? url : nil
+        }
+
+        // 1. Sibling of the currently-running swoosh binary.
+        let invokedPath = CommandLine.arguments.first ?? ""
+        let resolvedInvoked = URL(fileURLWithPath: invokedPath).standardizedFileURL
+        let sibling = resolvedInvoked.deletingLastPathComponent().appendingPathComponent("swooshd")
+        if fm.isExecutableFile(atPath: sibling.path) {
+            return sibling
+        }
+
+        // 2. $PATH lookup via `which`.
+        if let onPath = whichSwooshd() {
+            return onPath
+        }
+
+        // 3. The legacy convention path.
+        let legacy = URL(fileURLWithPath: "/usr/local/bin/swooshd")
+        return fm.isExecutableFile(atPath: legacy.path) ? legacy : nil
+    }
+
+    /// `/usr/bin/which swooshd` — used as a fallback when the swooshd
+    /// binary isn't a sibling of `swoosh`. Returns the resolved
+    /// executable URL, or `nil` if `which` doesn't find it.
+    private static func whichSwooshd() -> URL? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        process.arguments = ["swooshd"]
+        let stdout = Pipe()
+        process.standardOutput = stdout
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let data = stdout.fileHandleForReading.readDataToEndOfFile()
+        let raw = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else { return nil }
+        let url = URL(fileURLWithPath: raw).standardizedFileURL
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
+
+    /// Build the LaunchAgent plist body. Extracted so tests can pin the
+    /// generated XML without writing to `~/Library/LaunchAgents`.
+    static func makeLaunchAgentPlist(swooshdPath: String, logsDir: String) -> String {
+        """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
@@ -105,23 +198,19 @@ struct DaemonInstallCommand: AsyncParsableCommand {
             <string>ai.swoosh.daemon</string>
             <key>ProgramArguments</key>
             <array>
-                <string>/usr/local/bin/swooshd</string>
+                <string>\(swooshdPath)</string>
             </array>
             <key>RunAtLoad</key>
             <true/>
             <key>KeepAlive</key>
             <true/>
             <key>StandardOutPath</key>
-            <string>\(FileManager.default.homeDirectoryForCurrentUser.path)/.swoosh/logs/swooshd.log</string>
+            <string>\(logsDir)/swooshd.log</string>
             <key>StandardErrorPath</key>
-            <string>\(FileManager.default.homeDirectoryForCurrentUser.path)/.swoosh/logs/swooshd.err</string>
+            <string>\(logsDir)/swooshd.err</string>
         </dict>
         </plist>
         """
-
-        try plist.write(to: plistPath, atomically: true, encoding: .utf8)
-        print("✓ LaunchAgent installed at \(plistPath.path)")
-        print("  Run `swoosh daemon start` to start.")
     }
 }
 

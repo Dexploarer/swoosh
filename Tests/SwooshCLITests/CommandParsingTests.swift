@@ -18,11 +18,17 @@ struct RootParsingTests {
         #expect(command is ChatCommand)
     }
 
-    @Test("swoosh chat --continue parses")
-    func chatContinueFlag() throws {
-        let command = try SwooshCommand.parseAsRoot(["chat", "--continue"])
-        let chat = try #require(command as? ChatCommand)
-        #expect(chat.continue == true)
+    @Test("swoosh chat parses with no flags (no --continue today)")
+    func chatBareCommand() throws {
+        let command = try SwooshCommand.parseAsRoot(["chat"])
+        #expect(command is ChatCommand)
+    }
+
+    @Test("swoosh chat --continue is rejected — flag was unimplemented and removed")
+    func chatContinueFlagRemoved() throws {
+        #expect(throws: (any Error).self) {
+            _ = try SwooshCommand.parseAsRoot(["chat", "--continue"])
+        }
     }
 
     @Test("swoosh ask <question> parses")
