@@ -1,5 +1,5 @@
 // SwooshVision/AppleVisionProvider.swift
-// Version: 0.9R
+// Version: 0.9S
 //
 // Apple Vision framework backing for VisionProviding. On-device, free,
 // always-available on macOS 13+/iOS 13+. Newer capabilities (depth,
@@ -32,10 +32,12 @@ public actor AppleVisionProvider: VisionProviding {
         #if canImport(Vision)
         var caps: Set<VisionCapability> = [.ocr, .foregroundMask, .faceDetection]
         if #available(macOS 15.0, iOS 18.0, *) {
-            // `.depth` is intentionally NOT advertised until `depthMap(from:)`
-            // returns real depth data. The current implementation uses the
-            // foreground-mask path as a portable fallback and would mislead
-            // callers if surfaced as a depth capability.
+            // `.depth` is intentionally NOT advertised — `depthMap(from:)`
+            // throws `unsupportedOSVersion` until a real
+            // `VNGenerateDepthRequest`-backed implementation lands.
+            // `.documentRecognition` IS advertised because the method
+            // still returns useful (OCR-derived) plain text + paragraphs;
+            // structured tables aren't extracted yet.
             caps.insert(.documentRecognition)
         }
         return caps
@@ -98,33 +100,29 @@ public actor AppleVisionProvider: VisionProviding {
 
     // MARK: - Depth
 
+    /// Always throws `unsupportedOSVersion("Depth estimation")` — the
+    /// previous implementation returned an empty PNG with zero
+    /// dimensions, which silently lied to callers. A real
+    /// `VNGenerateDepthRequest`-backed implementation will land
+    /// alongside a stable SDK constant; until then this method honestly
+    /// refuses so callers fall through to whatever cloud-fallback they
+    /// have wired.
     public func depthMap(from imageData: Data) async throws -> VisionDepthResult {
-        #if canImport(Vision)
-        guard #available(macOS 15.0, iOS 18.0, *) else {
-            throw VisionProviderError.unsupportedOSVersion("Depth estimation")
-        }
-        let handler = try makeHandler(from: imageData)
-        let request = VNGenerateForegroundInstanceMaskRequest()
-        // Apple's depth API is `VNGenerateDepthRequest` on macOS 15+/iOS 18+.
-        // We intentionally use the foreground mask path here as a portable
-        // fallback when the depth request is unavailable in the SDK the
-        // module is compiled against. Callers that need true depth wire
-        // a model-backed provider in the cloud-fallback path.
-        try perform(handler: handler, request: request)
-        let png = Data()
-        return VisionDepthResult(pngData: png, width: 0, height: 0)
-        #else
-        throw VisionProviderError.unsupportedPlatform
-        #endif
+        throw VisionProviderError.unsupportedOSVersion("Depth estimation")
     }
 
     // MARK: - Document recognition
 
+    /// **OCR-only fallback.** Real document recognition with table
+    /// extraction depends on `VNRecognizeDocumentsRequest`
+    /// (macOS 15 / iOS 18), whose SDK constant isn't stable in the
+    /// toolchains we currently support. Until that lands, this method
+    /// runs `recognizeText(in:languages:)` and groups the recognised
+    /// lines as paragraphs: `plainText` and `paragraphs` are useful;
+    /// `tables` is **always empty**. Callers that need real table
+    /// extraction should wire a cloud-OCR provider.
     public func recognizeDocument(in imageData: Data, languages: [String]) async throws -> VisionDocumentResult {
         #if canImport(Vision)
-        // Document recognition with table extraction landed in macOS 15.
-        // Until the SDK constant is stable here we synthesise the document
-        // result from OCR — paragraphs become line groups, tables are empty.
         let blocks = try await recognizeText(in: imageData, languages: languages)
         let paragraphs = blocks.map(\.text)
         let plain = paragraphs.joined(separator: "\n")

@@ -20,7 +20,6 @@ let package = Package(
         .library(name: "SwooshConfig",    targets: ["SwooshConfig"]),
         .library(name: "SwooshScout",     targets: ["SwooshScout"]),
         .library(name: "SwooshTUI",       targets: ["SwooshTUI"]),
-        .library(name: "SwooshVault",     targets: ["SwooshVault"]),
         .library(name: "SwooshFirewall",  targets: ["SwooshFirewall"]),
         .library(name: "SwooshFlow",      targets: ["SwooshFlow"]),
         .library(name: "SwooshMLX",       targets: ["SwooshMLX"]),
@@ -197,7 +196,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Config, credentials, setup, diagnostics
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshConfig", dependencies: ["SwooshClient", "SwooshTools"]),
+        .target(name: "SwooshConfig", dependencies: ["SwooshClient", "SwooshTools", "SwooshSecrets"]),
         .target(name: "SwooshTUI", dependencies: ["SwooshTools"]),
 
         // ══════════════════════════════════════════════════════════════
@@ -258,13 +257,6 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Differentiating subsystems
         // ══════════════════════════════════════════════════════════════
-        .target(
-            name: "SwooshVault",
-            dependencies: [
-                "SwooshTools",
-                .product(name: "SQLite", package: "SQLite.swift"),
-            ]
-        ),
         .target(name: "SwooshFirewall", dependencies: [
             "SwooshTools",
             .product(name: "SQLite", package: "SQLite.swift"),
@@ -497,7 +489,7 @@ let package = Package(
 
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshVault", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
+            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
         ),
         .target(
             name: "SwooshWidgets",
@@ -673,10 +665,6 @@ let package = Package(
             dependencies: ["SwooshFirewall", "SwooshTools"]
         ),
         .testTarget(
-            name: "SwooshVaultTests",
-            dependencies: ["SwooshVault", "SwooshFirewall", "SwooshTools"]
-        ),
-        .testTarget(
             name: "SwooshModelsTests",
             dependencies: ["SwooshModels"]
         ),
@@ -721,6 +709,10 @@ let package = Package(
                 .product(name: "ActantDB",       package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
+        ),
+        .testTarget(
+            name: "SwooshVisionTests",
+            dependencies: ["SwooshVision"]
         ),
     ]
 )

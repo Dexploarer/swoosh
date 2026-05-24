@@ -1,16 +1,21 @@
 // SwooshVision/VisionProviding.swift
-// Version: 0.9R
+// Version: 0.9S
 //
 // Local-first vision capabilities backed by Apple's Vision framework.
 // Every method returns plain Sendable values so the daemon can serialize
 // results to the iPhone over HTTP without touching CGImage on the wire.
 //
-// Capabilities exposed (Apple Vision, on-device, free, no model download):
-//   • OCR (VNRecognizeTextRequest)
-//   • Foreground subject mask (VNGenerateForegroundInstanceMaskRequest)
-//   • Depth map (VNGenerateDepthRequest, macOS 15+/iOS 18+)
-//   • Document recognition (VNRecognizeDocumentsRequest, macOS 15+/iOS 18+)
-//   • Face detection (VNDetectFaceRectanglesRequest)
+// Capabilities exposed today:
+//   • OCR (VNRecognizeTextRequest)                              — shipping
+//   • Foreground subject mask (VNGenerateForegroundInstanceMask) — macOS 14+/iOS 17+
+//   • Document recognition                                       — **OCR-only fallback**;
+//     `tables` is always empty until VNRecognizeDocumentsRequest
+//     stabilises in a toolchain we can compile against.
+//   • Face detection (VNDetectFaceRectanglesRequest)             — shipping
+//   • Depth map                                                  — **always throws**
+//     `unsupportedOSVersion("Depth estimation")` until a real
+//     `VNGenerateDepthRequest` impl lands. `supportedCapabilities()`
+//     deliberately omits `.depth`.
 //
 // Cross-platform: builds on macOS, iOS, and visionOS. No Process, no
 // SQLite — safe for the iOS app to import directly.
