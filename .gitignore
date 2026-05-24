@@ -42,3 +42,6 @@ Backend/SwooshDB/.build
 
 # Local-only skill mirror — canonical location is .claude/skills/
 .agents/
+
+# Superpowers visual brainstorming scratch files
+.superpowers/
