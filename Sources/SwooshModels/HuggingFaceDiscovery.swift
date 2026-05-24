@@ -1,4 +1,4 @@
-// SwooshModels/HuggingFaceDiscovery.swift — Live model discovery from Hugging Face
+// SwooshModels/HuggingFaceDiscovery.swift — Live model discovery from Hugging Face — 0.9T
 //
 // Queries the HF API to find models the user doesn't have in the curated catalog.
 // Filters by pipeline_tag (task), library (gguf/mlx), and sorts by downloads.
@@ -155,8 +155,21 @@ public actor HuggingFaceDiscovery {
         )
     }
 
-    /// Estimate model size from name patterns like "7B", "0.6B", "350M"
-    private static func estimateSize(_ name: String) -> (params: String, tier: ModelSizeTier, memGB: Double) {
+    /// Estimate model size from name patterns like "7B", "0.6B", "350M".
+    /// Heuristic — only fires on the 27 patterns in the table below. Patterns
+    /// outside the table (e.g. `5B`, `6B`, `33B`, `64B`, `1.3B`) silently
+    /// fall through to the conservative `medium / 5 GB` default; surface
+    /// any miss by adding a row.
+    ///
+    /// Matching is anchored: the character immediately before the pattern
+    /// (if any) must NOT be a digit or `.` — otherwise "1.7B" would falsely
+    /// match the "7B" row and "1.7B-instruct" would be misreported as
+    /// `.medium / 5 GB`. Real HF IDs like `Qwen-1.7B-Instruct` need to land
+    /// on `.small / 1.2 GB`, not jump up a tier.
+    ///
+    /// Internal (not private) so `HuggingFaceDiscoveryTests` can exercise
+    /// every row + the unknown-fallback path.
+    static func estimateSize(_ name: String) -> (params: String, tier: ModelSizeTier, memGB: Double) {
         let upper = name.uppercased()
 
         // Match patterns like "14B", "0.6B", "350M"
@@ -177,14 +190,35 @@ public actor HuggingFaceDiscovery {
             ("82M", "82M", .nano, 0.05),
         ]
 
-        for (pattern, params, tier, mem) in patterns {
-            if upper.contains(pattern) { return (params, tier, mem) }
+        for (pattern, params, tier, mem) in patterns where containsAnchored(upper, pattern: pattern) {
+            return (params, tier, mem)
         }
         return ("Unknown", .medium, 5.0) // Conservative default
     }
 
-    /// Extract license from HF tags
-    private static func extractLicense(_ tags: [String]) -> String {
+    /// Returns true iff `pattern` appears in `source` AND the character
+    /// immediately preceding the first match (if any) is neither a digit
+    /// nor `.`. Prevents `1.7B` from matching against the `7B` row,
+    /// `350M` from masking `0.35B` patterns, and so on.
+    static func containsAnchored(_ source: String, pattern: String) -> Bool {
+        var searchStart = source.startIndex
+        while let range = source.range(of: pattern, range: searchStart..<source.endIndex) {
+            if range.lowerBound == source.startIndex {
+                return true
+            }
+            let prev = source[source.index(before: range.lowerBound)]
+            if !prev.isNumber && prev != "." {
+                return true
+            }
+            // False match (preceded by a digit or dot); skip past the
+            // first character of this hit and keep scanning.
+            searchStart = source.index(after: range.lowerBound)
+        }
+        return false
+    }
+
+    /// Extract license from HF tags. Internal for test access.
+    static func extractLicense(_ tags: [String]) -> String {
         for tag in tags {
             if tag.hasPrefix("license:") {
                 return tag.replacingOccurrences(of: "license:", with: "")
@@ -194,48 +228,3 @@ public actor HuggingFaceDiscovery {
     }
 }
 
-// MARK: - Default roles for capabilities
-
-extension ModelCapability {
-    var defaultRoles: Set<ModelRole> {
-        switch self {
-        // Text
-        case .textGeneration: return [.agent]
-        case .coding: return [.coder]
-        case .codeCompletion: return [.autocomplete]
-        case .toolCalling: return [.agent]
-        case .structuredOutput: return [.extractor]
-        case .classification, .sentimentAnalysis: return [.router]
-        case .summarization: return [.summarizer]
-        case .namedEntityRecognition: return [.extractor]
-        case .questionAnswering: return [.agent]
-        case .translation: return [.translator]
-        case .guard_: return [.guardrail]
-        case .judge: return [.judge]
-        // Vision
-        case .vision: return [.vision]
-        case .ocr, .documentLayout: return [.ocrEngine]
-        case .objectDetection: return [.objectDetector]
-        case .imageSegmentation: return [.vision]
-        case .depthEstimation: return [.vision]
-        case .imageClassification: return [.router]
-        // Audio
-        case .speechToText: return [.transcriber]
-        case .textToSpeech, .voiceCloning, .voiceDesign: return [.speaker]
-        case .vad: return [.vadGate]
-        case .diarization: return [.speakerIdentifier]
-        case .audioSeparation: return [.speakerIdentifier]
-        case .soundEffects: return [.soundDesigner]
-        // Generation
-        case .imageGeneration: return [.imageGenerator]
-        case .imageEditing: return [.imageEditor]
-        case .imageUpscaling: return [.upscaler]
-        case .videoGeneration: return [.videoGenerator]
-        case .musicGeneration: return [.musicGenerator]
-        case .threeD: return [.imageGenerator]
-        // Retrieval
-        case .embedding: return [.embedder]
-        case .reranking: return [.reranker]
-        }
-    }
-}

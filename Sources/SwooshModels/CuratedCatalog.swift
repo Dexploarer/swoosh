@@ -1,4 +1,4 @@
-// SwooshModels/CuratedCatalog.swift — Built-in model catalog
+// SwooshModels/CuratedCatalog.swift — Built-in model catalog — 0.9T
 // Ships with Swoosh. Covers all modalities + micro models for judges/routers.
 
 import Foundation

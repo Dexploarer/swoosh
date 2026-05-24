@@ -1,4 +1,4 @@
-// SwooshModels/ModelCatalog.swift — Local Model Catalog & Discovery
+// SwooshModels/ModelCatalog.swift — Local model catalog enums + HardwareProfile — 0.9T
 //
 // Every model the user can run locally is typed, sized, and capability-tagged.
 // Users pick models by ROLE (agent, judge, embedder, tts, etc.)
@@ -60,6 +60,56 @@ public enum ModelCapability: String, Codable, Sendable, CaseIterable {
     // ── Retrieval ───────────────────────────────────
     case embedding             // Semantic vectors
     case reranking             // RAG reranker
+}
+
+// MARK: - Default roles for capabilities
+
+extension ModelCapability {
+    /// The role(s) a model with this capability defaults to. Used by
+    /// discovery sources (e.g., HuggingFace) when promoting a freshly-
+    /// discovered model into a `CatalogEntry` — curated entries override
+    /// this with explicit `defaultRoles`.
+    var defaultRoles: Set<ModelRole> {
+        switch self {
+        // Text
+        case .textGeneration: return [.agent]
+        case .coding: return [.coder]
+        case .codeCompletion: return [.autocomplete]
+        case .toolCalling: return [.agent]
+        case .structuredOutput: return [.extractor]
+        case .classification, .sentimentAnalysis: return [.router]
+        case .summarization: return [.summarizer]
+        case .namedEntityRecognition: return [.extractor]
+        case .questionAnswering: return [.agent]
+        case .translation: return [.translator]
+        case .guard_: return [.guardrail]
+        case .judge: return [.judge]
+        // Vision
+        case .vision: return [.vision]
+        case .ocr, .documentLayout: return [.ocrEngine]
+        case .objectDetection: return [.objectDetector]
+        case .imageSegmentation: return [.vision]
+        case .depthEstimation: return [.vision]
+        case .imageClassification: return [.router]
+        // Audio
+        case .speechToText: return [.transcriber]
+        case .textToSpeech, .voiceCloning, .voiceDesign: return [.speaker]
+        case .vad: return [.vadGate]
+        case .diarization: return [.speakerIdentifier]
+        case .audioSeparation: return [.speakerIdentifier]
+        case .soundEffects: return [.soundDesigner]
+        // Generation
+        case .imageGeneration: return [.imageGenerator]
+        case .imageEditing: return [.imageEditor]
+        case .imageUpscaling: return [.upscaler]
+        case .videoGeneration: return [.videoGenerator]
+        case .musicGeneration: return [.musicGenerator]
+        case .threeD: return [.imageGenerator]
+        // Retrieval
+        case .embedding: return [.embedder]
+        case .reranking: return [.reranker]
+        }
+    }
 }
 
 // MARK: - Model size tier

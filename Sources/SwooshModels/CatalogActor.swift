@@ -1,4 +1,5 @@
-// SwooshModels/CatalogActor.swift — Model catalog actor
+// SwooshModels/CatalogActor.swift — Hardware-filtered catalog actor + CatalogEntry — 0.9T
+
 import Foundation
 
 // MARK: - Catalog entry
