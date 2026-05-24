@@ -1,12 +1,19 @@
-// SwooshMusic/ElevenLabsMusicProvider.swift — 0.9R ElevenLabs Music
+// SwooshMusic/ElevenLabsMusicProvider.swift — 0.9S ElevenLabs Music
 //
 // ElevenLabs shipped music generation alongside their TTS. Their music
 // API takes a text prompt and returns audio directly — no separate
 // job polling needed for shorter clips.
 //
 // Endpoint: POST /v1/music
+//
+// Optional `firewall` + `auditLog` enforce `.musicGenerate` permission
+// and emit `AuditEntry` records around every generation request. The
+// iOS picker path passes nil; daemon-side tool wrappers pass real impls.
+// The registry-mounted `GenerateMusicTool` is the primary gate; these
+// injections are defense-in-depth for direct (non-registry) callers.
 
 import Foundation
+import SwooshTools
 
 public actor ElevenLabsMusicProvider: MusicProviding {
 
@@ -18,21 +25,57 @@ public actor ElevenLabsMusicProvider: MusicProviding {
 
     private let apiKeyProvider: @Sendable () async throws -> String
     private let session: URLSession
+    private let gate: MediaAuditGate
 
     public init(
         apiKeyProvider: @escaping @Sendable () async throws -> String,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        firewall: (any Firewall)? = nil,
+        auditLog: (any AuditLogging)? = nil
     ) {
         self.apiKeyProvider = apiKeyProvider
         self.session = session
+        self.gate = MediaAuditGate(
+            toolName: "elevenlabs-music",
+            permission: .musicGenerate,
+            firewall: firewall,
+            auditLog: auditLog
+        )
     }
 
     public func generate(_ request: MusicRequest) async throws -> MusicJob {
+        try await gate.requirePermission()
+        let promptHash = MediaAuditGate.promptDigest(request.prompt)
+        await gate.started("model=\(request.model ?? "music_v1") promptHash=\(promptHash)")
+
         let apiKey: String
         do { apiKey = try await apiKeyProvider() }
-        catch { throw MusicError.missingAPIKey(displayName) }
+        catch {
+            await gate.failed("missing API key")
+            throw MusicError.missingAPIKey(displayName)
+        }
 
+        let data = try await postAndGet(request: request, apiKey: apiKey)
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("elevenlabs-music-\(UUID().uuidString).mp3")
+        do {
+            try data.write(to: tmp)
+        } catch {
+            await gate.failed("write error: \(error.localizedDescription)")
+            throw MusicError.requestFailed("write error: \(error.localizedDescription)")
+        }
+        await gate.succeeded("bytes=\(data.count)")
+        return InlineMusicJob(
+            id: tmp.lastPathComponent,
+            url: tmp,
+            modelUsed: request.model ?? "music_v1",
+            prompt: request.prompt
+        )
+    }
+
+    private func postAndGet(request: MusicRequest, apiKey: String) async throws -> Data {
         guard let url = URL(string: "https://api.elevenlabs.io/v1/music") else {
+            await gate.failed("invalid URL")
             throw MusicError.requestFailed("invalid URL")
         }
         var req = URLRequest(url: url)
@@ -54,17 +97,9 @@ public actor ElevenLabsMusicProvider: MusicProviding {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
+            await gate.failed("HTTP \(status)")
             throw MusicError.requestFailed("HTTP \(status): \(preview)")
         }
-        // Direct response — write to a temp file and return its URL.
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("elevenlabs-music-\(UUID().uuidString).mp3")
-        try data.write(to: tmp)
-        return InlineMusicJob(
-            id: tmp.lastPathComponent,
-            url: tmp,
-            modelUsed: request.model ?? "music_v1",
-            prompt: request.prompt
-        )
+        return data
     }
 }

@@ -122,6 +122,7 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case imageGenerate            // Text-to-image (local or cloud)
     case videoGenerate            // Text-to-video (cloud only today)
     case threeDGenerate           // Text/image-to-3D (cloud only today)
+    case musicGenerate            // Text-to-music (cloud only today)
 
     // ── Plugins ───────────────────────────────────────────────────
     // Plugin host admin permissions. These gate *plugin lifecycle* —
