@@ -1,4 +1,4 @@
-// SwooshModels/CloudCatalog.swift - Wired cloud model catalog - 0.9S
+// SwooshModels/CloudCatalog.swift — Wired cloud model catalog — 0.9T
 
 import Foundation
 
@@ -222,10 +222,6 @@ public enum CloudCatalog {
 
     public static var all: [CloudModelEntry] {
         router + codex + openAI + openRouter + elizaCloud
-    }
-
-    public static func providerDisplayName(_ providerID: String) -> String {
-        UnifiedModelCatalog.providerDisplayName(providerID)
     }
 
     public static func entry(for id: String) -> CloudModelEntry? {

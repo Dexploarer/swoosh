@@ -1,4 +1,4 @@
-// SwooshModels/DynamicModelLoader.swift — Runtime model discovery
+// SwooshModels/DynamicModelLoader.swift — Runtime model discovery + hardware-aware defaults — 0.9T
 //
 // Replaces the static "first model Ollama returns" auto-pick with a
 // dynamic loader that:
@@ -113,6 +113,22 @@ public actor DynamicModelLoader {
 
     // MARK: - Hardware-aware default
 
+    /// First-run model-recommendation memory bands (total RAM in GB). These
+    /// govern which Gemma/Qwen tag the daemon suggests as the default fallback
+    /// when the user has no installed local models yet — i.e., the bands
+    /// directly shape the new-user experience and shouldn't drift silently.
+    public enum MemoryBands {
+        /// Below this — pick the smallest Gemma E2B + smallest Qwen 2B.
+        public static let lowMemoryGB: Double = 12
+        /// Below this — Qwen routes to the 9B tier; Gemma still on E4B.
+        public static let midMemoryGB: Double = 24
+        /// Below this — Gemma stays on E4B; Qwen routes to the 27B tier.
+        public static let highMemoryGB: Double = 48
+        /// Below this — Gemma routes to 26B MoE; Qwen routes to 35B MoE.
+        /// At or above, both pick the largest workstation tier.
+        public static let workstationMemoryGB: Double = 96
+    }
+
     public nonisolated func defaultFallbackModel(hardware: HardwareProfile) -> String {
         recommendedGemmaModel(hardware: hardware).tag
     }
@@ -138,7 +154,7 @@ public actor DynamicModelLoader {
 
     private nonisolated func recommendedGemmaModel(hardware: HardwareProfile) -> RecommendedLocalModel {
         switch hardware.totalMemoryGB {
-        case ..<12:
+        case ..<MemoryBands.lowMemoryGB:
             return RecommendedLocalModel(
                 tag: ModelDefaults.localOpenAIFallbackModelID,
                 title: "Gemma 4 E2B",
@@ -147,7 +163,7 @@ public actor DynamicModelLoader {
                 estimatedDiskGB: 7.2,
                 isDefaultFallback: true
             )
-        case ..<48:
+        case ..<MemoryBands.highMemoryGB:
             return RecommendedLocalModel(
                 tag: ModelDefaults.localOpenAIModelID,
                 title: "Gemma 4 E4B",
@@ -156,7 +172,7 @@ public actor DynamicModelLoader {
                 estimatedDiskGB: 9.6,
                 isDefaultFallback: true
             )
-        case ..<96:
+        case ..<MemoryBands.workstationMemoryGB:
             return RecommendedLocalModel(
                 tag: "gemma4:26b",
                 title: "Gemma 4 26B A4B",
@@ -179,7 +195,7 @@ public actor DynamicModelLoader {
 
     private nonisolated func recommendedQwenModel(hardware: HardwareProfile) -> RecommendedLocalModel {
         switch hardware.totalMemoryGB {
-        case ..<12:
+        case ..<MemoryBands.lowMemoryGB:
             return RecommendedLocalModel(
                 tag: "qwen3.5:2b",
                 title: "Qwen 3.5 2B",
@@ -188,7 +204,7 @@ public actor DynamicModelLoader {
                 estimatedDiskGB: 2.7,
                 isDefaultFallback: false
             )
-        case ..<24:
+        case ..<MemoryBands.midMemoryGB:
             return RecommendedLocalModel(
                 tag: "qwen3.5:9b",
                 title: "Qwen 3.5 9B",
@@ -197,7 +213,7 @@ public actor DynamicModelLoader {
                 estimatedDiskGB: 6.6,
                 isDefaultFallback: false
             )
-        case ..<48:
+        case ..<MemoryBands.highMemoryGB:
             return RecommendedLocalModel(
                 tag: "qwen3.6:27b",
                 title: "Qwen 3.6 27B",
@@ -206,7 +222,7 @@ public actor DynamicModelLoader {
                 estimatedDiskGB: 17.0,
                 isDefaultFallback: false
             )
-        case ..<96:
+        case ..<MemoryBands.workstationMemoryGB:
             return RecommendedLocalModel(
                 tag: "qwen3.6:35b",
                 title: "Qwen 3.6 35B A3B",
