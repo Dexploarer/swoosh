@@ -46,6 +46,7 @@ public struct PluginManifest: Codable, Sendable, Identifiable {
     /// dependency-resolution stability and planner ranking. Defaults to 0.
     public var priority: Int
 
+    // swiftlint:disable:next function_parameter_count
     public init(
         id: String, name: String, version: String, description: String? = nil,
         author: String? = nil, kind: PluginKind = .swift,
@@ -74,49 +75,64 @@ public struct PluginManifest: Codable, Sendable, Identifiable {
     }
 
     public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try c.decode(String.self, forKey: .id)
-        self.name = try c.decode(String.self, forKey: .name)
-        self.version = try c.decode(String.self, forKey: .version)
-        self.description = c.decodeOptional(String.self, forKey: .description)
-        self.author = c.decodeOptional(String.self, forKey: .author)
-        self.kind = c.decodeOrDefault(PluginKind.self, forKey: .kind, default: .swift)
-        self.entrypoint = c.decodeOrDefault(
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.version = try container.decode(String.self, forKey: .version)
+        self.description = container.decodeOptional(String.self, forKey: .description)
+        self.author = container.decodeOptional(String.self, forKey: .author)
+        self.kind = container.decodeOrDefault(PluginKind.self, forKey: .kind, default: .swift)
+        self.entrypoint = container.decodeOrDefault(
             PluginEntrypoint.self, forKey: .entrypoint, default: .swiftModule("")
         )
-        self.requestedPermissions = c.decodeOrDefault(
+        self.requestedPermissions = container.decodeOrDefault(
             [String].self, forKey: .requestedPermissions, default: []
         )
-        let tools = c.decodeOrDefault([PluginToolManifest].self, forKey: .tools, default: [])
-        let actions = c.decodeOrDefault([PluginToolManifest].self, forKey: .actions, default: [])
-        self.tools = tools.isEmpty ? actions : tools
-        self.sandbox = c.decodeOrDefault(
+        self.tools = Self.decodeTools(container: container)
+        self.sandbox = container.decodeOrDefault(
             PluginSandboxPolicy.self, forKey: .sandbox, default: .safeDefault
         )
-        self.enabled = c.decodeOrDefault(Bool.self, forKey: .enabled, default: false)
-        self.createdAt = c.decodeOrDefault(Date.self, forKey: .createdAt, default: Date())
-        self.updatedAt = c.decodeOrDefault(Date.self, forKey: .updatedAt, default: Date())
-        self.dependencies = c.decodeOrDefault([String].self, forKey: .dependencies, default: [])
-        self.priority = c.decodeOrDefault(Int.self, forKey: .priority, default: 0)
+        self.enabled = container.decodeOrDefault(Bool.self, forKey: .enabled, default: false)
+        self.createdAt = container.decodeOrDefault(Date.self, forKey: .createdAt, default: Date())
+        self.updatedAt = container.decodeOrDefault(Date.self, forKey: .updatedAt, default: Date())
+        self.dependencies = container.decodeOrDefault(
+            [String].self, forKey: .dependencies, default: []
+        )
+        self.priority = container.decodeOrDefault(Int.self, forKey: .priority, default: 0)
+    }
+
+    /// Decode `tools`, falling back to the elizaOS-style `actions` alias
+    /// when the canonical key is empty. Extracted from `init(from:)` so the
+    /// decoder body stays under SwiftLint's cyclomatic_complexity threshold.
+    private static func decodeTools(
+        container: KeyedDecodingContainer<CodingKeys>
+    ) -> [PluginToolManifest] {
+        let tools = container.decodeOrDefault(
+            [PluginToolManifest].self, forKey: .tools, default: []
+        )
+        if !tools.isEmpty { return tools }
+        return container.decodeOrDefault(
+            [PluginToolManifest].self, forKey: .actions, default: []
+        )
     }
 
     public func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(name, forKey: .name)
-        try c.encode(version, forKey: .version)
-        try c.encodeIfPresent(description, forKey: .description)
-        try c.encodeIfPresent(author, forKey: .author)
-        try c.encode(kind, forKey: .kind)
-        try c.encode(entrypoint, forKey: .entrypoint)
-        try c.encode(requestedPermissions, forKey: .requestedPermissions)
-        try c.encode(tools, forKey: .tools)
-        try c.encode(sandbox, forKey: .sandbox)
-        try c.encode(enabled, forKey: .enabled)
-        try c.encode(createdAt, forKey: .createdAt)
-        try c.encode(updatedAt, forKey: .updatedAt)
-        if !dependencies.isEmpty { try c.encode(dependencies, forKey: .dependencies) }
-        if priority != 0 { try c.encode(priority, forKey: .priority) }
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(version, forKey: .version)
+        try container.encodeIfPresent(description, forKey: .description)
+        try container.encodeIfPresent(author, forKey: .author)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(entrypoint, forKey: .entrypoint)
+        try container.encode(requestedPermissions, forKey: .requestedPermissions)
+        try container.encode(tools, forKey: .tools)
+        try container.encode(sandbox, forKey: .sandbox)
+        try container.encode(enabled, forKey: .enabled)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(updatedAt, forKey: .updatedAt)
+        if !dependencies.isEmpty { try container.encode(dependencies, forKey: .dependencies) }
+        if priority != 0 { try container.encode(priority, forKey: .priority) }
     }
 }
 
