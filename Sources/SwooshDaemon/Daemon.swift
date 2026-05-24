@@ -309,6 +309,11 @@ struct SwooshDaemon {
         })
         let mcpDeps = MCPDependencies(registry: mcpRegistry, connector: mcpConnector)
 
+        let mediaGenDeps = MediaGenWiring.build(
+            firewall: toolRuntime.firewall,
+            auditLog: toolRuntime.audit
+        )
+
         await DefaultToolRegistrar.registerAll(
             into: toolRuntime.registry,
             dependencies: toolRuntime.dependencies,
@@ -318,7 +323,8 @@ struct SwooshDaemon {
                 manifest: ManifestToolDependencies(store: manifestStore, manifester: manifester),
                 cron: CronToolDependencies(store: cronStore, scheduler: cronScheduler)
             ),
-            mcp: mcpDeps
+            mcp: mcpDeps,
+            mediaGen: mediaGenDeps
         )
 
         // ── Plugin host ─────────────────────────────────────────────

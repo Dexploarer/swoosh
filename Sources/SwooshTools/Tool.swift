@@ -45,6 +45,7 @@ public enum ToolsetID: String, Codable, Sendable, CaseIterable {
     case goals
     case manifesting
     case plugins
+    case mediaGen
 }
 
 // MARK: - SwooshTool protocol (typed)

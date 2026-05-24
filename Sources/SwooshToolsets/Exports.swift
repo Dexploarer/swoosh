@@ -1,9 +1,10 @@
-// SwooshToolsets/ToolRegistrar.swift — Default Tool Registration
+// SwooshToolsets/Exports.swift — Default Tool Registration (0.4B)
 //
 // Registers all 0.4A tools into the ToolRegistry.
 // P0: core, memory, permissions, scout, audit, files, git, swiftDev, workflow, evm, solana
 // P1: web, browser, apple, xcode, mcp (deferred)
 // Self-improvement pillars: skills, goals, manifesting
+// Media generation: image, video, 3D, music (opt-in via mediaGen bundle)
 
 import Foundation
 import SwooshTools
@@ -12,6 +13,8 @@ import SwooshGoals
 import SwooshManifesting
 import SwooshCron
 import SwooshMCP
+import SwooshImageGen
+import SwooshMusic
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Self-improvement pillar dependencies
@@ -39,6 +42,36 @@ public struct SelfImprovementDependencies: Sendable {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MARK: - Media generation dependencies
+// ═══════════════════════════════════════════════════════════════════
+
+/// Optional bundle of provider instances for media-generation tools.
+/// Passing `nil` for any field skips registering that tool. Wire the
+/// providers daemon-side using `CapabilityRouter.activeXProvider()` so
+/// the picker's selection drives which model the agent reaches.
+public struct MediaGenDependencies: Sendable {
+    public let imageProvider: (any ImageGenProviding)?
+    public let videoProvider: (any VideoGenProviding)?
+    public let threeDProvider: (any ThreeDGenProviding)?
+    public let musicProvider: (any MusicProviding)?
+    public let cacheDir: URL?
+
+    public init(
+        imageProvider: (any ImageGenProviding)? = nil,
+        videoProvider: (any VideoGenProviding)? = nil,
+        threeDProvider: (any ThreeDGenProviding)? = nil,
+        musicProvider: (any MusicProviding)? = nil,
+        cacheDir: URL? = nil
+    ) {
+        self.imageProvider = imageProvider
+        self.videoProvider = videoProvider
+        self.threeDProvider = threeDProvider
+        self.musicProvider = musicProvider
+        self.cacheDir = cacheDir
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // MARK: - Default tool registrar
 // ═══════════════════════════════════════════════════════════════════
 
@@ -47,7 +80,8 @@ public enum DefaultToolRegistrar {
         into registry: ToolRegistry,
         dependencies: ToolDependencies,
         selfImprovement: SelfImprovementDependencies = SelfImprovementDependencies(),
-        mcp: MCPDependencies? = nil
+        mcp: MCPDependencies? = nil,
+        mediaGen: MediaGenDependencies? = nil
     ) async {
         await registerCore(into: registry, dependencies: dependencies)
         await registerMemory(into: registry, dependencies: dependencies)
@@ -79,6 +113,9 @@ public enum DefaultToolRegistrar {
         }
         if let mcp = mcp {
             await registerMCP(into: registry, dependencies: dependencies, mcp: mcp)
+        }
+        if let mediaGen = mediaGen {
+            await registerMediaGen(into: registry, mediaGen: mediaGen)
         }
     }
 

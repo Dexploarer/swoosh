@@ -1,4 +1,4 @@
-// SwooshMusic/SunoMusicProvider.swift — 0.9R Suno via sunoapi.org gateway
+// SwooshMusic/SunoMusicProvider.swift — 0.9S Suno via sunoapi.org gateway
 //
 // Suno Inc. itself does not publish a third-party API as of May 2026.
 // The de facto integration is **sunoapi.org**, a third-party gateway
@@ -22,8 +22,15 @@
 // Status enum: PENDING → TEXT_SUCCESS → FIRST_SUCCESS → SUCCESS
 // Failure states: CREATE_TASK_FAILED · GENERATE_AUDIO_FAILED ·
 //                 CALLBACK_EXCEPTION · SENSITIVE_WORD_ERROR.
+//
+// Optional `firewall` + `auditLog` enforce `.musicGenerate` permission
+// and emit `AuditEntry` records around every generation request. The
+// iOS picker path passes nil; daemon-side tool wrappers pass real impls.
+// The registry-mounted `GenerateMusicTool` is the primary gate; these
+// injections are defense-in-depth for direct (non-registry) callers.
 
 import Foundation
+import SwooshTools
 
 public actor SunoMusicProvider: MusicProviding {
 
@@ -41,6 +48,8 @@ public actor SunoMusicProvider: MusicProviding {
     private let apiKeyProvider: @Sendable () async throws -> String
     private let host: URL
     private let session: URLSession
+    private let firewall: (any Firewall)?
+    private let auditLog: (any AuditLogging)?
 
     /// `callbackURL` is required by sunoapi.org even when you're polling.
     /// Any reachable URL works (it just won't be used). Pass nil to use
@@ -51,18 +60,49 @@ public actor SunoMusicProvider: MusicProviding {
         apiKeyProvider: @escaping @Sendable () async throws -> String,
         host: URL = URL(string: "https://api.sunoapi.org")!,
         callbackURL: URL = URL(string: "https://example.invalid/suno-callback")!,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        firewall: (any Firewall)? = nil,
+        auditLog: (any AuditLogging)? = nil
     ) {
         self.apiKeyProvider = apiKeyProvider
         self.host = host
         self.callbackURL = callbackURL
         self.session = session
+        self.firewall = firewall
+        self.auditLog = auditLog
+    }
+
+    private func audit(_ kind: AuditEntryKind, _ detail: String, success: Bool = true) async {
+        guard let auditLog else { return }
+        try? await auditLog.append(AuditEntry(
+            kind: kind, toolName: id, detail: detail, success: success
+        ))
+    }
+
+    private func requirePermission() async throws {
+        guard let firewall else { return }
+        do {
+            try await firewall.require(.musicGenerate)
+        } catch {
+            await audit(.toolCallDenied, "denied", success: false)
+            throw error
+        }
     }
 
     public func generate(_ request: MusicRequest) async throws -> MusicJob {
+        try await requirePermission()
+        let promptHash = String(request.prompt.hash, radix: 16)
+        await audit(
+            .toolCallStarted,
+            "model=\(request.model ?? "V5_5") promptHash=\(promptHash) instrumental=\(request.instrumentalOnly)"
+        )
+
         let apiKey: String
         do { apiKey = try await apiKeyProvider() }
-        catch { throw MusicError.missingAPIKey(displayName) }
+        catch {
+            await audit(.toolCallFailed, "missing API key", success: false)
+            throw MusicError.missingAPIKey(displayName)
+        }
 
         // Per sunoapi.org spec: customMode + instrumental + model + callBackUrl
         // are always required. customMode=true unlocks style/title/lyrics.
@@ -91,6 +131,7 @@ public actor SunoMusicProvider: MusicProviding {
             let status = (response as? HTTPURLResponse)?.statusCode ?? 0
             let preview = String(data: data.prefix(500), encoding: .utf8) ?? ""
             MusicLogger.suno.error("generate failed HTTP \(status): \(preview, privacy: .public)")
+            await audit(.toolCallFailed, "HTTP \(status)", success: false)
             throw MusicError.requestFailed("HTTP \(status): \(preview)")
         }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -98,9 +139,11 @@ public actor SunoMusicProvider: MusicProviding {
               let taskID = inner["taskId"] as? String else {
             let preview = String(data: data.prefix(200), encoding: .utf8) ?? ""
             MusicLogger.suno.error("missing data.taskId — preview: \(preview, privacy: .public)")
+            await audit(.toolCallFailed, "missing data.taskId", success: false)
             throw MusicError.requestFailed("missing data.taskId — got: \(preview)")
         }
         MusicLogger.suno.info("taskId=\(taskID, privacy: .public)")
+        await audit(.toolCallSucceeded, "taskId=\(taskID)")
         return SunoMusicJob(
             id: taskID,
             host: host,

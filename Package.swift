@@ -157,6 +157,8 @@ let package = Package(
                 "SwooshPluginRuntime",
                 "SwooshDemoPlugins",
                 "SwooshWallet",
+                "SwooshImageGen",
+                "SwooshMusic",
                 .product(name: "ActantAgent", package: "swift"),
                 .product(name: "BigInt", package: "BigInt"),
                 .product(name: "secp256k1", package: "secp256k1.swift"),
@@ -248,6 +250,8 @@ let package = Package(
             "SwooshCron",
             "SwooshMCP",
             "SwooshClient",
+            "SwooshImageGen",
+            "SwooshMusic",
             .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
         ]),
 
@@ -482,9 +486,13 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - SwooshMusic — music generation providers
         // ══════════════════════════════════════════════════════════════
+        // Depends on SwooshTools so cloud providers can require permissions
+        // and emit AuditEntry records through the Firewall + AuditLogging
+        // protocols (concrete impls injected daemon-side; iOS picker passes
+        // nil and the gating is a no-op).
         .target(
             name: "SwooshMusic",
-            dependencies: ["SwooshSecrets"]
+            dependencies: ["SwooshSecrets", "SwooshTools"]
         ),
 
         .target(
@@ -700,6 +708,8 @@ let package = Package(
                 "SwooshFirewall",
                 "SwooshFiles",
                 "SwooshProcess",
+                "SwooshImageGen",
+                "SwooshMusic",
             ]
         ),
         .testTarget(

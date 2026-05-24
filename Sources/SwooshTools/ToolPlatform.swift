@@ -54,7 +54,7 @@ extension ToolsetID {
         // user request) is fine to expose on iOS.
         case .core, .memory, .permissions, .scout, .audit, .workflow, .cron,
              .web, .evm, .solana, .launchpads, .hyperliquid, .uniswap, .mcp,
-             .skills, .goals, .manifesting:
+             .skills, .goals, .manifesting, .mediaGen:
             return [.macOS, .iOS, .linux]
         // The plugin host loads dynamic code (Swift entrypoints, executables,
         // wasm) — server-side only. The iOS app talks to plugins through the

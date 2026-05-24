@@ -1,11 +1,17 @@
 // SwooshImageGen/ImageGenRouter.swift
-// Version: 0.9R
+// Version: 0.9S
 //
 // Local-first router. Apple Image Playground when the OS supports it,
 // otherwise fall through to the injected cloud provider. The router
 // itself is `ImageGenProviding` so callers see one interface.
+//
+// Gating happens at the leaves — each provider gates its own work
+// against `.imageGenerate` when a firewall is injected. The router
+// adds no enforcement on top; the registry-mounted `GenerateImageTool`
+// is the primary permission gate for agent calls.
 
 import Foundation
+import SwooshTools
 
 public actor ImageGenRouter: ImageGenProviding {
     private let local: any ImageGenProviding
@@ -56,7 +62,14 @@ public actor ImageGenRouter: ImageGenProviding {
 }
 
 public enum SwooshImageGen {
-    public static func defaultProvider(cloud: (any ImageGenProviding)? = nil) -> any ImageGenProviding {
-        ImageGenRouter(local: ImagePlaygroundProvider(), cloud: cloud)
+    public static func defaultProvider(
+        cloud: (any ImageGenProviding)? = nil,
+        firewall: (any Firewall)? = nil,
+        auditLog: (any AuditLogging)? = nil
+    ) -> any ImageGenProviding {
+        ImageGenRouter(
+            local: ImagePlaygroundProvider(firewall: firewall, auditLog: auditLog),
+            cloud: cloud
+        )
     }
 }

@@ -55,15 +55,16 @@ Swoosh has two independent controls:
 
 ## Media generation permissions
 
-Three permissions gate the post-LLM media surface. Distinct cases let a user grant chat-with-images without also granting shell access or trading.
+Four permissions gate the post-LLM media surface. Distinct cases let a user grant chat-with-images without also granting shell access or trading. The matching tool wrappers — `media.generate_image`, `media.generate_video`, `media.generate_3d`, `media.generate_music` — live in `SwooshToolsets` and register only when a matching provider is wired in `MediaGenDependencies` (the daemon constructs providers from Keychain keys via `MediaGenWiring`).
 
 | Permission | Capability | Cloud requires |
 |------------|------------|----------------|
 | `imageGenerate` | Text-to-image. Local via Apple Image Playground (macOS 15.2+/iOS 18.2+), cloud via OpenAI `gpt-image-1`. | `networkAccess` for cloud |
 | `videoGenerate` | Text-to-video. Cloud-only today via FAL.ai (Veo 3, Kling, Hunyuan Video). | `networkAccess` |
 | `threeDGenerate` | Text/image-to-3D. Cloud-only today via FAL.ai (Tripo3D, Trellis, TripoSR). | `networkAccess` |
+| `musicGenerate` | Text-to-music. Cloud-only today via Suno (sunoapi.org gateway), ElevenLabs Music, or Stable Audio. | `networkAccess` |
 
-Local-only `imageGenerate` (Image Playground) is granted by `.developer`+. Cloud video and 3D are granted by `.automation`+ since they imply outbound network spend.
+Local-only `imageGenerate` (Image Playground) is granted by `.developer`+. Cloud video, 3D, and music are granted by `.automation`+ since they imply outbound network spend. `media.generate_image` is `askFirstTime` (session-cacheable); the cloud-only video/3D/music tools are `askEveryTime` because every call materially spends API credit.
 
 ## Approval Semantics
 
