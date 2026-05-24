@@ -1,4 +1,4 @@
-// SwooshProviderBridge/ProviderBridgeAdapter.swift — SwooshProviders → SwooshCore adapter — 0.9A
+// SwooshProviderBridge/ProviderBridgeAdapter.swift — SwooshProviders → SwooshCore adapter — 0.9B
 //
 // Adapts the real `ProviderRouter` to the `SwooshCore.ModelProvider`
 // protocol so the daemon can mount the inference stack. Handles type
@@ -10,6 +10,7 @@
 // straight from the compiler with no escape hatch.
 
 import Foundation
+import os
 import SwooshCore
 import SwooshProviders
 import SwooshTools
@@ -96,14 +97,31 @@ public struct ProviderBridgeAdapter: SwooshCore.ModelProvider, Sendable {
 }
 
 extension SwooshTools.JSONSchema {
+    /// Re-encode the typed schema as the dynamic `JSONValue` shape that
+    /// `SwooshProviders.ToolDescriptor` expects. The encoder + decoder
+    /// are static so the round-trip doesn't allocate fresh ones per
+    /// call; the previous form paid that cost on every tool of every
+    /// request. Object-with-`type:object` is the inert fallback if
+    /// encoding fails — failures log via `os_log` so silent shape
+    /// drift doesn't go unnoticed.
     fileprivate func asJSONValue() -> SwooshTools.JSONValue {
-        let encoder = JSONEncoder()
-        guard
-            let data = try? encoder.encode(self),
-            let value = try? JSONDecoder().decode(SwooshTools.JSONValue.self, from: data)
-        else {
+        do {
+            let data = try Self.schemaEncoder.encode(self)
+            return try Self.schemaDecoder.decode(SwooshTools.JSONValue.self, from: data)
+        } catch {
+            os_log(
+                "JSONSchema → JSONValue conversion failed: %{public}@",
+                log: Self.schemaLog,
+                type: .error,
+                String(describing: error)
+            )
             return .object(["type": .string("object")])
         }
-        return value
     }
+
+    fileprivate static let schemaEncoder = JSONEncoder()
+    fileprivate static let schemaDecoder = JSONDecoder()
+    fileprivate static let schemaLog = OSLog(
+        subsystem: "ai.swoosh", category: "provider-bridge.schema"
+    )
 }

@@ -1,14 +1,15 @@
-// SwooshProviderBridge/ProviderFactory.swift — Provider stack bootstrap — 0.9A
+// SwooshProviderBridge/ProviderFactory.swift — Provider stack bootstrap — 0.9B
 //
 // Builds the full `ProviderRouter` from Keychain secrets. The set of
 // routes is data-driven via the `defaultRoutes` table — adding a new
 // role / model is one row, not a new `await registry.addRoute(...)` call.
 
 import Foundation
+import SwooshMLX
 import SwooshModels
 import SwooshProviders
 import SwooshSecrets
-import SwooshMLX
+import SwooshTools
 
 public struct ProviderFactory {
 
@@ -237,55 +238,79 @@ public struct ProviderFactory {
         return DynamicModelLoader.shared.defaultFallbackModel(hardware: hardware)
     }
 
+    /// Dispatch to a per-provider detector helper. Splitting cuts the
+    /// cyclomatic complexity of any single function below the strict
+    /// linter limit and lets each helper own its own happy-path logic.
     private static func detectProvider(
         id: String,
         secrets: any SecretStoring
     ) async -> (name: String, model: String)? {
         switch id {
-        case ModelDefaults.codexProviderID:
-            let codex = CodexBridgeProvider()
-            if await codex.isAuthenticated() {
-                return ("ChatGPT (Codex)", ModelDefaults.codexModelID)
-            }
-        case ModelDefaults.openAIProviderID:
-            if (try? await secrets.get(SecretRef("openai", "api_key"))) != nil {
-                return ("OpenAI", ModelDefaults.openAIModelID)
-            }
-        case ModelDefaults.openRouterProviderID:
-            if (try? await secrets.get(SecretRef("openrouter", "api_key"))) != nil {
-                return ("OpenRouter", ModelDefaults.openRouterModelID)
-            }
-        case ModelDefaults.elizaCloudProviderID:
-            if (try? await secrets.get(SecretRef("eliza-cloud", "api_key"))) != nil {
-                return ("Eliza Cloud", ModelDefaults.elizaCloudModelID)
-            }
-        case ModelDefaults.localMLXProviderID:
-            if MLXInferenceEngine.isAppleSilicon {
-                return ("MLX Local", ModelDefaults.localMLXModelID)
-            }
-        case ModelDefaults.localOpenAIProviderID:
-            let discovery = LocalProviderDiscovery()
-            let found = await discovery.discover()
-            if let first = found.first, let model = first.models.first {
-                return (first.name, model)
-            }
-        default:
+        case ModelDefaults.codexProviderID:      return await detectCodex()
+        case ModelDefaults.openAIProviderID:     return await detectOpenAI(secrets: secrets)
+        case ModelDefaults.openRouterProviderID: return await detectOpenRouter(secrets: secrets)
+        case ModelDefaults.elizaCloudProviderID: return await detectElizaCloud(secrets: secrets)
+        case ModelDefaults.localMLXProviderID:   return detectMLXLocal()
+        case ModelDefaults.localOpenAIProviderID: return await detectLocalOpenAI()
+        default:                                  return nil
+        }
+    }
+
+    private static func detectCodex() async -> (name: String, model: String)? {
+        let codex = CodexBridgeProvider()
+        guard await codex.isAuthenticated() else { return nil }
+        return ("ChatGPT (Codex)", ModelDefaults.codexModelID)
+    }
+
+    private static func detectOpenAI(
+        secrets: any SecretStoring
+    ) async -> (name: String, model: String)? {
+        guard (try? await secrets.get(SecretRef("openai", "api_key"))) != nil else { return nil }
+        return ("OpenAI", ModelDefaults.openAIModelID)
+    }
+
+    private static func detectOpenRouter(
+        secrets: any SecretStoring
+    ) async -> (name: String, model: String)? {
+        guard (try? await secrets.get(SecretRef("openrouter", "api_key"))) != nil else {
             return nil
         }
-        return nil
+        return ("OpenRouter", ModelDefaults.openRouterModelID)
+    }
+
+    private static func detectElizaCloud(
+        secrets: any SecretStoring
+    ) async -> (name: String, model: String)? {
+        guard (try? await secrets.get(SecretRef("eliza-cloud", "api_key"))) != nil else {
+            return nil
+        }
+        return ("Eliza Cloud", ModelDefaults.elizaCloudModelID)
+    }
+
+    private static func detectMLXLocal() -> (name: String, model: String)? {
+        guard MLXInferenceEngine.isAppleSilicon else { return nil }
+        return ("MLX Local", ModelDefaults.localMLXModelID)
+    }
+
+    private static func detectLocalOpenAI() async -> (name: String, model: String)? {
+        let discovery = LocalProviderDiscovery()
+        let found = await discovery.discover()
+        guard let first = found.first, let model = first.models.first else { return nil }
+        return (first.name, model)
     }
 
     /// Reverse mapping for `detectActiveProvider` output: turn the
     /// human-readable name back into the canonical provider ID. The two
     /// must stay in sync — if `detectProvider` emits a new name, add it
-    /// here.
+    /// here. Cases that don't appear in any branch of `detectProvider`
+    /// were removed (specifically "Apple Foundation" — that provider is
+    /// not currently part of the detection chain).
     public static func providerID(forDetectedProviderName name: String) -> String {
         switch name {
         case "ChatGPT (Codex)":  return ModelDefaults.codexProviderID
         case "OpenAI":           return ModelDefaults.openAIProviderID
         case "OpenRouter":       return ModelDefaults.openRouterProviderID
         case "Eliza Cloud":      return ModelDefaults.elizaCloudProviderID
-        case "Apple Foundation": return ModelDefaults.localFoundationProviderID
         case "MLX Local":        return ModelDefaults.localMLXProviderID
         default:                 return ModelDefaults.localOpenAIProviderID
         }
