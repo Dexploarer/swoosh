@@ -287,12 +287,20 @@ public actor AgentKernel {
 
         // 2. Build system prompt (privacy boundary)
         let skillCatalog = await skillCatalogProvider?() ?? []
-        let (systemPrompt, memoryIDs) = promptBuilder.buildSystemPrompt(
-            approvedMemories: memories,
+        let mappedMemories = memories.map {
+            ApprovedMemory(id: $0.id, text: $0.text, category: $0.category)
+        }
+        let mappedSkills = skillCatalog.map {
+            SkillCatalogEntry(id: $0.id, title: $0.title, description: $0.description)
+        }
+        let promptResult = promptBuilder.buildSystemPrompt(
+            approvedMemories: mappedMemories,
             setupReport: report,
             permissionSummary: permSummary,
-            skillCatalog: skillCatalog
+            skillCatalog: mappedSkills
         )
+        let systemPrompt = promptResult.prompt
+        let memoryIDs = promptResult.memoryIDs
 
         // 3. Load existing transcript for session continuation
         let storedTranscript = try await sessionStore.loadTranscript(sessionID: request.sessionID)
