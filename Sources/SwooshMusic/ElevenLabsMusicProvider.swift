@@ -58,7 +58,12 @@ public actor ElevenLabsMusicProvider: MusicProviding {
         let data = try await postAndGet(request: request, apiKey: apiKey)
         let tmp = FileManager.default.temporaryDirectory
             .appendingPathComponent("elevenlabs-music-\(UUID().uuidString).mp3")
-        try data.write(to: tmp)
+        do {
+            try data.write(to: tmp)
+        } catch {
+            await gate.failed("write error: \(error.localizedDescription)")
+            throw MusicError.requestFailed("write error: \(error.localizedDescription)")
+        }
         await gate.succeeded("bytes=\(data.count)")
         return InlineMusicJob(
             id: tmp.lastPathComponent,
