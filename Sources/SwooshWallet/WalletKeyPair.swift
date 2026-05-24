@@ -1,4 +1,4 @@
-// SwooshWallet/WalletKeyPair.swift — Per-chain keypair generation
+// SwooshWallet/WalletKeyPair.swift — Per-chain keypair generation + EIP-55 checksum — 0.9A
 //
 // Solana: ed25519 via CryptoKit `Curve25519.Signing.PrivateKey`. The 32-byte
 // private key plus 32-byte public key matches Solana's canonical 64-byte
@@ -137,8 +137,17 @@ public enum WalletKeyFactory {
         return WalletKeyPair(chain: chain, address: address, secret: privBytes, publicKey: Data(pubXY))
     }
 
-    /// EIP-55 mixed-case checksum address.
-    private static func checksumAddress(bytes: [UInt8]) -> String {
+    /// EIP-55 mixed-case checksum address. Exposed so consumers outside
+    /// the wallet module (e.g. transaction display in the iOS app, daemon
+    /// log formatters) can render addresses with checksum casing without
+    /// reimplementing the keccak-of-lowercase-hex routine. Input is the
+    /// raw 20-byte address bytes; output is `0x` followed by 40 hex
+    /// characters with EIP-55 casing applied.
+    public static func checksumAddress(bytes: [UInt8]) -> String {
+        precondition(
+            bytes.count == 20,
+            "EIP-55 checksumAddress requires exactly 20 bytes, got \(bytes.count)"
+        )
         let lower = Hex.encode(bytes, prefix: false)
         let hashOfLower = Keccak.hash256(Array(lower.utf8))
         var out = "0x"

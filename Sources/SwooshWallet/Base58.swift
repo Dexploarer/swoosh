@@ -1,4 +1,4 @@
-// SwooshWallet/Base58.swift — Bitcoin/Solana base58 codec (no checksum)
+// SwooshWallet/Base58.swift — Bitcoin/Solana base58 codec (no checksum) — 0.9A
 //
 // Solana addresses are bare base58 of the 32-byte ed25519 public key.
 // This is the same alphabet Bitcoin uses; we deliberately omit the b58check

@@ -1,4 +1,4 @@
-// SwooshWallet/WalletAccount.swift — Public-side account record
+// SwooshWallet/WalletAccount.swift — Public-side account record — 0.9A
 //
 // One row per (chain, address) pair the user has saved. Addresses are
 // public — these can live in UserDefaults / JSON without ACL. Secret
