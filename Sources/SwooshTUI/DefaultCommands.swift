@@ -1,55 +1,51 @@
-// SwooshTUI/DefaultCommands.swift — Built-in slash commands
+// SwooshTUI/DefaultCommands.swift — 0.9S Built-in slash commands
 //
-// Returns an array of SlashCommandDefinitions.
-// The caller (SwooshShell) registers them into the SlashCommandRegistry.
-// Commands reflect real runtime state where possible — no stale milestones.
+// Returns an array of SlashCommandDefinitions wired into
+// `SlashCommandRegistry` by `SwooshShell`'s caller (today, the
+// `swoosh chat` subcommand).
+//
+// Scope intentionally narrow: only commands that actually do something
+// inside the shell ship here. Status / personalization / firewall / etc.
+// live as standalone `swoosh <subcommand>` CLIs — the previous TUI shipped
+// prose stubs ("Use: `swoosh foo`") that pretended to be implementations;
+// those were removed in 0.9S because they misled users about what
+// `/scout` or `/doctor` actually did from inside the shell.
+//
+// `/help` is rendered live from the registry (`registry.helpText()` —
+// see SlashCommand.swift), so adding a new command auto-surfaces in
+// the help output instead of waiting for someone to update a literal.
 
 import Foundation
 import SwooshTools
 
-public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
-    // ── Core ─────────────────────────────────────────────────
+/// Build the default set of in-shell slash commands.
+///
+/// `registry` is passed in so `/help` can render the live command list
+/// via `registry.helpText()` rather than a hand-typed literal that
+/// silently drifts as commands are added/removed.
+public func makeDefaultCommandDefinitions(
+    registry: SlashCommandRegistry
+) -> [SlashCommandDefinition] {
+    makeCoreCommands(registry: registry)
+        + makeAgentCommands()
+        + makePersonalizationCommands()
+        + makeSystemDevCommands()
+}
 
+// MARK: - Core (/help, /exit, /clear)
+
+private func makeCoreCommands(
+    registry: SlashCommandRegistry
+) -> [SlashCommandDefinition] {
     let helpCmd = SlashCommandDefinition(
         name: "help",
         aliases: ["h", "?"],
         summary: "Show available commands.",
         category: .general
-    ) { _ in
-        .success("""
-
-          ─── Swoosh Commands ──────────────────────────────
-            GENERAL
-              /help               Show this help
-              /exit               Exit Swoosh
-              /clear              Clear terminal
-
-            AGENT
-              /status             Provider, session, budget
-              /model [list|set]   Show or switch model
-              /tools              List available tools
-              /sessions           Manage sessions
-              /why                Explain last response context
-              /repeat             Save last task as workflow
-
-            PERSONALIZATION
-              /scout              Run personalization scan
-              /vault [pending|approved]  Manage memory
-
-            SYSTEM
-              /doctor             System diagnostics
-              /permissions        View and manage permissions
-              /firewall           Firewall and approval rules
-              /budget             Token and cost usage
-
-            DEVELOPMENT
-              /local              Local model (MLX) status
-              /skills             Agent learned behaviors
-              /db                 Storage backend status
-
-          Type any message to chat with the agent.
-
-        """)
+    ) { [weak registry] _ in
+        guard let registry else { return .success("") }
+        let text = await registry.helpText()
+        return .success(text)
     }
 
     let exitCmd = SlashCommandDefinition(
@@ -68,92 +64,27 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
         handler: { _ in .success("\u{001B}[2J\u{001B}[H") }
     )
 
-    // ── Agent ─────────────────────────────────────────────────
+    return [helpCmd, exitCmd, clearCmd]
+}
 
-    let statusCmd = SlashCommandDefinition(
-        name: "status",
-        aliases: ["s"],
-        summary: "Show provider, session, and budget status.",
-        category: .agent
-    ) { ctx in
-        let env = ProcessInfo.processInfo.environment
-        let providerKeys: [(String, String)] = [
-            ("OPENAI_API_KEY", "openai"),
-            ("OPENROUTER_API_KEY", "openrouter"),
-            ("ELIZA_CLOUD_API_KEY", "eliza-cloud"),
-        ]
-        let active = providerKeys.first { env[$0.0] != nil }
-        let providerStr = active.map { "✅ \($0.1)" } ?? "⚠️  none — run `swoosh discover-credentials`"
-        return .success("""
+// MARK: - Agent (/tools, /sessions)
 
-          ─── Status ───────────────────────────────────────
-            Session:  \(ctx.sessionID)
-            Provider: \(providerStr)
-            Doctor:   `swoosh doctor` for full system check
-
-        """)
-    }
-
-    let modelCmd = SlashCommandDefinition(
-        name: "model",
-        aliases: ["m"],
-        summary: "Show or change the current model.",
-        category: .agent
-    ) { ctx in
-        let sub = ctx.arguments.first ?? "show"
-        if sub == "list" {
-            return .success("""
-
-              ─── Providers ────────────────────────────────────
-                Remote:
-                  codex        ChatGPT account via Codex CLI
-                  openai       GPT-5.x
-                  openrouter   GPT-5.x routes
-                  eliza-cloud  hosted Eliza model
-
-                Local (Apple Silicon):
-                  mlx-local    Gemma 4 / Qwen through mlx-swift-lm
-                  local-openai Ollama / LM Studio / vLLM
-
-                Use: swoosh config set provider <name>
-
-            """)
-        }
-        let env = ProcessInfo.processInfo.environment
-        let keys: [(String, String)] = [
-            ("OPENAI_API_KEY", "openai"),
-            ("OPENROUTER_API_KEY", "openrouter"),
-            ("ELIZA_CLOUD_API_KEY", "eliza-cloud"),
-        ]
-        let active = keys.first { env[$0.0] != nil }.map { $0.1 } ?? "not configured"
-        return .success("""
-
-          ─── Model ────────────────────────────────────────
-            Active: \(active)
-            Use /model list   — see all providers
-            Use /model set <provider> — switch
-
-        """)
-    }
-
+private func makeAgentCommands() -> [SlashCommandDefinition] {
     let toolsCmd = SlashCommandDefinition(
         name: "tools",
         aliases: ["t"],
-        summary: "List available tools.",
+        summary: "Pointers to tool discovery.",
         category: .agent
     ) { _ in
         .success("""
 
           ─── Tools ────────────────────────────────────────
-            File:    file.read  file.write  file.list  file.find
-            Shell:   shell.run  shell.script
-            Browser: browser.navigate  browser.click  browser.type
-                     browser.screenshot  browser.extract
-            Memory:  memory.listApproved  memory.listPending
-            Git:     git.status  git.diff  git.commit  git.push
-            MCP:     mcp.<server>.<tool>  (auto-discovered)
+            The live tool registry lives in `swooshd` — query it from
+            outside the shell:
 
-            Use: swoosh tools list   for full details
+              swoosh tools list                — all tools + risk + policy
+              swoosh tools schema <tool-name>  — JSON schema for one tool
+              swoosh tools enabled             — only enabled tools
 
         """)
     }
@@ -172,62 +103,12 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
         """)
     }
 
-    let whyCmd = SlashCommandDefinition(
-        name: "why",
-        summary: "Explain what context was used in the last response.",
-        category: .agent
-    ) { _ in
-        .success("""
+    return [toolsCmd, sessionsCmd]
+}
 
-          ─── /why ─────────────────────────────────────────
-            After an agent reply, /why shows:
-              • Approved memories injected
-              • Setup report used
-              • Permissions considered
-              • Firewall decisions
+// MARK: - Personalization (/vault)
 
-        """)
-    }
-
-    let repeatCmd = SlashCommandDefinition(
-        name: "repeat",
-        aliases: ["r"],
-        summary: "Turn the last task into a repeatable workflow.",
-        category: .agent
-    ) { _ in
-        .success("""
-
-          ─── /repeat ──────────────────────────────────────
-            After a successful task, /repeat:
-              1. Inspects the session trace
-              2. Generates a workflow draft
-              3. Lists required permissions
-              4. Saves as a disabled workflow
-
-            Use: swoosh workflow list   to see saved workflows
-
-        """)
-    }
-
-    // ── Personalization ──────────────────────────────────────
-
-    let scoutCmd = SlashCommandDefinition(
-        name: "scout",
-        summary: "Run Swoosh Scout personalization scan.",
-        category: .personalization
-    ) { _ in
-        .success("""
-
-          ─── Scout ────────────────────────────────────────
-            Scans your environment to build memory candidates.
-
-            Use:  swoosh scout run
-                  swoosh scout run --depth deep
-                  swoosh scout run --folders ~/Projects
-
-        """)
-    }
-
+private func makePersonalizationCommands() -> [SlashCommandDefinition] {
     let vaultCmd = SlashCommandDefinition(
         name: "vault",
         aliases: ["v", "memory"],
@@ -251,9 +132,5 @@ public func makeDefaultCommandDefinitions() -> [SlashCommandDefinition] {
         }
     }
 
-    return [
-        helpCmd, exitCmd, clearCmd,
-        statusCmd, modelCmd, toolsCmd, sessionsCmd, whyCmd, repeatCmd,
-        scoutCmd, vaultCmd,
-    ] + makeSystemDevCommands()
+    return [vaultCmd]
 }

@@ -1,93 +1,19 @@
-// SwooshTUI/SystemDevCommands.swift — System and Development slash commands
+// SwooshTUI/SystemDevCommands.swift — 0.9S Development commands that show real state
+//
+// Three commands that read live filesystem / env state instead of
+// printing prose: `/local` (Apple-Silicon detection + model count in
+// `~/.swoosh/models`), `/skills` (skill count in `~/.swoosh/skills`),
+// `/db` (ActantDB file existence + ACTANT_BASE_URL).
+//
+// Pure-prose helpers (`/doctor`, `/permissions`, `/firewall`, `/budget`)
+// were removed in 0.9S — they printed "Use: `swoosh foo`" templates
+// that misled users about what the in-shell command actually did.
+// Run those subsystems directly from the CLI instead.
 
 import Foundation
 import SwooshTools
 
 func makeSystemDevCommands() -> [SlashCommandDefinition] {
-    // ── System ───────────────────────────────────────────────
-
-    let doctorCmd = SlashCommandDefinition(
-        name: "doctor",
-        aliases: ["dx"],
-        summary: "Run system diagnostics and optimization checks.",
-        category: .system
-    ) { _ in
-        .success("""
-
-          ─── Doctor ───────────────────────────────────────
-            Full system diagnostics:
-              • Disk, memory, platform
-              • Provider keys, Keychain
-              • Config, budget, storage
-              • Privacy (log leak detection)
-
-            Use: swoosh doctor
-                 swoosh doctor --fix
-                 swoosh doctor --json
-
-        """)
-    }
-
-    let permissionsCmd = SlashCommandDefinition(
-        name: "permissions",
-        aliases: ["perms", "p"],
-        summary: "Show and manage permission profile.",
-        category: .system
-    ) { _ in
-        .success("""
-
-          ─── Permissions ──────────────────────────────────
-            Profile: safe (default)
-
-            Granted: deviceProfileRead, installedAppsRead
-            Gated:   shellRun, fileWrite, networkFetch,
-                     calendarRead, browserHistoryRead
-
-            Use: swoosh permissions grant <name>
-                 swoosh setup permissions
-
-        """)
-    }
-
-    let firewallCmd = SlashCommandDefinition(
-        name: "firewall",
-        aliases: ["fw"],
-        summary: "Show firewall and tool approval rules.",
-        category: .system
-    ) { _ in
-        .success("""
-
-          ─── Firewall ─────────────────────────────────────
-            Read-only tools:  auto-approved
-            Shell:            requires approval
-            File write:       requires approval
-            Network:          requires approval
-
-            Use: swoosh approvals list
-                 swoosh firewall allow <tool>
-                 swoosh firewall deny <tool>
-
-        """)
-    }
-
-    let budgetCmd = SlashCommandDefinition(
-        name: "budget",
-        aliases: ["cost"],
-        summary: "Show token and cost usage.",
-        category: .system
-    ) { _ in
-        .success("""
-
-          ─── Budget ───────────────────────────────────────
-            Use: swoosh usage
-                 swoosh usage --week
-                 swoosh budget set --daily 25.00
-                 swoosh budget set --session 5.00
-
-        """)
-    }
-
-    // ── Development ──────────────────────────────────────────
 
     let localCmd = SlashCommandDefinition(
         name: "local",
@@ -161,5 +87,5 @@ func makeSystemDevCommands() -> [SlashCommandDefinition] {
         }
     }
 
-    return [doctorCmd, permissionsCmd, firewallCmd, budgetCmd, localCmd, skillsCmd, dbCmd]
+    return [localCmd, skillsCmd, dbCmd]
 }
