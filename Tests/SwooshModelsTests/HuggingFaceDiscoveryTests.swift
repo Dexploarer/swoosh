@@ -15,82 +15,82 @@ import Foundation
 struct HuggingFaceDiscoveryEstimateSizeTests {
 
     @Test("Massive band: 235B → massive / ~130 GB")
-    func massive_235B() {
-        let (params, tier, mem) = HuggingFaceDiscovery.estimateSize("Qwen3-235B-Instruct")
-        #expect(params == "235B")
-        #expect(tier == .massive)
-        #expect(mem == 130)
+    func massive235B() {
+        let size = HuggingFaceDiscovery.estimateSize("Qwen3-235B-Instruct")
+        #expect(size.params == "235B")
+        #expect(size.tier == .massive)
+        #expect(size.memoryGB == 130)
     }
 
     @Test("Massive band: 70B → massive / 45 GB")
-    func massive_70B() {
-        let (params, tier, mem) = HuggingFaceDiscovery.estimateSize("Llama-70B-it")
-        #expect(params == "70B")
-        #expect(tier == .massive)
-        #expect(mem == 45)
+    func massive70B() {
+        let size = HuggingFaceDiscovery.estimateSize("Llama-70B-it")
+        #expect(size.params == "70B")
+        #expect(size.tier == .massive)
+        #expect(size.memoryGB == 45)
     }
 
     @Test("XLarge band: 32B / 30B / 27B / 22B all route to xlarge")
     func xlarge() {
         for pattern in ["32B", "30B", "27B", "22B"] {
-            let (_, tier, _) = HuggingFaceDiscovery.estimateSize("model-\(pattern)-it")
-            #expect(tier == .xlarge, "\(pattern) must map to .xlarge")
+            let size = HuggingFaceDiscovery.estimateSize("model-\(pattern)-it")
+            #expect(size.tier == .xlarge, "\(pattern) must map to .xlarge")
         }
     }
 
     @Test("Large band: 14B / 13B / 12B")
     func large() {
         for pattern in ["14B", "13B", "12B"] {
-            let (_, tier, _) = HuggingFaceDiscovery.estimateSize("model-\(pattern)")
-            #expect(tier == .large, "\(pattern) must map to .large")
+            let size = HuggingFaceDiscovery.estimateSize("model-\(pattern)")
+            #expect(size.tier == .large, "\(pattern) must map to .large")
         }
     }
 
     @Test("Medium band: 9B / 8B / 7B")
     func medium() {
         for pattern in ["9B", "8B", "7B"] {
-            let (_, tier, _) = HuggingFaceDiscovery.estimateSize("X-\(pattern)-base")
-            #expect(tier == .medium, "\(pattern) must map to .medium")
+            let size = HuggingFaceDiscovery.estimateSize("X-\(pattern)-base")
+            #expect(size.tier == .medium, "\(pattern) must map to .medium")
         }
     }
 
     @Test("Small band: 4B / 3B / 2B / 1.7B / 1.5B")
     func small() {
         for pattern in ["4B", "3B", "2B", "1.7B", "1.5B"] {
-            let (_, tier, _) = HuggingFaceDiscovery.estimateSize("X-\(pattern)-it")
-            #expect(tier == .small, "\(pattern) must map to .small")
+            let size = HuggingFaceDiscovery.estimateSize("X-\(pattern)-it")
+            #expect(size.tier == .small, "\(pattern) must map to .small")
         }
     }
 
     @Test("Micro band: 1B / 0.8B / 0.6B / 0.5B / 500M")
     func micro() {
         for pattern in ["1B", "0.8B", "0.6B", "0.5B", "500M"] {
-            let (_, tier, _) = HuggingFaceDiscovery.estimateSize("X-\(pattern)")
-            #expect(tier == .micro, "\(pattern) must map to .micro")
+            let size = HuggingFaceDiscovery.estimateSize("X-\(pattern)")
+            #expect(size.tier == .micro, "\(pattern) must map to .micro")
         }
     }
 
     @Test("Nano band: 0.3B / 350M / 250M / 137M / 82M")
     func nano() {
         for pattern in ["0.3B", "350M", "250M", "137M", "82M"] {
-            let (_, tier, _) = HuggingFaceDiscovery.estimateSize("X-\(pattern)")
-            #expect(tier == .nano, "\(pattern) must map to .nano")
+            let size = HuggingFaceDiscovery.estimateSize("X-\(pattern)")
+            #expect(size.tier == .nano, "\(pattern) must map to .nano")
         }
     }
 
     @Test("Case-insensitive: lowercase patterns still match")
     func caseInsensitive() {
-        let (params, tier, _) = HuggingFaceDiscovery.estimateSize("qwen-7b-instruct")
-        #expect(params == "7B")
-        #expect(tier == .medium)
+        let size = HuggingFaceDiscovery.estimateSize("qwen-7b-instruct")
+        #expect(size.params == "7B")
+        #expect(size.tier == .medium)
     }
 
     @Test("Unknown pattern falls back to medium/5GB without crashing")
     func unknown() {
-        let (params, tier, mem) = HuggingFaceDiscovery.estimateSize("some-random-model")
-        #expect(params == "Unknown")
-        #expect(tier == .medium)
-        #expect(mem == 5.0)
+        let size = HuggingFaceDiscovery.estimateSize("some-random-model")
+        #expect(size.params == "Unknown")
+        #expect(size.tier == .medium)
+        #expect(size.memoryGB == 5.0)
     }
 
     @Test("Memory estimate is monotonic by tier")
@@ -103,11 +103,13 @@ struct HuggingFaceDiscoveryEstimateSizeTests {
             "7B",    // medium
             "13B",   // large
             "30B",   // xlarge
-            "70B",   // massive
+            "70B"    // massive
         ]
-        let mems = samples.map { HuggingFaceDiscovery.estimateSize($0).memGB }
-        for i in 0..<(mems.count - 1) {
-            #expect(mems[i] < mems[i + 1], "memory must grow tier-by-tier; \(samples[i])→\(mems[i]) >= \(samples[i + 1])→\(mems[i + 1])")
+        let mems = samples.map { HuggingFaceDiscovery.estimateSize($0).memoryGB }
+        for idx in 0..<(mems.count - 1) {
+            let lhs = "\(samples[idx])→\(mems[idx])"
+            let rhs = "\(samples[idx + 1])→\(mems[idx + 1])"
+            #expect(mems[idx] < mems[idx + 1], "memory must grow tier-by-tier; \(lhs) >= \(rhs)")
         }
     }
 
@@ -115,9 +117,9 @@ struct HuggingFaceDiscoveryEstimateSizeTests {
     func largestMatchWins() {
         // "70B-instruct-1B" contains both "70B" and "1B" — table iterates
         // largest-to-smallest, so 70B should win.
-        let (params, tier, _) = HuggingFaceDiscovery.estimateSize("Llama-70B-instruct-1B")
-        #expect(params == "70B")
-        #expect(tier == .massive)
+        let size = HuggingFaceDiscovery.estimateSize("Llama-70B-instruct-1B")
+        #expect(size.params == "70B")
+        #expect(size.tier == .massive)
     }
 }
 
