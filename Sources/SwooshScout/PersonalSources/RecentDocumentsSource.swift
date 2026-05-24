@@ -33,8 +33,10 @@ public struct RecentDocumentsSource: ScoutSource {
     public func scan(progress: ScanProgress) async throws -> [ScoutRecord] {
         #if os(macOS)
         let dir = sharedFileListDirectory()
-        let fm = FileManager.default
-        guard let children = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return [] }
+        let fileManager = FileManager.default
+        guard let children = try? fileManager.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else {
+            return []
+        }
 
         // sharedfilelist files are bookmark-encoded blobs. Without a
         // full bookmark resolver we can still surface useful per-app
@@ -42,14 +44,14 @@ public struct RecentDocumentsSource: ScoutSource {
         // how recently each file list was modified.
         return children.compactMap { url -> ScoutRecord? in
             guard url.pathExtension == "sfl2" || url.pathExtension == "sfl3" else { return nil }
-            let attrs = try? fm.attributesOfItem(atPath: url.path)
+            let attrs = try? fileManager.attributesOfItem(atPath: url.path)
             let modified = (attrs?[.modificationDate] as? Date) ?? .distantPast
             let appHint = url.deletingPathExtension().lastPathComponent
                 .replacingOccurrences(of: "com.apple.LSSharedFileList.RecentDocuments", with: "")
                 .trimmingCharacters(in: CharacterSet(charactersIn: ".-"))
                 .scoutIfEmpty(else: "system")
             return ScoutRecord(
-                sourceID: id, kind: .recentDocument, sensitivity: .medium,
+                sourceID: id, kind: .recentDocument, sensitivity: sensitivity,
                 content: "Recent-documents list updated for \(appHint).",
                 metadata: [
                     "list": url.lastPathComponent,

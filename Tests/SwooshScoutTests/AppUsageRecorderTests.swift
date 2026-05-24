@@ -152,8 +152,8 @@ struct AppUsageRecorderRoundTripTests {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         var data = Data()
-        data.append("garbage line not even json\n".data(using: .utf8)!)
-        data.append("{}\n".data(using: .utf8)!)
+        data.append(Data("garbage line not even json\n".utf8))
+        data.append(Data("{}\n".utf8))
         data.append(try encoder.encode(good))
         data.append(Data("\n".utf8))
         try data.write(to: url)

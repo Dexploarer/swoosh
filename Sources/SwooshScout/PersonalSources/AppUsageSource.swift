@@ -37,21 +37,36 @@ public struct AppUsageSource: ScoutSource {
         try await checkPermission()
     }
 
+    /// Per-bundle accumulation while scanning the JSONL log. Named
+    /// struct (instead of a 4-tuple) so SwiftLint's `large_tuple` rule
+    /// stays happy and the field semantics are obvious at call sites.
+    private struct BundleAggregate {
+        var displayName: String
+        var seconds: Double
+        var sessions: Int
+        var lastFocused: Date
+    }
+
     public func scan(progress: ScanProgress) async throws -> [ScoutRecord] {
         guard let data = try? Data(contentsOf: logURL),
               let text = String(data: data, encoding: .utf8) else { return [] }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let cutoff = Date().addingTimeInterval(-window)
-        var totals: [String: (display: String, seconds: Double, sessions: Int, last: Date)] = [:]
+        var totals: [String: BundleAggregate] = [:]
         for line in text.split(separator: "\n") where !line.isEmpty {
             guard let lineData = String(line).data(using: .utf8),
                   let event = try? decoder.decode(AppFocusEvent.self, from: lineData),
                   event.endedAt >= cutoff else { continue }
-            var entry = totals[event.bundleID] ?? (event.displayName, 0, 0, .distantPast)
+            var entry = totals[event.bundleID] ?? BundleAggregate(
+                displayName: event.displayName,
+                seconds: 0,
+                sessions: 0,
+                lastFocused: .distantPast
+            )
             entry.seconds += event.duration
             entry.sessions += 1
-            entry.last = max(entry.last, event.endedAt)
+            entry.lastFocused = max(entry.lastFocused, event.endedAt)
             totals[event.bundleID] = entry
         }
 
@@ -60,12 +75,12 @@ public struct AppUsageSource: ScoutSource {
             .map { (bundleID, entry) in
                 ScoutRecord(
                     sourceID: id, kind: .appUsage, sensitivity: .high,
-                    content: "\(entry.display): \(prettyMinutes(entry.seconds)) over \(entry.sessions) session(s)",
+                    content: "\(entry.displayName): \(prettyMinutes(entry.seconds)) over \(entry.sessions) session(s)",
                     metadata: [
                         "bundle_id": bundleID,
                         "seconds": String(Int(entry.seconds)),
                         "sessions": String(entry.sessions),
-                        "last_focused": ISO8601DateFormatter().string(from: entry.last),
+                        "last_focused": ISO8601DateFormatter().string(from: entry.lastFocused),
                         "window_days": String(Int(window / 86400))
                     ]
                 )
@@ -75,8 +90,8 @@ public struct AppUsageSource: ScoutSource {
     private func prettyMinutes(_ seconds: Double) -> String {
         let minutes = Int(seconds / 60)
         if minutes < 60 { return "\(minutes)m" }
-        let h = minutes / 60
-        let m = minutes % 60
-        return "\(h)h\(m)m"
+        let hours = minutes / 60
+        let leftover = minutes % 60
+        return "\(hours)h\(leftover)m"
     }
 }

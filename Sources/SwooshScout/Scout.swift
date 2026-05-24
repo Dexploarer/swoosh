@@ -201,11 +201,8 @@ public struct SecretRedactor: Sendable {
         rule(#"(xoxb-[a-zA-Z0-9\-]{20,})"#, "[REDACTED_SLACK_TOKEN]"),
         // Bearer tokens
         rule(#"Bearer\s+[a-zA-Z0-9\._\-]{20,}"#, "Bearer [REDACTED]"),
-        // SSH private keys
-        rule(
-            #"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----[\s\S]*?-----END (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"#,
-            "[REDACTED_PRIVATE_KEY]"
-        ),
+        // SSH private keys (RSA / EC / OPENSSH / DSA header variants)
+        rule(pemPrivateKeyPattern, "[REDACTED_PRIVATE_KEY]"),
         // Generic long hex/base64 tokens
         rule(#"[a-f0-9]{64,}"#, "[REDACTED_HEX_TOKEN]"),
         // .env style secrets
@@ -240,4 +237,12 @@ public struct SecretRedactor: Sendable {
         // swiftlint:disable:next force_try
         Rule(regex: try! NSRegularExpression(pattern: pattern), replacement: replacement)
     }
+
+    /// Hoisted out of the table literal so the longest individual
+    /// pattern doesn't push the row onto a 130-character line.
+    fileprivate static let pemPrivateKeyPattern: String = {
+        let header = #"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"#
+        let footer = #"-----END (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"#
+        return header + #"[\s\S]*?"# + footer
+    }()
 }

@@ -172,7 +172,13 @@ extension ScoutPipeline {
     }
 
     private func focusModeCandidates(from records: [ScoutRecord]) -> [MemoryCandidate] {
-        primaryRecordCandidate(from: records, category: "preference", confidence: 0.8, sensitivity: .medium, source: "focus_mode")
+        primaryRecordCandidate(
+            from: records,
+            category: "preference",
+            confidence: 0.8,
+            sensitivity: .medium,
+            source: "focus_mode"
+        )
     }
 
     private func calendarCandidates(from records: [ScoutRecord]) -> [MemoryCandidate] {
@@ -200,7 +206,13 @@ extension ScoutPipeline {
     }
 
     private func sleepCandidates(from records: [ScoutRecord]) -> [MemoryCandidate] {
-        primaryRecordCandidate(from: records, category: "wellbeing", confidence: 0.9, sensitivity: .high, source: "health_sleep")
+        primaryRecordCandidate(
+            from: records,
+            category: "wellbeing",
+            confidence: 0.9,
+            sensitivity: .high,
+            source: "health_sleep"
+        )
     }
 
     private func recentDocumentCandidates(from records: [ScoutRecord]) -> [MemoryCandidate] {
@@ -303,9 +315,16 @@ extension ScoutPipeline {
         \(gitRepos.map { "  • \($0.content)" }.joined(separator: "\n"))
 
         MEMORY CANDIDATES (\(candidates.count))
-        \(candidates.enumerated().map { "  \($0.offset + 1). [\($0.element.category)] \($0.element.text)" }.joined(separator: "\n"))
+        \(Self.renderCandidateLines(candidates))
 
         ════════════════════════════════════════════════
         """
+    }
+
+    private static func renderCandidateLines(_ candidates: [MemoryCandidate]) -> String {
+        candidates
+            .enumerated()
+            .map { "  \($0.offset + 1). [\($0.element.category)] \($0.element.text)" }
+            .joined(separator: "\n")
     }
 }

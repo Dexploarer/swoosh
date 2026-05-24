@@ -66,10 +66,24 @@ public struct HealthSleepSource: ScoutSource {
             }
             store.execute(query)
         }
-        let totalAsleep = samples
-            .filter { $0.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue }
-            .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
-        let avgPerNight = totalAsleep / 7.0
+        // Count every staged "asleep" bucket so the summary doesn't
+        // silently miss users whose data carries asleepCore/asleepDeep/
+        // asleepREM (the common case on modern iPhones / watchOS).
+        var asleepValues: Set<Int> = [HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue]
+        if #available(iOS 16.0, *) {
+            asleepValues.insert(HKCategoryValueSleepAnalysis.asleepCore.rawValue)
+            asleepValues.insert(HKCategoryValueSleepAnalysis.asleepDeep.rawValue)
+            asleepValues.insert(HKCategoryValueSleepAnalysis.asleepREM.rawValue)
+        }
+        let asleepSamples = samples.filter { asleepValues.contains($0.value) }
+        let totalAsleep = asleepSamples.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+        // Divide by the number of distinct calendar days that carry an
+        // asleep sample (not a hardcoded 7), so a freshly-paired Health
+        // store doesn't report a misleadingly low average.
+        let cal = Calendar.current
+        let daysWithData = Set(asleepSamples.map { cal.startOfDay(for: $0.startDate) }).count
+        let denominator = max(1, daysWithData)
+        let avgPerNight = totalAsleep / Double(denominator)
         let hours = avgPerNight / 3600.0
         return [
             ScoutRecord(

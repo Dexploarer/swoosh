@@ -85,9 +85,11 @@ struct ScoutPipelineOptionsDefaultsTests {
 
     @Test("Default permissionMode is .skipUnavailable — unattended-safe")
     func defaultPermissionModeIsSkipUnavailable() {
+        // The default must NOT prompt — any silent default-using caller
+        // (autopilot, daemon) would otherwise open OS permission dialogs
+        // while unattended.
         let options = ScoutPipelineOptions()
-        #expect(options.permissionMode == .skipUnavailable,
-                "The default must NOT prompt — any silent default-using caller (autopilot, daemon) would otherwise open OS permission dialogs while unattended.")
+        #expect(options.permissionMode == .skipUnavailable)
     }
 
     @Test("Default existingMemories is empty")
