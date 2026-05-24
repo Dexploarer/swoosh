@@ -210,11 +210,12 @@ import Testing
     let permSummarizer = InMemoryPermSummarizer(summary: "Granted: deviceProfileRead\nDenied: browserHistoryRead")
 
     let builder = PromptBuilder()
-    let (prompt, _) = builder.buildSystemPrompt(
+    let result = builder.buildSystemPrompt(
         approvedMemories: [],
         setupReport: nil,
         permissionSummary: permSummarizer.summary
     )
+    let prompt = result.prompt
 
     #expect(prompt.contains("deviceProfileRead"))
     #expect(prompt.contains("browserHistoryRead"))
@@ -223,11 +224,12 @@ import Testing
 
 @Test func testPromptExcludesDataSources() async throws {
     let builder = PromptBuilder()
-    let (prompt, _) = builder.buildSystemPrompt(
+    let result = builder.buildSystemPrompt(
         approvedMemories: [],
         setupReport: nil,
         permissionSummary: nil
     )
+    let prompt = result.prompt
 
     #expect(prompt.contains("Browser cookies"))
     #expect(prompt.contains("SSH keys, API keys, secrets"))
