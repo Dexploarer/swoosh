@@ -1,8 +1,10 @@
-// SwooshGoals/GoalTools.swift — Tool surface for persistent goals
+// SwooshGoals/GoalTools.swift — Tool surface for persistent goals — 0.1A
 //
-// Four tools — set, status, list, abandon. The actual judge-loop is
-// driven by GoalRunner; these tools are the surface the model (or the
-// user via CLI) uses to put goals into and out of the queue.
+// Three tools — set, status, abandon. `goal_status` doubles as the list
+// path: pass an id to read one goal, omit it to read every active goal.
+// The judge-loop itself is driven by GoalRunner; these tools are the
+// surface the model (or the user via CLI) uses to put goals into and
+// out of the queue.
 
 import Foundation
 import SwooshTools

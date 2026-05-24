@@ -1,4 +1,4 @@
-// SwooshManifesting/Manifester.swift — The self-improvement loop runner
+// SwooshManifesting/Manifester.swift — The self-improvement loop runner — 0.1A
 //
 // One actor, one method (`runOnce`), one explicit pipeline. The phases
 // are wired up here; model-backed pattern mining is injected as a closure

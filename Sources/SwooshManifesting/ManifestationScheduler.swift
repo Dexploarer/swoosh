@@ -1,4 +1,4 @@
-// SwooshManifesting/ManifestationScheduler.swift — When to manifest
+// SwooshManifesting/ManifestationScheduler.swift — When to manifest — 0.1A
 //
 // Hermes runs its Curator on a 7-day cron. Apple platforms give us a
 // richer trigger surface: time-of-day, system-idle, focus mode, AC

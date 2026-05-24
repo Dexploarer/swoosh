@@ -1,4 +1,4 @@
-// SwooshManifesting/Manifestation.swift — Swoosh's name for "dreaming"
+// SwooshManifesting/Manifestation.swift — Swoosh's name for "dreaming" — 0.1A
 //
 // A Manifestation is one pass of the background self-improvement loop.
 // It reads recent audit events, mines for patterns, drafts skill /

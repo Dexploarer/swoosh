@@ -153,10 +153,7 @@ struct GoalRunnerErrorTests {
     @Test("Error provides localized description")
     func localizedDescription() {
         let notFound = GoalRunnerError.notFound("abc")
-        let noAgent = GoalRunnerError.noAgent
-
         #expect(notFound.errorDescription?.contains("abc") == true)
-        #expect(noAgent.errorDescription?.contains("no agent") == true)
     }
 
     @Test("GoalRunnerError is Sendable")

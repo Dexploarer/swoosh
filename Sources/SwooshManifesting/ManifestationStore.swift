@@ -1,4 +1,4 @@
-// SwooshManifesting/ManifestationStore.swift — Persistence for manifestations
+// SwooshManifesting/ManifestationStore.swift — Persistence for manifestations — 0.1A
 //
 // Same shape as the skill / goal stores — protocol + in-memory default.
 // Each manifestation record is the audit trail of one self-improvement

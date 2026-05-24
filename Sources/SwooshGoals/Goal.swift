@@ -1,4 +1,4 @@
-// SwooshGoals/Goal.swift — Persistent objectives, judge-evaluated
+// SwooshGoals/Goal.swift — Persistent objectives, judge-evaluated — 0.1A
 //
 // Hermes-style /goal command. A Goal is a standing objective that
 // survives across chat turns. After each turn that runs against an

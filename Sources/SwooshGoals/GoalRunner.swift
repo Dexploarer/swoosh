@@ -1,4 +1,4 @@
-// SwooshGoals/GoalRunner.swift — Iterate against a goal until done
+// SwooshGoals/GoalRunner.swift — Iterate against a goal until done — 0.1A
 //
 // The loop is fully implemented; the *intelligent* bits (running an
 // agent turn, judging progress) come in as closures so this module
@@ -10,10 +10,13 @@
 //   • `judge`      — async closure that takes a Goal and the latest
 //     observation and returns a `GoalJudgement` + rationale.
 //
-// Default judge is a string-heuristic local diagnostic: looks for "GOAL_DONE" / "STUCK"
-// markers in the agent's observation. The real judge — a model call that
-// reads the goal statement plus the most recent observation and decides
-// — wires in later once a provider is in the daemon.
+// Default judge is a string-heuristic local diagnostic. It scans the
+// observation for lowercase sentinels: `goal_done` / `goal complete` /
+// `[done]` → completed; `goal_blocked` / `need user` / `[needs-user]` →
+// needsUserInput; `goal_stuck` / `[stuck]` → stuck. Everything else maps
+// to `.progressing`. The real judge — a model call that reads the goal
+// statement plus the most recent observation and decides — wires in
+// later once a provider is in the daemon.
 
 import Foundation
 
@@ -140,12 +143,10 @@ public actor GoalRunner {
 
 public enum GoalRunnerError: Error, Sendable, LocalizedError {
     case notFound(String)
-    case noAgent
 
     public var errorDescription: String? {
         switch self {
         case .notFound(let id): return "goal not found: \(id)"
-        case .noAgent: return "no agent turn provider configured"
         }
     }
 }
