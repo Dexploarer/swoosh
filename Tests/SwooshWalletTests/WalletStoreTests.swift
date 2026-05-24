@@ -1,4 +1,4 @@
-// Tests/SwooshWalletTests/WalletStoreTests.swift — 0.9A
+// Tests/SwooshWalletTests/WalletStoreTests.swift — 0.9B
 //
 // Pure-logic coverage for `WalletStore` against an in-memory `UserDefaults`.
 // Exercises the public surface that doesn't require Keychain (`accounts`,
@@ -10,12 +10,30 @@ import Foundation
 import BigInt
 @testable import SwooshWallet
 
+// MARK: - Test helpers
+
+/// UUID-keyed `UserDefaults` suite for an isolated test run. Falls back to
+/// `.standard` if the OS rejects the suite name (never happens with a
+/// UUID-based name, but the fallback keeps SwiftLint's force_unwrapping
+/// rule happy without losing test isolation in practice).
+private func freshUserDefaults(_ tag: String) -> UserDefaults {
+    let name = "\(tag)-\(UUID().uuidString)"
+    return UserDefaults(suiteName: name) ?? .standard
+}
+
+/// Construct a `URL` from a known-valid string literal. Returns a sentinel
+/// `about:blank` URL if the literal fails to parse — every URL in this
+/// test file is a static HTTPS string, so this branch is unreachable, but
+/// using a fallback avoids the force-unwrap that SwiftLint flags.
+private func safeURL(_ literal: String) -> URL {
+    URL(string: literal) ?? URL(string: "about:blank")!  // swiftlint:disable:this force_unwrapping
+}
+
 @Suite("WalletStore.formatNative")
 struct WalletStoreFormatNativeTests {
 
     private func store() -> WalletStore {
-        let suite = "WalletStoreFormatNativeTests-\(UUID().uuidString)"
-        return WalletStore(userDefaults: UserDefaults(suiteName: suite)!)
+        WalletStore(userDefaults: freshUserDefaults("WalletStoreFormatNativeTests"))
     }
 
     @Test("Solana zero balance shows 0 SOL")
@@ -91,7 +109,7 @@ struct WalletStoreFormatNativeTests {
 struct WalletStoreAccountIndexTests {
 
     private func defaults() -> UserDefaults {
-        UserDefaults(suiteName: "WalletStoreAccountIndexTests-\(UUID().uuidString)")!
+        freshUserDefaults("WalletStoreAccountIndexTests")
     }
 
     @Test("Empty store returns empty accounts")
@@ -117,7 +135,7 @@ struct WalletStoreAccountIndexTests {
 struct WalletStoreRPCOverrideTests {
 
     private func defaults() -> UserDefaults {
-        UserDefaults(suiteName: "WalletStoreRPCOverrideTests-\(UUID().uuidString)")!
+        freshUserDefaults("WalletStoreRPCOverrideTests")
     }
 
     @Test("Setting an override persists and round-trips")
@@ -127,12 +145,16 @@ struct WalletStoreRPCOverrideTests {
         // round-trip without sending an actor-isolated value across the
         // Swift 6 sendable boundary.
         let suiteName = "WalletStoreRPCOverrideTests-\(UUID().uuidString)"
-        let custom = URL(string: "https://custom.solana.example/rpc")!
-        let store = WalletStore(userDefaults: UserDefaults(suiteName: suiteName)!)
+        let custom = safeURL("https://custom.solana.example/rpc")
+        let store = WalletStore(
+            userDefaults: UserDefaults(suiteName: suiteName) ?? .standard
+        )
         await store.setRPCOverride(custom, for: .solana)
         let read = await store.rpcOverride(for: .solana)
         #expect(read == custom)
-        let reopened = WalletStore(userDefaults: UserDefaults(suiteName: suiteName)!)
+        let reopened = WalletStore(
+            userDefaults: UserDefaults(suiteName: suiteName) ?? .standard
+        )
         let persistedRead = await reopened.rpcOverride(for: .solana)
         #expect(persistedRead == custom)
     }
@@ -147,8 +169,10 @@ struct WalletStoreRPCOverrideTests {
     @Test("Clearing override (nil) removes persisted value")
     func clearOverride() async throws {
         let suiteName = "WalletStoreRPCOverrideTests-\(UUID().uuidString)"
-        let custom = URL(string: "https://temp.example/rpc")!
-        let store = WalletStore(userDefaults: UserDefaults(suiteName: suiteName)!)
+        let custom = safeURL("https://temp.example/rpc")
+        let store = WalletStore(
+            userDefaults: UserDefaults(suiteName: suiteName) ?? .standard
+        )
         await store.setRPCOverride(custom, for: .base)
         #expect(await store.rpcOverride(for: .base) == custom)
         await store.setRPCOverride(nil, for: .base)
