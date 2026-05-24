@@ -164,8 +164,12 @@ public actor AgentToolLoop {
 
         // 2. Build system prompt (privacy boundary)
         let skillCatalog = await skillCatalogProvider?() ?? []
-        let mappedMemories = memories.map { ApprovedMemory(id: $0.id, text: $0.text, category: $0.category) }
-        let mappedSkills = skillCatalog.map { SkillCatalogEntry(id: $0.id, title: $0.title, description: $0.description) }
+        let mappedMemories = memories.map {
+            ApprovedMemory(id: $0.id, text: $0.text, category: $0.category)
+        }
+        let mappedSkills = skillCatalog.map {
+            SkillCatalogEntry(id: $0.id, title: $0.title, description: $0.description)
+        }
         let systemPromptResult = promptBuilder.buildSystemPrompt(
             approvedMemories: mappedMemories,
             setupReport: report,

@@ -76,6 +76,13 @@ extension AgentToolLoop {
             content: ToolResultFormatter.format(result)
         )
         transcript.append(toolMessage)
+        // Tool-message persistence intentionally swallows errors. The
+        // tool already executed and its result lives in the in-memory
+        // transcript; failing to persist the audit row here would abort
+        // the user's turn even though the tool work succeeded. Compare
+        // `finishResponse` below, which DOES propagate errors because
+        // it persists the FINAL assistant message — if that can't land,
+        // the user must see the failure loud.
         try? await sessionStore.appendMessage(sessionID: request.sessionID, message: toolMessage)
 
         if let trace = result.trace {
