@@ -121,6 +121,66 @@ struct HuggingFaceDiscoveryEstimateSizeTests {
         #expect(size.params == "70B")
         #expect(size.tier == .massive)
     }
+
+    @Test("1.7B is recognized and does NOT fall to the 7B tier (regression test)")
+    func decimalDoesNotFallToInteger() {
+        // This is the original bug: `upper.contains("7B")` matched inside
+        // "1.7B" and reported `.medium / 5 GB`. The anchored matcher must
+        // reject that and let the iteration reach the "1.7B" row.
+        let size = HuggingFaceDiscovery.estimateSize("Qwen-1.7B-Instruct")
+        #expect(size.params == "1.7B")
+        #expect(size.tier == .small)
+        #expect(size.memoryGB == 1.2)
+    }
+}
+
+@Suite("HuggingFaceDiscovery.containsAnchored")
+struct HuggingFaceDiscoveryContainsAnchoredTests {
+
+    @Test("Matches at start of string")
+    func startOfString() {
+        #expect(HuggingFaceDiscovery.containsAnchored("70B-INSTRUCT", pattern: "70B"))
+        #expect(HuggingFaceDiscovery.containsAnchored("1.7B", pattern: "1.7B"))
+    }
+
+    @Test("Matches when preceded by dash, underscore, or slash")
+    func nonNumericDelimiters() {
+        #expect(HuggingFaceDiscovery.containsAnchored("QWEN-7B-IT", pattern: "7B"))
+        #expect(HuggingFaceDiscovery.containsAnchored("MODEL_7B_BASE", pattern: "7B"))
+        #expect(HuggingFaceDiscovery.containsAnchored("ORG/QWEN-7B", pattern: "7B"))
+        // Trailing position is fine — anchor only checks the prefix character.
+        #expect(HuggingFaceDiscovery.containsAnchored("QWEN-70B", pattern: "70B"))
+    }
+
+    @Test("Rejects when preceded by a digit")
+    func rejectsDigitPrefix() {
+        // "17B" inside "Custom-117B" must not match the "7B" row.
+        #expect(!HuggingFaceDiscovery.containsAnchored("CUSTOM-117B", pattern: "7B"))
+        // "32B" must not match "2B".
+        #expect(!HuggingFaceDiscovery.containsAnchored("MODEL-32B", pattern: "2B"))
+    }
+
+    @Test("Rejects when preceded by a dot")
+    func rejectsDotPrefix() {
+        // "1.7B" must not match "7B".
+        #expect(!HuggingFaceDiscovery.containsAnchored("X-1.7B", pattern: "7B"))
+        // "0.3B" must not match "3B".
+        #expect(!HuggingFaceDiscovery.containsAnchored("X-0.3B", pattern: "3B"))
+    }
+
+    @Test("Returns false when pattern is absent")
+    func notPresent() {
+        #expect(!HuggingFaceDiscovery.containsAnchored("LLAMA-13B", pattern: "70B"))
+    }
+
+    @Test("Falls through a digit-prefixed false match to a valid later match")
+    func skipsBadCandidate() {
+        // "0.7B" contains "7B" preceded by ".", but ALSO contains "7B"
+        // nowhere else. So `containsAnchored(_:"7B")` should be false.
+        #expect(!HuggingFaceDiscovery.containsAnchored("X-0.7B", pattern: "7B"))
+        // But "0.7B-then-7B" contains a second "7B" at a valid anchor.
+        #expect(HuggingFaceDiscovery.containsAnchored("X-0.7B-7B", pattern: "7B"))
+    }
 }
 
 @Suite("HuggingFaceDiscovery.extractLicense")
