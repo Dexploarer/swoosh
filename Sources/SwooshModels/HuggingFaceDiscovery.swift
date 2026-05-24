@@ -194,9 +194,12 @@ public actor HuggingFaceDiscovery {
         let memoryGB: Double
     }
 
-    /// 27-row size-pattern table — matches the largest pattern first so
-    /// "70B-instruct-1B" lands on 70B, not 1B. Adding a row is the way to
-    /// fix a miss (e.g. when a new family ships a `33B` variant).
+    /// 27-row size-pattern table — sorted strictly **largest-first by
+    /// parameter count** so the first row that matches an HF model ID
+    /// wins. "70B-instruct-1B" lands on 70B (not 1B), and `500M` (= 0.5B)
+    /// is checked before `0.3B` so a hypothetical "X-0.3B-500M" lands on
+    /// the larger 500M variant. Adding a new row requires inserting it at
+    /// the correct numeric position to preserve the invariant.
     private static let sizeTable: [SizePatternRow] = [
         SizePatternRow(pattern: "235B", params: "235B", tier: .massive, memoryGB: 130),
         SizePatternRow(pattern: "70B", params: "70B", tier: .massive, memoryGB: 45),
@@ -218,10 +221,13 @@ public actor HuggingFaceDiscovery {
         SizePatternRow(pattern: "1B", params: "1B", tier: .micro, memoryGB: 0.7),
         SizePatternRow(pattern: "0.8B", params: "0.8B", tier: .micro, memoryGB: 0.5),
         SizePatternRow(pattern: "0.6B", params: "0.6B", tier: .micro, memoryGB: 0.4),
+        // 0.5B == 500M numerically — keep both since HF authors use either
+        // notation; the B-suffix row appears first so canonicalisation
+        // prefers `0.5B` when a model exposes both names.
         SizePatternRow(pattern: "0.5B", params: "0.5B", tier: .micro, memoryGB: 0.35),
-        SizePatternRow(pattern: "0.3B", params: "0.3B", tier: .nano, memoryGB: 0.2),
         SizePatternRow(pattern: "500M", params: "500M", tier: .micro, memoryGB: 0.35),
         SizePatternRow(pattern: "350M", params: "350M", tier: .nano, memoryGB: 0.25),
+        SizePatternRow(pattern: "0.3B", params: "0.3B", tier: .nano, memoryGB: 0.2),
         SizePatternRow(pattern: "250M", params: "250M", tier: .nano, memoryGB: 0.2),
         SizePatternRow(pattern: "137M", params: "137M", tier: .nano, memoryGB: 0.1),
         SizePatternRow(pattern: "82M", params: "82M", tier: .nano, memoryGB: 0.05)
