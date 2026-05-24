@@ -144,6 +144,10 @@ public enum WalletKeyFactory {
     /// raw 20-byte address bytes; output is `0x` followed by 40 hex
     /// characters with EIP-55 casing applied.
     public static func checksumAddress(bytes: [UInt8]) -> String {
+        precondition(
+            bytes.count == 20,
+            "EIP-55 checksumAddress requires exactly 20 bytes, got \(bytes.count)"
+        )
         let lower = Hex.encode(bytes, prefix: false)
         let hashOfLower = Keccak.hash256(Array(lower.utf8))
         var out = "0x"

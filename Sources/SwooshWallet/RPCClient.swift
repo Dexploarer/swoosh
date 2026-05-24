@@ -36,7 +36,7 @@ public actor RPCClient {
     public func call<T: Decodable>(
         _ method: String,
         params: [JSONValue],
-        as: T.Type = T.self
+        as targetType: T.Type = T.self
     ) async throws -> T {
         let id = nextID
         nextID += 1

@@ -37,12 +37,12 @@ public actor MultiEndpointRPC {
     public func call<T: Decodable & Sendable>(
         _ method: String,
         params: [JSONValue],
-        as: T.Type = T.self
+        as targetType: T.Type = T.self
     ) async throws -> T {
         var lastError: Error?
         for client in [primary] + fallbacks {
             do {
-                return try await client.call(method, params: params, as: T.self)
+                return try await client.call(method, params: params, as: targetType)
             } catch let err as RPCError {
                 switch err {
                 case .rpc:
