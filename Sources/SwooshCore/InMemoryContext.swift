@@ -1,4 +1,4 @@
-// SwooshCore/InMemoryContext.swift — In-memory protocol implementations (0.4A)
+// SwooshCore/InMemoryContext.swift — 0.9S In-memory protocol implementations
 //
 // Default implementations used when the agent runs without a persistent
 // backend (unit tests, REPL exploration, the in-process Swoosh.configure
