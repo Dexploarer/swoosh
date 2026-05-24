@@ -246,13 +246,13 @@ public struct ProviderFactory {
         secrets: any SecretStoring
     ) async -> (name: String, model: String)? {
         switch id {
-        case ModelDefaults.codexProviderID:      return await detectCodex()
-        case ModelDefaults.openAIProviderID:     return await detectOpenAI(secrets: secrets)
+        case ModelDefaults.codexProviderID: return await detectCodex()
+        case ModelDefaults.openAIProviderID: return await detectOpenAI(secrets: secrets)
         case ModelDefaults.openRouterProviderID: return await detectOpenRouter(secrets: secrets)
         case ModelDefaults.elizaCloudProviderID: return await detectElizaCloud(secrets: secrets)
-        case ModelDefaults.localMLXProviderID:   return detectMLXLocal()
+        case ModelDefaults.localMLXProviderID: return detectMLXLocal()
         case ModelDefaults.localOpenAIProviderID: return await detectLocalOpenAI()
-        default:                                  return nil
+        default: return nil
         }
     }
 
@@ -307,12 +307,12 @@ public struct ProviderFactory {
     /// not currently part of the detection chain).
     public static func providerID(forDetectedProviderName name: String) -> String {
         switch name {
-        case "ChatGPT (Codex)":  return ModelDefaults.codexProviderID
-        case "OpenAI":           return ModelDefaults.openAIProviderID
-        case "OpenRouter":       return ModelDefaults.openRouterProviderID
-        case "Eliza Cloud":      return ModelDefaults.elizaCloudProviderID
-        case "MLX Local":        return ModelDefaults.localMLXProviderID
-        default:                 return ModelDefaults.localOpenAIProviderID
+        case "ChatGPT (Codex)": return ModelDefaults.codexProviderID
+        case "OpenAI": return ModelDefaults.openAIProviderID
+        case "OpenRouter": return ModelDefaults.openRouterProviderID
+        case "Eliza Cloud": return ModelDefaults.elizaCloudProviderID
+        case "MLX Local": return ModelDefaults.localMLXProviderID
+        default: return ModelDefaults.localOpenAIProviderID
         }
     }
 }

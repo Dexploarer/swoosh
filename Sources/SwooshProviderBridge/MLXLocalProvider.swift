@@ -72,11 +72,11 @@ public actor MLXLocalProvider: SwooshProviders.ModelProviding {
         for message in messages {
             let tag: String
             switch message.role {
-            case .system:    tag = "System"
+            case .system: tag = "System"
             case .developer: tag = "Developer"
-            case .user:      tag = "User"
+            case .user: tag = "User"
             case .assistant: tag = "Assistant"
-            case .tool:      tag = "Tool"
+            case .tool: tag = "Tool"
             }
             lines.append("[\(tag)]\n\(escapeTagMarkers(message.content))")
         }
