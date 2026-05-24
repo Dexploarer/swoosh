@@ -109,11 +109,8 @@ extension SwooshTools.JSONSchema {
             let data = try Self.schemaEncoder.encode(self)
             return try Self.schemaDecoder.decode(SwooshTools.JSONValue.self, from: data)
         } catch {
-            os_log(
-                "JSONSchema → JSONValue conversion failed: %{public}@",
-                log: Self.schemaLog,
-                type: .error,
-                String(describing: error)
+            Self.schemaLog.error(
+                "JSONSchema → JSONValue conversion failed: \(String(describing: error), privacy: .public)"
             )
             return .object(["type": .string("object")])
         }
@@ -121,7 +118,7 @@ extension SwooshTools.JSONSchema {
 
     fileprivate static let schemaEncoder = JSONEncoder()
     fileprivate static let schemaDecoder = JSONDecoder()
-    fileprivate static let schemaLog = OSLog(
+    fileprivate static let schemaLog = Logger(
         subsystem: "ai.swoosh", category: "provider-bridge.schema"
     )
 }
