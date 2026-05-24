@@ -1,8 +1,12 @@
-// SwooshMCP/MCPTypes.swift — 0.8A MCP + Plugin Expansion
+// SwooshMCP/Exports.swift — MCP server profiles, transports, policies, descriptors — 0.8B
 //
 // MCP server profiles, transports, policies, descriptors, and trust levels.
 // Imported MCP tools are UNTRUSTED by default and go through ToolRegistry.
 // No bypass of Firewall, ApprovalCenter, or audit.
+//
+// `MCPContentRedactor` consumes the project-wide sensitive-substring list
+// from `SwooshTools.SensitivePatterns.strings` — see
+// `SwooshTools/SensitivePatterns.swift` for the canonical patterns.
 
 import Foundation
 import SwooshTools
@@ -306,19 +310,17 @@ public struct SwooshMCPServerConfiguration: Codable, Sendable {
 // ═══════════════════════════════════════════════════════════════════
 
 public struct MCPContentRedactor: Sendable {
-    private static let sensitivePatterns = [
-        "-----BEGIN", "PRIVATE KEY", "sk_", "xprv", "xpub",
-        "seed:", "mnemonic:", "cookie:", "session_token",
-        "password:", "secret:", "Bearer ", "api_key:", "token:",
-    ]
     private let maxBytes: Int
 
     public init(maxBytes: Int = 64_000) { self.maxBytes = maxBytes }
 
     public func redact(_ text: String) -> String {
+        // Pattern list is shared with `SwooshPlugins.PluginContentRedactor`
+        // via `SwooshTools.SensitivePatterns.strings` — adding a new token
+        // in one place now covers both redactors.
         var v = text
-        for p in Self.sensitivePatterns {
-            if v.contains(p) { v = v.replacingOccurrences(of: p, with: "[REDACTED]") }
+        for pattern in SensitivePatterns.strings where v.contains(pattern) {
+            v = v.replacingOccurrences(of: pattern, with: "[REDACTED]")
         }
         if v.utf8.count > maxBytes { v = String(v.prefix(maxBytes)) + "…[truncated]" }
         return v
