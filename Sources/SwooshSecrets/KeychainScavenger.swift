@@ -1,4 +1,4 @@
-// SwooshSecrets/KeychainScavenger.swift — Third-party keychain credential discovery
+// SwooshSecrets/KeychainScavenger.swift — 0.9S Third-party keychain credential discovery
 //
 // Reads credentials stored by other apps in the macOS Keychain WITHOUT
 // triggering UI prompts. Uses LAContext.interactionNotAllowed + the

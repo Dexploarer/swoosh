@@ -1,11 +1,19 @@
-// SwooshSecrets/PlatformPaths.swift — Cross-platform path helpers
+// SwooshSecrets/PlatformPaths.swift — 0.9S Cross-platform path helpers
 //
-// See SwooshConfig/PlatformPaths.swift — same shape, kept local to the
-// module to avoid leaking an internal helper across module boundaries.
+// macOS uses `~` as the canonical Swoosh state root (`~/.swoosh/...`).
+// On iOS that path is unavailable; sandboxed apps must write under
+// `Application Support/`. The helper below returns the right base so
+// existing `.appending(path: ".swoosh/foo")` call sites keep working
+// in both environments.
+//
+// Lives in SwooshSecrets because it is the lowest-level module that
+// needs it (config-file scavenger, env scavenger). SwooshConfig and
+// SwooshUI re-use the same definition through their SwooshSecrets
+// dependency — previously each carried its own near-identical copy.
 
 import Foundation
 
-internal func swooshHomeDirectoryForCurrentUser() -> URL {
+public func swooshHomeDirectoryForCurrentUser() -> URL {
     #if os(macOS)
     return FileManager.default.homeDirectoryForCurrentUser
     #else

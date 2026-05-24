@@ -1,9 +1,10 @@
-// SwooshConfig/HardwareProfile.swift — System detection and MLX capacity check
+// SwooshConfig/HardwareProfile.swift — 0.9S System detection and MLX capacity check
 //
 // Preflight: OS, CPU, memory, disk, tools, dependencies, local model capacity.
 // "Swoosh should classify models by role, not reject smaller models."
 
 import Foundation
+import SwooshSecrets
 
 // MARK: - Hardware profile
 

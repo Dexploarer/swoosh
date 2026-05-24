@@ -1,8 +1,9 @@
-// SwooshConfig/ConfigStore.swift — Non-secret config and doctor diagnostics
+// SwooshConfig/ConfigStore.swift — 0.9S Non-secret config and doctor diagnostics
 //
 // ~/.swoosh/config.yaml equivalent. Secrets go to Keychain, config goes here.
 
 import Foundation
+import SwooshSecrets
 
 // MARK: - Config store
 

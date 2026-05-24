@@ -9,8 +9,8 @@
 import SwiftUI
 import SwooshClient
 import SwooshConfig
+import SwooshSecrets
 import SwooshCore
-import SwooshVault
 import SwooshFirewall
 import SwooshTools
 import SwooshGenerativeUI

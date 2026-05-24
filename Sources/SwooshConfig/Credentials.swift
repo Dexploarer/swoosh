@@ -1,11 +1,12 @@
-// SwooshConfig/Credentials.swift — Keychain-first credential store
+// SwooshConfig/Credentials.swift — 0.9S Keychain-first credential store
 //
-// Default: Keychain on macOS/iOS
+// Default: Keychain on macOS/iOS (delegates to SwooshSecrets.KeychainItemOps)
 // Fallback: encrypted .env for Linux/CI/headless
 // "Collect context, not secrets."
 
 import Foundation
 import Security
+import SwooshSecrets
 
 // MARK: - Credential store protocol
 
@@ -17,6 +18,11 @@ public protocol CredentialStore: Sendable {
 }
 
 // MARK: - Keychain credential store (macOS/iOS)
+//
+// Thin façade over `SwooshSecrets.KeychainItemOps`. Keeps the legacy
+// `key+service` API surface intact (the setup graph and CLI chat path
+// depend on it) but routes every SecItem call through the same code
+// path as `SwooshSecrets.KeychainSecretStore`.
 
 public final class KeychainCredentialStore: CredentialStore, @unchecked Sendable {
     private let defaultService: String
@@ -26,27 +32,12 @@ public final class KeychainCredentialStore: CredentialStore, @unchecked Sendable
     }
 
     public func get(key: String, service: String) async throws -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        switch status {
-        case errSecSuccess:
-            guard let data = result as? Data,
-                  let value = String(data: data, encoding: .utf8) else {
+        do {
+            guard let data = try KeychainItemOps.get(service: service, account: key) else {
                 return nil
             }
-            return value
-        case errSecItemNotFound:
-            return nil
-        default:
+            return String(data: data, encoding: .utf8)
+        } catch let KeychainItemError.readFailed(_, status) {
             throw KeychainError.unhandled(status: status)
         }
     }
@@ -55,65 +46,25 @@ public final class KeychainCredentialStore: CredentialStore, @unchecked Sendable
         guard let data = value.data(using: .utf8) else {
             throw KeychainError.encodingFailure
         }
-
-        // Try update first
-        let updateQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-        ]
-        let updateAttrs: [String: Any] = [
-            kSecValueData as String: data,
-        ]
-
-        let updateStatus = SecItemUpdate(updateQuery as CFDictionary, updateAttrs as CFDictionary)
-
-        if updateStatus == errSecItemNotFound {
-            // Add new
-            var addQuery = updateQuery
-            addQuery[kSecValueData as String] = data
-            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                throw KeychainError.unhandled(status: addStatus)
-            }
-        } else if updateStatus != errSecSuccess {
-            throw KeychainError.unhandled(status: updateStatus)
+        do {
+            try KeychainItemOps.set(data, service: service, account: key)
+        } catch let KeychainItemError.saveFailed(_, status) {
+            throw KeychainError.unhandled(status: status)
         }
     }
 
     public func delete(key: String, service: String) async throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-        ]
-
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
+        do {
+            try KeychainItemOps.delete(service: service, account: key)
+        } catch let KeychainItemError.deleteFailed(_, status) {
             throw KeychainError.unhandled(status: status)
         }
     }
 
     public func listKeys(service: String) async throws -> [String] {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnAttributes as String: true,
-            kSecMatchLimit as String: kSecMatchLimitAll,
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        switch status {
-        case errSecSuccess:
-            guard let items = result as? [[String: Any]] else { return [] }
-            return items.compactMap { $0[kSecAttrAccount as String] as? String }
-        case errSecItemNotFound:
-            return []
-        default:
+        do {
+            return try KeychainItemOps.listAccounts(service: service)
+        } catch let KeychainItemError.listFailed(_, status) {
             throw KeychainError.unhandled(status: status)
         }
     }
