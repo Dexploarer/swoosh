@@ -1,4 +1,10 @@
-// SwooshCLI/ChatAskCommands.swift — Chat, Ask, Self-test commands
+// SwooshCLI/ChatAskCommands.swift — Chat, Ask, Self-test commands — 0.4B
+//
+// 0.4B revision: dropped the unimplemented `--continue` / `-c` flag from
+// `ChatCommand`. The flag had no consumer — the shell was always built
+// against a fresh session — so it advertised capability the CLI doesn't
+// have. Session resume will return when the daemon exposes a "latest
+// session" query.
 
 import ArgumentParser
 import ActantAgent
@@ -15,9 +21,6 @@ import Foundation
 
 struct ChatCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "chat", abstract: "Start an interactive agent session.")
-
-    @Flag(name: .shortAndLong, help: "Continue the last session.")
-    var `continue` = false
 
     func run() async throws {
         let config = SwooshConfigStore()

@@ -708,6 +708,7 @@ let package = Package(
                 "SwooshCLI",
                 "SwooshClient",
                 "SwooshConfig",
+                .product(name: "ActantDB",       package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
