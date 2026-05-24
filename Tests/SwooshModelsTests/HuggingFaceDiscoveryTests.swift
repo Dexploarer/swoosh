@@ -135,7 +135,7 @@ struct HuggingFaceDiscoveryEstimateSizeTests {
 }
 
 @Suite("HuggingFaceDiscovery.containsAnchored")
-struct HuggingFaceDiscoveryContainsAnchoredTests {
+struct HFDiscoveryContainsAnchoredTests {
 
     @Test("Matches at start of string")
     func startOfString() {
