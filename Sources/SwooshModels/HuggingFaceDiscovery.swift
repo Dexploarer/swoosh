@@ -133,16 +133,16 @@ public actor HuggingFaceDiscovery {
         let name = modelID.components(separatedBy: "/").last ?? modelID
 
         // Estimate params + memory from name heuristics
-        let (params, tier, mem) = estimateSize(name)
+        let size = estimateSize(name)
 
         return CatalogEntry(
             id: "hf-\(modelID.replacingOccurrences(of: "/", with: "-").lowercased())",
             name: name,
             family: modelID.components(separatedBy: "/").first ?? "Unknown",
             version: "latest",
-            parameterCount: params,
-            sizeTier: tier,
-            estimatedMemoryGB: mem,
+            parameterCount: size.params,
+            sizeTier: size.tier,
+            estimatedMemoryGB: size.memoryGB,
             capabilities: [capability],
             formats: [format],
             sources: [.huggingFace],
@@ -169,32 +169,63 @@ public actor HuggingFaceDiscovery {
     ///
     /// Internal (not private) so `HuggingFaceDiscoveryTests` can exercise
     /// every row + the unknown-fallback path.
-    static func estimateSize(_ name: String) -> (params: String, tier: ModelSizeTier, memGB: Double) {
+    static func estimateSize(_ name: String) -> SizeEstimate {
         let upper = name.uppercased()
 
-        // Match patterns like "14B", "0.6B", "350M"
-        let patterns: [(String, String, ModelSizeTier, Double)] = [
-            ("235B", "235B", .massive, 130), ("70B", "70B", .massive, 45),
-            ("32B", "32B", .xlarge, 20), ("30B", "30B", .xlarge, 18),
-            ("27B", "27B", .xlarge, 17), ("22B", "22B", .xlarge, 14),
-            ("14B", "14B", .large, 9), ("13B", "13B", .large, 8.5),
-            ("12B", "12B", .large, 8), ("9B", "9B", .medium, 6),
-            ("8B", "8B", .medium, 5.5), ("7B", "7B", .medium, 5),
-            ("4B", "4B", .small, 3), ("3B", "3B", .small, 2),
-            ("2B", "2B", .small, 1.5), ("1.7B", "1.7B", .small, 1.2),
-            ("1.5B", "1.5B", .small, 1), ("1B", "1B", .micro, 0.7),
-            ("0.8B", "0.8B", .micro, 0.5), ("0.6B", "0.6B", .micro, 0.4),
-            ("0.5B", "0.5B", .micro, 0.35), ("0.3B", "0.3B", .nano, 0.2),
-            ("500M", "500M", .micro, 0.35), ("350M", "350M", .nano, 0.25),
-            ("250M", "250M", .nano, 0.2), ("137M", "137M", .nano, 0.1),
-            ("82M", "82M", .nano, 0.05),
-        ]
-
-        for (pattern, params, tier, mem) in patterns where containsAnchored(upper, pattern: pattern) {
-            return (params, tier, mem)
+        for row in sizeTable where containsAnchored(upper, pattern: row.pattern) {
+            return SizeEstimate(params: row.params, tier: row.tier, memoryGB: row.memoryGB)
         }
-        return ("Unknown", .medium, 5.0) // Conservative default
+        return SizeEstimate(params: "Unknown", tier: .medium, memoryGB: 5.0) // Conservative default
     }
+
+    /// Result of `estimateSize`. Named struct (instead of a 3-tuple) so the
+    /// public surface stays under SwiftLint's `large_tuple` threshold and
+    /// callers don't break when the schema grows.
+    struct SizeEstimate: Sendable, Equatable {
+        let params: String
+        let tier: ModelSizeTier
+        let memoryGB: Double
+    }
+
+    private struct SizePatternRow: Sendable {
+        let pattern: String
+        let params: String
+        let tier: ModelSizeTier
+        let memoryGB: Double
+    }
+
+    /// 27-row size-pattern table — matches the largest pattern first so
+    /// "70B-instruct-1B" lands on 70B, not 1B. Adding a row is the way to
+    /// fix a miss (e.g. when a new family ships a `33B` variant).
+    private static let sizeTable: [SizePatternRow] = [
+        SizePatternRow(pattern: "235B", params: "235B", tier: .massive, memoryGB: 130),
+        SizePatternRow(pattern: "70B", params: "70B", tier: .massive, memoryGB: 45),
+        SizePatternRow(pattern: "32B", params: "32B", tier: .xlarge, memoryGB: 20),
+        SizePatternRow(pattern: "30B", params: "30B", tier: .xlarge, memoryGB: 18),
+        SizePatternRow(pattern: "27B", params: "27B", tier: .xlarge, memoryGB: 17),
+        SizePatternRow(pattern: "22B", params: "22B", tier: .xlarge, memoryGB: 14),
+        SizePatternRow(pattern: "14B", params: "14B", tier: .large, memoryGB: 9),
+        SizePatternRow(pattern: "13B", params: "13B", tier: .large, memoryGB: 8.5),
+        SizePatternRow(pattern: "12B", params: "12B", tier: .large, memoryGB: 8),
+        SizePatternRow(pattern: "9B", params: "9B", tier: .medium, memoryGB: 6),
+        SizePatternRow(pattern: "8B", params: "8B", tier: .medium, memoryGB: 5.5),
+        SizePatternRow(pattern: "7B", params: "7B", tier: .medium, memoryGB: 5),
+        SizePatternRow(pattern: "4B", params: "4B", tier: .small, memoryGB: 3),
+        SizePatternRow(pattern: "3B", params: "3B", tier: .small, memoryGB: 2),
+        SizePatternRow(pattern: "2B", params: "2B", tier: .small, memoryGB: 1.5),
+        SizePatternRow(pattern: "1.7B", params: "1.7B", tier: .small, memoryGB: 1.2),
+        SizePatternRow(pattern: "1.5B", params: "1.5B", tier: .small, memoryGB: 1),
+        SizePatternRow(pattern: "1B", params: "1B", tier: .micro, memoryGB: 0.7),
+        SizePatternRow(pattern: "0.8B", params: "0.8B", tier: .micro, memoryGB: 0.5),
+        SizePatternRow(pattern: "0.6B", params: "0.6B", tier: .micro, memoryGB: 0.4),
+        SizePatternRow(pattern: "0.5B", params: "0.5B", tier: .micro, memoryGB: 0.35),
+        SizePatternRow(pattern: "0.3B", params: "0.3B", tier: .nano, memoryGB: 0.2),
+        SizePatternRow(pattern: "500M", params: "500M", tier: .micro, memoryGB: 0.35),
+        SizePatternRow(pattern: "350M", params: "350M", tier: .nano, memoryGB: 0.25),
+        SizePatternRow(pattern: "250M", params: "250M", tier: .nano, memoryGB: 0.2),
+        SizePatternRow(pattern: "137M", params: "137M", tier: .nano, memoryGB: 0.1),
+        SizePatternRow(pattern: "82M", params: "82M", tier: .nano, memoryGB: 0.05)
+    ]
 
     /// Returns true iff `pattern` appears in `source` AND the character
     /// immediately preceding the first match (if any) is neither a digit
@@ -227,4 +258,3 @@ public actor HuggingFaceDiscovery {
         return "Unknown"
     }
 }
-
