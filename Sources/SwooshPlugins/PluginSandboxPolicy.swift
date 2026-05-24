@@ -65,29 +65,35 @@ public struct PluginSandboxPolicy: Codable, Sendable {
     }
 
     public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.allowFilesystemRead = c.decodeOrDefault(
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.allowFilesystemRead = container.decodeOrDefault(
             Bool.self, forKey: .allowFilesystemRead, default: false
         )
-        self.allowFilesystemWrite = c.decodeOrDefault(
+        self.allowFilesystemWrite = container.decodeOrDefault(
             Bool.self, forKey: .allowFilesystemWrite, default: false
         )
-        self.allowNetwork = c.decodeOrDefault(Bool.self, forKey: .allowNetwork, default: false)
-        self.allowProcessSpawn = c.decodeOrDefault(
+        self.allowNetwork = container.decodeOrDefault(
+            Bool.self, forKey: .allowNetwork, default: false
+        )
+        self.allowProcessSpawn = container.decodeOrDefault(
             Bool.self, forKey: .allowProcessSpawn, default: false
         )
-        self.allowedRoots = c.decodeOrDefault([String].self, forKey: .allowedRoots, default: [])
-        self.maxOutputBytes = c.decodeOrDefault(
+        self.allowedRoots = container.decodeOrDefault(
+            [String].self, forKey: .allowedRoots, default: []
+        )
+        self.maxOutputBytes = container.decodeOrDefault(
             Int.self, forKey: .maxOutputBytes, default: 64_000
         )
-        self.timeoutSeconds = c.decodeOrDefault(Int.self, forKey: .timeoutSeconds, default: 30)
-        self.maxWasmMemoryPages = c.decodeOrDefault(
+        self.timeoutSeconds = container.decodeOrDefault(
+            Int.self, forKey: .timeoutSeconds, default: 30
+        )
+        self.maxWasmMemoryPages = container.decodeOrDefault(
             Int.self, forKey: .maxWasmMemoryPages, default: 64
         )
-        self.maxWasmTableElements = c.decodeOrDefault(
+        self.maxWasmTableElements = container.decodeOrDefault(
             Int.self, forKey: .maxWasmTableElements, default: 1024
         )
-        self.maxWasmFunctionCalls = c.decodeOrDefault(
+        self.maxWasmFunctionCalls = container.decodeOrDefault(
             Int.self, forKey: .maxWasmFunctionCalls, default: 1_000_000
         )
     }

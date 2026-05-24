@@ -1,12 +1,13 @@
-// SwooshMCP/Exports.swift — MCP server profiles, transports, policies, descriptors — 0.8B
+// SwooshMCP/Exports.swift — MCP server profiles, transports, policies, descriptors — 0.9A
 //
 // MCP server profiles, transports, policies, descriptors, and trust levels.
 // Imported MCP tools are UNTRUSTED by default and go through ToolRegistry.
 // No bypass of Firewall, ApprovalCenter, or audit.
 //
-// `MCPContentRedactor` consumes the project-wide sensitive-substring list
-// from `SwooshTools.SensitivePatterns.strings` — see
-// `SwooshTools/SensitivePatterns.swift` for the canonical patterns.
+// `MCPContentRedactor` delegates to `SwooshTools.SensitivePatterns.redact`
+// for the shared masker — pattern + following value, applied uniformly
+// across modules. The redactor here only adds the byte-cap truncation on
+// top of that shared base.
 
 import Foundation
 import SwooshTools
@@ -315,14 +316,15 @@ public struct MCPContentRedactor: Sendable {
     public init(maxBytes: Int = 64_000) { self.maxBytes = maxBytes }
 
     public func redact(_ text: String) -> String {
-        // Pattern list is shared with `SwooshPlugins.PluginContentRedactor`
-        // via `SwooshTools.SensitivePatterns.strings` — adding a new token
-        // in one place now covers both redactors.
-        var v = text
-        for pattern in SensitivePatterns.strings where v.contains(pattern) {
-            v = v.replacingOccurrences(of: pattern, with: "[REDACTED]")
+        // Masking logic is shared via `SwooshTools.SensitivePatterns.redact`
+        // so every pattern hit consumes both label and value (fixing the
+        // prior leak where `Bearer eyJ...` only stripped the `Bearer `
+        // label). `maxBytes` truncation stays MCP-side because it's
+        // calibrated against MCP's content-block size budget.
+        var redacted = SensitivePatterns.redact(text)
+        if redacted.utf8.count > maxBytes {
+            redacted = String(redacted.prefix(maxBytes)) + "…[truncated]"
         }
-        if v.utf8.count > maxBytes { v = String(v.prefix(maxBytes)) + "…[truncated]" }
-        return v
+        return redacted
     }
 }
