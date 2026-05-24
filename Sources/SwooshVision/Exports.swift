@@ -1,5 +1,5 @@
 // SwooshVision/Exports.swift
-// Version: 0.9R
+// Version: 0.9S
 //
 // Module roof. The default vision provider is Apple Vision — on-device,
 // free, ubiquitous. Callers who want a different backend (e.g. a hosted
