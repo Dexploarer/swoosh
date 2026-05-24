@@ -234,7 +234,6 @@ public actor AgentToolLoop {
             )
         }
 
-
         while true {
             // Enforce tool-call limit
             if policy.allowModelToolCalls && toolCallCount >= toolLimit {
