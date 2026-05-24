@@ -1,12 +1,13 @@
-// SwooshMCP/Exports.swift — MCP server profiles, transports, policies, descriptors — 0.8B
+// SwooshMCP/Exports.swift — MCP server profiles, transports, policies, descriptors — 0.9A
 //
 // MCP server profiles, transports, policies, descriptors, and trust levels.
 // Imported MCP tools are UNTRUSTED by default and go through ToolRegistry.
 // No bypass of Firewall, ApprovalCenter, or audit.
 //
-// `MCPContentRedactor` consumes the project-wide sensitive-substring list
-// from `SwooshTools.SensitivePatterns.strings` — see
-// `SwooshTools/SensitivePatterns.swift` for the canonical patterns.
+// `MCPContentRedactor` delegates to `SwooshTools.SensitivePatterns.redact`
+// for the shared masker — pattern + following value, applied uniformly
+// across modules. The redactor here only adds the byte-cap truncation on
+// top of that shared base.
 
 import Foundation
 import SwooshTools
@@ -315,14 +316,34 @@ public struct MCPContentRedactor: Sendable {
     public init(maxBytes: Int = 64_000) { self.maxBytes = maxBytes }
 
     public func redact(_ text: String) -> String {
-        // Pattern list is shared with `SwooshPlugins.PluginContentRedactor`
-        // via `SwooshTools.SensitivePatterns.strings` — adding a new token
-        // in one place now covers both redactors.
-        var v = text
-        for pattern in SensitivePatterns.strings where v.contains(pattern) {
-            v = v.replacingOccurrences(of: pattern, with: "[REDACTED]")
+        // Masking logic is shared via `SwooshTools.SensitivePatterns.redact`
+        // so every pattern hit consumes both label and value (fixing the
+        // prior leak where `Bearer eyJ...` only stripped the `Bearer `
+        // label). `maxBytes` truncation stays MCP-side because it's
+        // calibrated against MCP's content-block size budget.
+        let redacted = SensitivePatterns.redact(text)
+        if redacted.utf8.count > maxBytes {
+            return Self.truncate(redacted, toBytes: maxBytes) + "…[truncated]"
         }
-        if v.utf8.count > maxBytes { v = String(v.prefix(maxBytes)) + "…[truncated]" }
-        return v
+        return redacted
+    }
+
+    /// Truncate `text` so the result's UTF-8 byte length is `<= byteLimit`,
+    /// always cutting at a character boundary so multi-byte content (emojis,
+    /// accented characters, CJK glyphs) is never split mid-sequence.
+    /// `String.prefix(byteLimit)` operates on Character count, which over-
+    /// shoots the byte budget on any non-ASCII content.
+    private static func truncate(_ text: String, toBytes byteLimit: Int) -> String {
+        var accumulated = 0
+        var endIndex = text.startIndex
+        var index = text.startIndex
+        while index < text.endIndex {
+            let charBytes = text[index].utf8.count
+            if accumulated + charBytes > byteLimit { break }
+            accumulated += charBytes
+            index = text.index(after: index)
+            endIndex = index
+        }
+        return String(text[..<endIndex])
     }
 }

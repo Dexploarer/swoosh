@@ -59,19 +59,25 @@ public struct PluginToolManifest: Codable, Sendable, Identifiable {
     }
 
     public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = c.decodeOrDefault(String.self, forKey: .id, default: UUID().uuidString)
-        self.name = try c.decode(String.self, forKey: .name)
-        self.description = try c.decode(String.self, forKey: .description)
-        self.permission = c.decodeOrDefault(
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let name = try container.decode(String.self, forKey: .name)
+        // `id` is `Identifiable`, so it must be stable across decodes of the
+        // same manifest — a fresh random UUID per load would break UI state
+        // persistence and tool indexing. The plugin author can supply an
+        // explicit `id`; if absent we derive one from `name` (guaranteed
+        // unique within a plugin and stable across restarts).
+        self.id = container.decodeOrDefault(String.self, forKey: .id, default: name)
+        self.name = name
+        self.description = try container.decode(String.self, forKey: .description)
+        self.permission = container.decodeOrDefault(
             SwooshPermission.self, forKey: .permission, default: .toolRead
         )
-        self.risk = c.decodeOrDefault(ToolRisk.self, forKey: .risk, default: .medium)
-        self.requiresApproval = c.decodeOrDefault(
+        self.risk = container.decodeOrDefault(ToolRisk.self, forKey: .risk, default: .medium)
+        self.requiresApproval = container.decodeOrDefault(
             Bool.self, forKey: .requiresApproval, default: true
         )
-        self.similes = c.decodeOrDefault([String].self, forKey: .similes, default: [])
-        self.examples = c.decodeOrDefault([String].self, forKey: .examples, default: [])
-        self.tags = c.decodeOrDefault([String].self, forKey: .tags, default: [])
+        self.similes = container.decodeOrDefault([String].self, forKey: .similes, default: [])
+        self.examples = container.decodeOrDefault([String].self, forKey: .examples, default: [])
+        self.tags = container.decodeOrDefault([String].self, forKey: .tags, default: [])
     }
 }
