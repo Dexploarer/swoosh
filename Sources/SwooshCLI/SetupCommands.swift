@@ -189,7 +189,6 @@ struct SetupDeveloperCommand: AsyncParsableCommand {
         print("  swift test")
         print("  xcodegen generate")
         print("  xcodebuild -project Swoosh.xcodeproj -scheme Swoosh -destination 'platform=macOS' build")
-        print("  xcodebuild -project Swoosh.xcodeproj -scheme SwooshiOS -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build")
     }
 }
 

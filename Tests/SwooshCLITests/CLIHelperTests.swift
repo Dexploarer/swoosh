@@ -58,25 +58,22 @@ struct CLIJSONTests {
 
 @Suite("CLI helpers — pairing")
 struct CLIPairingTests {
-    @Test("pairingPayload renders sorted-keys JSON with host/token")
+    @Test("pairingPayload renders iOS deep link with host/token")
     func payloadShape() throws {
-        let json = try #require(CLIPairing.pairingPayload(host: "http://1.2.3.4:8787", token: "abc123"))
-        // Sorted keys: "host" before "token".
-        let hostIdx = try #require(json.range(of: "\"host\""))
-        let tokenIdx = try #require(json.range(of: "\"token\""))
-        #expect(hostIdx.lowerBound < tokenIdx.lowerBound)
-        // JSONSerialization escapes slashes — decode and compare values.
-        let decoded = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: String]
-        #expect(decoded?["host"] == "http://1.2.3.4:8787")
-        #expect(decoded?["token"] == "abc123")
+        let payload = try #require(CLIPairing.pairingPayload(host: "http://1.2.3.4:8787", token: "abc123"))
+        let components = try #require(URLComponents(string: payload))
+        #expect(components.scheme == "swoosh")
+        #expect(components.host == "pair")
+        #expect(components.queryItems?.first(where: { $0.name == "host" })?.value == "http://1.2.3.4:8787")
+        #expect(components.queryItems?.first(where: { $0.name == "token" })?.value == "abc123")
     }
 
-    @Test("pairingPayload round-trips through JSONSerialization")
+    @Test("pairingPayload preserves reserved URL characters")
     func payloadRoundTrip() throws {
-        let json = try #require(CLIPairing.pairingPayload(host: "http://h", token: "t"))
-        let decoded = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: String]
-        #expect(decoded?["host"] == "http://h")
-        #expect(decoded?["token"] == "t")
+        let payload = try #require(CLIPairing.pairingPayload(host: "http://host.local:8787", token: "abc+123/="))
+        let components = try #require(URLComponents(string: payload))
+        #expect(components.queryItems?.first(where: { $0.name == "host" })?.value == "http://host.local:8787")
+        #expect(components.queryItems?.first(where: { $0.name == "token" })?.value == "abc+123/=")
     }
 
     @Test("localIPAddress either returns a usable IPv4 or nil")

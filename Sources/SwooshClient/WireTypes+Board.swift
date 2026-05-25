@@ -2,8 +2,7 @@
 //
 // Even though the standalone `SwooshBoard` module was retired, the
 // `/api/board/*` endpoints are still produced by `SwooshAPI`'s runtime
-// board projection and consumed by `SwooshUI.DashboardView`. These wire
-// types keep the contract typed.
+// board projection. These wire types keep the contract typed.
 
 import Foundation
 

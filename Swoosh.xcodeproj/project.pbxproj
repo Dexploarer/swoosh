@@ -7,124 +7,137 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00A364C8BB6E156EB8C55081 /* ProviderLogo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F54ED13C9EEDEC13082338A /* ProviderLogo.swift */; };
-		105DA551E8644020D688E312 /* ConnectionsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D656E8BA83FB8FF00A2631 /* ConnectionsScreen.swift */; };
-		10639EA0A47A2B8333A1706B /* ClientSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE58002BDA52BB34AE57C6DC /* ClientSession.swift */; };
-		14EF26B08F3C69ADE7906F09 /* SideDrawer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AC2A76E420C2E91CB48F3CC /* SideDrawer.swift */; };
-		1957A2C2550C500139D5420B /* LiquidVoiceSphere.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C86BA8D17B785C527B1F549 /* LiquidVoiceSphere.swift */; };
-		198E92682DEFDB832902218A /* SwooshWidgets in Frameworks */ = {isa = PBXBuildFile; productRef = 5BC3F322969154F4A837D673 /* SwooshWidgets */; };
-		1A3777AC33B62A2A78A398ED /* WalletSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1510341AC6E12EEBAAE316F /* WalletSession.swift */; };
-		1AD98FBF282A8C3681D62FCD /* ChannelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 403AB8740FE9644AC93AC63F /* ChannelCatalog.swift */; };
-		1D0A0B622C87AC23C99E4CF2 /* ChatScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 780459384A180543717F7EBB /* ChatScreen.swift */; };
-		21288E9E042EC98DEAABDB42 /* SwooshUI in Frameworks */ = {isa = PBXBuildFile; productRef = 067ACC90B8BB5FE569AFFC25 /* SwooshUI */; };
-		22D5D781507FA204C58C15A3 /* CLAUDE.md in Resources */ = {isa = PBXBuildFile; fileRef = D9B6EBC4115B28A038220938 /* CLAUDE.md */; };
-		23F4347D1099A97AB5D3E71E /* SwooshTranslation in Frameworks */ = {isa = PBXBuildFile; productRef = 4DBE9D6632C9D0599CB3127F /* SwooshTranslation */; };
-		24A9B4F730F2EC5A2B5E7F21 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 33346325E9A34E4A89968776 /* Assets.xcassets */; };
-		2E6F775EF72FEA51ED3EC6AF /* PairingDetailScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9032466ADEBDE14C943EBAEB /* PairingDetailScreen.swift */; };
-		3D857AE65C886D729C7FC5A8 /* SwooshFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = B301A88B05ECC967B269FA9C /* SwooshFoundation */; };
+		019D346A654745C266CB4FD5 /* SwooshAPIClient+Memories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5054F477CEE22F5FE361C606 /* SwooshAPIClient+Memories.swift */; };
+		034A03C4B406951A54BAA529 /* WireTypes+Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452063C76A7A13EBAF8AF9A9 /* WireTypes+Board.swift */; };
+		03B16E818A01105B47A42699 /* DetourIOSInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9515F6EF3F4DB22F101BD0B5 /* DetourIOSInstaller.swift */; };
+		0CFB0509B33CF3276A513EA1 /* SwooshAPIClient+Firewall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D0815EE890A1BB7389673F4 /* SwooshAPIClient+Firewall.swift */; };
+		180B8347724F5514D8971C7C /* DetourOnboardingNativeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 456C853B7FCF3879F3252E77 /* DetourOnboardingNativeView.swift */; };
+		22E1EBC1A41C15D7E3A2A01F /* WireTypes+Providers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D7904EAA529FD402D74E5D /* WireTypes+Providers.swift */; };
+		25E2F54B36443AAD87839F4D /* SwooshExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4381E41C31545D3203A7B61A /* SwooshExecutor.swift */; };
+		2995947327AE08527D8BD041 /* WireTypes+Runtime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E0D0C4F33919F65DAE8E41 /* WireTypes+Runtime.swift */; };
+		2E4B62404441D73921EA8C80 /* WireTypes+Wallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F0857C7A87992CCDB8FC87C /* WireTypes+Wallet.swift */; };
+		2EF2FDBDE1BBBBE29D4A2AF6 /* DetourPairingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02E4177731A337C27B533E2F /* DetourPairingSupport.swift */; };
+		34B7D047DDD04FAA58A73BC7 /* WireTypes+Doctor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65C21CB3391B764F9164DEE1 /* WireTypes+Doctor.swift */; };
 		3F643D8B3F106C244C2CE5CD /* SwooshiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */; };
-		4949F574DA32CD5B8C0CAE80 /* IconTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F7E64053038BE7A8B8B69C2 /* IconTile.swift */; };
-		4E199906DE2655159475FDED /* SwooshWidgets in Frameworks */ = {isa = PBXBuildFile; productRef = 09308C14B898E4305F4304E9 /* SwooshWidgets */; };
-		4E4EA92D9D68F3D9FFB451C0 /* ActiveClonePreference.swift in Sources */ = {isa = PBXBuildFile; fileRef = D349D7ED93FB78BA3A1258FC /* ActiveClonePreference.swift */; };
-		57C129E0D6B9ED789AF4C191 /* AgentRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FB1DD84D655A5B16062FD /* AgentRoot.swift */; };
-		588B3159F35DB867399DCAAB /* SwooshSecrets in Frameworks */ = {isa = PBXBuildFile; productRef = 2894B277640819D641FD9E94 /* SwooshSecrets */; };
-		5FD22E5D05495E88785BCA72 /* WalletScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6D27F0767B034C7D17FEF83 /* WalletScreen.swift */; };
-		633C79D8B704DC0CDDF510F2 /* SwooshSTT in Frameworks */ = {isa = PBXBuildFile; productRef = 5344EDFE236A78B4605BDACE /* SwooshSTT */; };
-		64A86B9FA33C788FF9E609CF /* LoadingRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F82347749598EDE00D671EA /* LoadingRow.swift */; };
-		687D304497B38E4A798C3B81 /* SwooshVision in Frameworks */ = {isa = PBXBuildFile; productRef = E7F2A99350D322A8BFBC4238 /* SwooshVision */; };
-		6948EA80A56C65B6D58405AD /* ClonedVoicesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3D0D14AD80C9732F16152B /* ClonedVoicesSection.swift */; };
-		6AFA1A78264F56022F034DA1 /* WalletCreateAccountSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C53DA1DAF383C83EB7FF08 /* WalletCreateAccountSheet.swift */; };
-		6F397A9A6C2A0768496FC730 /* SwooshKit in Frameworks */ = {isa = PBXBuildFile; productRef = C81EAEFD269612149B9F94BF /* SwooshKit */; };
-		765193CEF39C0517B31AB30E /* SwooshGenerativeUI in Frameworks */ = {isa = PBXBuildFile; productRef = F04EABFE88B766FD0AD21A37 /* SwooshGenerativeUI */; };
-		79C02F6D43ED99D7E9CD4EF8 /* SwooshWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B097B464DA3C0AE8A37082E /* SwooshWidgetBundle.swift */; };
-		7D2D5CECE5F03AE081B3FDBC /* SwooshCapabilities in Frameworks */ = {isa = PBXBuildFile; productRef = C8DD494210CF9283BE5DB80A /* SwooshCapabilities */; };
-		81118F6A362A6E1B9785D0B3 /* SwooshApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84795FA9AF13B8D39F7B3184 /* SwooshApp.swift */; };
-		812E14C35917FD0503AC43D5 /* VoiceHapticsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4C6ACF942D2F88EEA2C6041 /* VoiceHapticsCoordinator.swift */; };
-		81F9802FDDEC5D16ADEFBA3B /* LocalFallbackToggleRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */; };
-		828EE27AA1EAC29C4E994BED /* AudioLevelSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = F74FB3852458ED5ADD01B5C4 /* AudioLevelSource.swift */; };
-		84D2FAA829E69A0C50681CD9 /* CronScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58838535A8646A8F3287BDFB /* CronScreen.swift */; };
-		852ADEC763785DAF2B2BB42B /* SwooshImageGen in Frameworks */ = {isa = PBXBuildFile; productRef = C1D8DEB68F839F7A2B4189B9 /* SwooshImageGen */; };
-		87A218A0D7E5686F396C9EDE /* VoicePickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBC979FDDA8EC113A147A084 /* VoicePickerScreen.swift */; };
-		8D6E1CD2344A3BEF608C18C8 /* PermissionAndPolicyScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22D902C99CD3D18210E97481 /* PermissionAndPolicyScreens.swift */; };
-		8E6426771BF7AAD4AF34F696 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C49A59F596D847BE428C4C8C /* SettingsScreen.swift */; };
-		8E7B6C18331A1D44A71C0025 /* MCPServersScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0805B93272148AA8CC24B4 /* MCPServersScreen.swift */; };
-		8F9C928AE4827949F555D24A /* IOSVoicePill.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */; };
-		930891E34DF50C8A767B6C6E /* SwooshModels in Frameworks */ = {isa = PBXBuildFile; productRef = 75B0CA904E7690F0705D9A0B /* SwooshModels */; };
-		9CA0C70F3E6E19ADFE852634 /* SwooshVoiceProviders in Frameworks */ = {isa = PBXBuildFile; productRef = 64E6792A9ADCB5AEA31F3613 /* SwooshVoiceProviders */; };
-		A0E8296933BE65C8C6BE61BC /* SwooshSecrets in Frameworks */ = {isa = PBXBuildFile; productRef = AE88E333D2254FC8546193C1 /* SwooshSecrets */; };
-		A23FBD47D46859CD0B32676B /* ChannelsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F1ABF3C0A11470D895C296 /* ChannelsScreen.swift */; };
-		A8ABD4E366842B1816B38E3F /* SwooshMusic in Frameworks */ = {isa = PBXBuildFile; productRef = CDAE07E9569AB80547D4CA2E /* SwooshMusic */; };
-		AB2301970775606BF4B4F841 /* LocalVoiceDownloadRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C6079D285806396765CCF5 /* LocalVoiceDownloadRow.swift */; };
-		AD2A5C92FFFA296AFBDA36FA /* WorkspaceScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C7AF14DF4880960A920C26 /* WorkspaceScreen.swift */; };
-		AEAD82FC6FD8A0BC4B6DF103 /* SwooshLocalVoice in Frameworks */ = {isa = PBXBuildFile; productRef = D7FF5966E699003F7654C7F5 /* SwooshLocalVoice */; };
-		B6606D768591ED1AEAD88C6E /* SwooshEmbeddings in Frameworks */ = {isa = PBXBuildFile; productRef = 9DAF129D8F01B12920642DCF /* SwooshEmbeddings */; };
-		B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */; };
-		C3312726808315191FD14368 /* CapabilityPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41A487D16E069E246C1FE33 /* CapabilityPickerScreen.swift */; };
-		D0AC05AB13879430D16D0523 /* DoctorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */; };
-		D270DFA4E91A9EE7A1CEE991 /* LocalVoiceSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1208AEE4DDB17E6ACBD41549 /* LocalVoiceSettingsSection.swift */; };
-		D5DCB03232519DF157BF1B89 /* ErrorRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D3555C518013DB31668CC /* ErrorRow.swift */; };
-		E052265C132915BC379E8892 /* WalletAccountDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB83FAB5CF6100402E906B91 /* WalletAccountDetail.swift */; };
-		E233BBA6ACDE68ED0D7B2083 /* SwooshUI in Frameworks */ = {isa = PBXBuildFile; productRef = B1E45E49EB414D4CF83F70E0 /* SwooshUI */; };
-		EA3091CBFE0A0A89806BFC8D /* SwooshClient in Frameworks */ = {isa = PBXBuildFile; productRef = 2ACE0E2888A1233F1C18854E /* SwooshClient */; };
-		EB84A11C241383BEE255E3F7 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 334614E402A5C0CC7A5CBBDE /* RootView.swift */; };
-		F25A7F82337C8AF5DF9DD1D5 /* SwooshWallet in Frameworks */ = {isa = PBXBuildFile; productRef = 657F22487AA41B2FBA8A9798 /* SwooshWallet */; };
-		F92EBD20EE8FAF8997E958C8 /* SwooshLocalLLM in Frameworks */ = {isa = PBXBuildFile; productRef = E0D997B6FCD3DD517DE7F2BE /* SwooshLocalLLM */; };
-		FB530CEB64B17F5E3C1816CC /* LocalModelDownloadRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03F8D60340C4FB0E76DEC65 /* LocalModelDownloadRow.swift */; };
-		FFCE3B73F65239780A3ABE3D /* CloneVoiceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9130DA046954B1598FC3EE /* CloneVoiceSheet.swift */; };
+		450A04CCA57D8C7AA4AAD60D /* WireTypes+Memories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D14C6D6740014C8F7DDB8C /* WireTypes+Memories.swift */; };
+		45B67B13D157736CF44AD1E5 /* WireTypes+Launchpads.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEBDD612462E37F1E50792A /* WireTypes+Launchpads.swift */; };
+		4958D912632ED426994F98CB /* SwooshAPIClient+Wallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59FF964FEFDFC98C86EAD029 /* SwooshAPIClient+Wallet.swift */; };
+		4A488EF43B0A06E3D3E669F3 /* WireTypes+MCP.swift in Sources */ = {isa = PBXBuildFile; fileRef = E289A6E9B417AE349F5101E8 /* WireTypes+MCP.swift */; };
+		4B223E57521BA1BE4345B7A5 /* DetourVoiceEnrollmentRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28155BCA75E36F8802D3046D /* DetourVoiceEnrollmentRecorder.swift */; };
+		4D7010F62A6848EA84F47BD5 /* OfflineMessageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A4A544D0958D670BF082AE /* OfflineMessageCache.swift */; };
+		4E511F5548207D9BECB7BCC5 /* SwooshAPIClient+Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA037957996BC661FC50825 /* SwooshAPIClient+Goals.swift */; };
+		4F751D6D47EFB1F629E9F723 /* WireTypes+Plugins.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2A739687BA2BF11782B013 /* WireTypes+Plugins.swift */; };
+		572052A68DA0E9ECE81AAE9A /* WireTypes+Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E5CAA92D06BE4A4D6425C8 /* WireTypes+Goals.swift */; };
+		5AFC466E0C70966C1DB72F29 /* DetourNativeVoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE2D253FC592A9CCA4DD3C1 /* DetourNativeVoiceCatalog.swift */; };
+		62B5D2660755BABFB58174AD /* WireTypes+Audit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F969C44684023A1DC4A2746 /* WireTypes+Audit.swift */; };
+		64B5CE964C17795A354E41F0 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C020739AC89216898E2C28A6 /* TokenStore.swift */; };
+		68AB21B4706B15EE08A73735 /* DetouriOSVoiceEnrollmentRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B0C7B1D63F4E49750C60E09 /* DetouriOSVoiceEnrollmentRecorder.swift */; };
+		69716793A39856E8495A06AC /* DetouriOSStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38763004410C7B534DD827D5 /* DetouriOSStateStore.swift */; };
+		790B29D9C2959E08140052E2 /* DetourPairingWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EE5A869C94D741A58052EDD /* DetourPairingWebServer.swift */; };
+		7BC085DB9CA3C089CC63FAAE /* WireTypes+Firewall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108B18565B3041CE14794F63 /* WireTypes+Firewall.swift */; };
+		7FDB88D8E98C2277407176CA /* WireTypes+Skills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FE9C3F93442AD30502259B6 /* WireTypes+Skills.swift */; };
+		81266A0E6BBA8505009805A0 /* DetourMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DA0AF742491E7D0ECD25C7 /* DetourMacApp.swift */; };
+		84145A5C28E3CE894C154571 /* WireTypes+Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1EB5C827DDFBBDA046F8CCA /* WireTypes+Tools.swift */; };
+		8C9F42C6A49DD76713C0827E /* SwooshAPIClient+Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D40B756B103935DA8259744 /* SwooshAPIClient+Tools.swift */; };
+		8CC8ACF49B02843CB49EA935 /* DetourDeviceDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6B22165ABF0F08BEDC45560 /* DetourDeviceDiscovery.swift */; };
+		8EC85ADAB074B3F4C188C4F5 /* DetourLiveSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F07549CBA3A3486A3FD22E /* DetourLiveSpeechRecognizer.swift */; };
+		91CA6973398A151FEAAED214 /* DetourPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71104E50E6A707890C152009 /* DetourPaths.swift */; };
+		91DF622A50605543262DCBC0 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69E6E24B3BF57DB5C605A6C /* OnboardingStore.swift */; };
+		92157E83EC60F1802588C24E /* WireTypes+Cron.swift in Sources */ = {isa = PBXBuildFile; fileRef = D372D34B635C1C9277704647 /* WireTypes+Cron.swift */; };
+		98172BE2CBA96AF9F7A0CDB8 /* DetouriOSOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5ADB55F731CC92FBA3B7C9D /* DetouriOSOnboardingView.swift */; };
+		999E40ACFEDC0712C7E08F33 /* WireTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BBA73E1E6F51136BE353F8 /* WireTypes.swift */; };
+		A4DB56D6A317F23EDD0F95B6 /* DetouriOSVoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24D263DA93ED14FE87E85BD /* DetouriOSVoiceCatalog.swift */; };
+		A5A5C04B0EA0D86DEF94D475 /* SwooshAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6042AED9CD4E38DEF3059BDD /* SwooshAPIClient.swift */; };
+		A64E5140A26AF1D38D3579AE /* DetouriOSSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C221BF28CA46976287FFDD0B /* DetouriOSSpeechService.swift */; };
+		A827025251BAD35269241097 /* DetouriOSLiveSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C2D9ABCB47E4811B58AAC9 /* DetouriOSLiveSpeechRecognizer.swift */; };
+		AB0594645997E92EDE17BB7C /* DetourWindowConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BB909539112EDB5CCD1A10 /* DetourWindowConfigurator.swift */; };
+		AC38478016AEE94B264FCC90 /* DetourSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6338ADD5DB971FB116F23A0 /* DetourSpeechService.swift */; };
+		B425E25FA47303FE3669CC6B /* DetourOnboardingContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61299C23146C8DA05028C158 /* DetourOnboardingContentView.swift */; };
+		BDA3AEB56260B5F9BD3AEEB5 /* DetouriOSVoiceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316BE53FA47C795DE1771343 /* DetouriOSVoiceSettings.swift */; };
+		BE7EB31B8F8F672348C26290 /* DetourOmniVoiceDesktopRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CBBEF62E3694AFF9E512D98 /* DetourOmniVoiceDesktopRenderer.swift */; };
+		BED65847D5D4380B0DEAC39A /* SwooshAPIClient+Skills.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FDF97B81DF7E0D60BDCC6A /* SwooshAPIClient+Skills.swift */; };
+		C99DBDA511E8059AF9FB13ED /* SwooshAPIClient+Doctor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37B025FBB12591CB06FC19ED /* SwooshAPIClient+Doctor.swift */; };
+		D8730A9A0D478612B9804D4A /* CachedExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191EA7FD33C6D443FB73F2B3 /* CachedExecutor.swift */; };
+		DBE92A23DA7A604A2FA4D825 /* SwooshAPIClient+Manifestations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054325916B6D77952D7C73D7 /* SwooshAPIClient+Manifestations.swift */; };
+		DF80F1D41FCFF367A90FB932 /* WireTypes+Manifestations.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4E537DF1B7709F68F30EA2 /* WireTypes+Manifestations.swift */; };
+		E2B165D918E64366D94C3DB0 /* SwooshAPIClient+Plugins.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5793F0518B21084B7BF5DE7 /* SwooshAPIClient+Plugins.swift */; };
+		E827714A651A09F2903002CE /* WireTypes+ChatAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB324F9FA19495D844243A30 /* WireTypes+ChatAdapters.swift */; };
+		E87EF1D805B14E234A7E77E3 /* SwooshAPIClient+MCP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795D2CA6EEEDA97717306B83 /* SwooshAPIClient+MCP.swift */; };
+		EA3091CBFE0A0A89806BFC8D /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 9CEA1CB12BA0572CBEC69073 /* FluidAudio */; };
+		F21BD365015886BA218A9752 /* DetouriOSPairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE400917D211EC51D7DF105 /* DetouriOSPairing.swift */; };
+		F6F3CEC7621938AA04ABFB64 /* SwooshAPIClient+Cron.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656E32AFB945940C01B6FE9C /* SwooshAPIClient+Cron.swift */; };
+		FAF1F075EA49E4C5905E7F54 /* WireTypes+Records.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D22C48024B4BCD908EFF7C /* WireTypes+Records.swift */; };
+		FB4ECE7ACC53FC2AD252E0E2 /* DetouriOSOnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E94B4D16C44A29AE492D33 /* DetouriOSOnboardingStore.swift */; };
+		FBFA2235498A712CA3CD03B8 /* DetouriOSUserActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E41BF29E5083622F0CEEAD /* DetouriOSUserActivity.swift */; };
+		FDD8369B6E9EF9CBD3BE44EA /* DetourStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D25F8428B5F62E7722EB1F6 /* DetourStateStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshiOSApp.swift; sourceTree = "<group>"; };
+		02E4177731A337C27B533E2F /* DetourPairingSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPairingSupport.swift; sourceTree = "<group>"; };
+		054325916B6D77952D7C73D7 /* SwooshAPIClient+Manifestations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Manifestations.swift"; sourceTree = "<group>"; };
 		0BF0AA7C8A538C6F2E2312DF /* SwooshiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SwooshiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1208AEE4DDB17E6ACBD41549 /* LocalVoiceSettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVoiceSettingsSection.swift; sourceTree = "<group>"; };
-		17D656E8BA83FB8FF00A2631 /* ConnectionsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionsScreen.swift; sourceTree = "<group>"; };
-		1AC2A76E420C2E91CB48F3CC /* SideDrawer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SideDrawer.swift; sourceTree = "<group>"; };
-		22D902C99CD3D18210E97481 /* PermissionAndPolicyScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionAndPolicyScreens.swift; sourceTree = "<group>"; };
-		2BD9F5B5A8FC377E7DD9A238 /* Swoosh.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Swoosh.entitlements; sourceTree = "<group>"; };
-		2C86BA8D17B785C527B1F549 /* LiquidVoiceSphere.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidVoiceSphere.swift; sourceTree = "<group>"; };
-		33346325E9A34E4A89968776 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		334614E402A5C0CC7A5CBBDE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		108B18565B3041CE14794F63 /* WireTypes+Firewall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Firewall.swift"; sourceTree = "<group>"; };
+		11D14C6D6740014C8F7DDB8C /* WireTypes+Memories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Memories.swift"; sourceTree = "<group>"; };
+		191EA7FD33C6D443FB73F2B3 /* CachedExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedExecutor.swift; sourceTree = "<group>"; };
+		1D25F8428B5F62E7722EB1F6 /* DetourStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourStateStore.swift; sourceTree = "<group>"; };
+		1F0857C7A87992CCDB8FC87C /* WireTypes+Wallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Wallet.swift"; sourceTree = "<group>"; };
+		27E94B4D16C44A29AE492D33 /* DetouriOSOnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSOnboardingStore.swift; sourceTree = "<group>"; };
+		28155BCA75E36F8802D3046D /* DetourVoiceEnrollmentRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourVoiceEnrollmentRecorder.swift; sourceTree = "<group>"; };
+		2F969C44684023A1DC4A2746 /* WireTypes+Audit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Audit.swift"; sourceTree = "<group>"; };
+		316BE53FA47C795DE1771343 /* DetouriOSVoiceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSVoiceSettings.swift; sourceTree = "<group>"; };
 		343C5191FC71C48190B03979 /* Swoosh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swoosh.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		3F7E64053038BE7A8B8B69C2 /* IconTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconTile.swift; sourceTree = "<group>"; };
-		403AB8740FE9644AC93AC63F /* ChannelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelCatalog.swift; sourceTree = "<group>"; };
-		4248F678DCB78516E8143314 /* SwooshWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SwooshWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		55FF97564A6C8A9FEF187FA8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		58838535A8646A8F3287BDFB /* CronScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CronScreen.swift; sourceTree = "<group>"; };
-		5C47C75353D8DB6E31AC986F /* Swoosh.iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Swoosh.iOS.entitlements; sourceTree = "<group>"; };
-		6D0EB8AA916802AA1DF0E84B /* SwooshWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SwooshWidgetExtension.entitlements; sourceTree = "<group>"; };
-		6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoctorScreen.swift; sourceTree = "<group>"; };
-		6F82347749598EDE00D671EA /* LoadingRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingRow.swift; sourceTree = "<group>"; };
-		72F1ABF3C0A11470D895C296 /* ChannelsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelsScreen.swift; sourceTree = "<group>"; };
-		76C6079D285806396765CCF5 /* LocalVoiceDownloadRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVoiceDownloadRow.swift; sourceTree = "<group>"; };
-		780459384A180543717F7EBB /* ChatScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatScreen.swift; sourceTree = "<group>"; };
-		7B097B464DA3C0AE8A37082E /* SwooshWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshWidgetBundle.swift; sourceTree = "<group>"; };
-		84795FA9AF13B8D39F7B3184 /* SwooshApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshApp.swift; sourceTree = "<group>"; };
-		89C53DA1DAF383C83EB7FF08 /* WalletCreateAccountSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletCreateAccountSheet.swift; sourceTree = "<group>"; };
-		8D3D0D14AD80C9732F16152B /* ClonedVoicesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClonedVoicesSection.swift; sourceTree = "<group>"; };
-		8E059E566BB1D3F49B35A989 /* swoosh */ = {isa = PBXFileReference; lastKnownFileType = folder; name = swoosh; path = .; sourceTree = SOURCE_ROOT; };
-		8F54ED13C9EEDEC13082338A /* ProviderLogo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderLogo.swift; sourceTree = "<group>"; };
-		9032466ADEBDE14C943EBAEB /* PairingDetailScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingDetailScreen.swift; sourceTree = "<group>"; };
-		A41A487D16E069E246C1FE33 /* CapabilityPickerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapabilityPickerScreen.swift; sourceTree = "<group>"; };
-		A4C6ACF942D2F88EEA2C6041 /* VoiceHapticsCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceHapticsCoordinator.swift; sourceTree = "<group>"; };
-		C49A59F596D847BE428C4C8C /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
-		C89FB1DD84D655A5B16062FD /* AgentRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRoot.swift; sourceTree = "<group>"; };
-		CB83FAB5CF6100402E906B91 /* WalletAccountDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletAccountDetail.swift; sourceTree = "<group>"; };
-		CBC979FDDA8EC113A147A084 /* VoicePickerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePickerScreen.swift; sourceTree = "<group>"; };
-		D349D7ED93FB78BA3A1258FC /* ActiveClonePreference.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveClonePreference.swift; sourceTree = "<group>"; };
-		D6D27F0767B034C7D17FEF83 /* WalletScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletScreen.swift; sourceTree = "<group>"; };
-		D9B6EBC4115B28A038220938 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
-		DD9130DA046954B1598FC3EE /* CloneVoiceSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloneVoiceSheet.swift; sourceTree = "<group>"; };
-		DE58002BDA52BB34AE57C6DC /* ClientSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSession.swift; sourceTree = "<group>"; };
-		E03F8D60340C4FB0E76DEC65 /* LocalModelDownloadRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelDownloadRow.swift; sourceTree = "<group>"; };
-		E1510341AC6E12EEBAAE316F /* WalletSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalletSession.swift; sourceTree = "<group>"; };
+		37B025FBB12591CB06FC19ED /* SwooshAPIClient+Doctor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Doctor.swift"; sourceTree = "<group>"; };
+		37BB909539112EDB5CCD1A10 /* DetourWindowConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourWindowConfigurator.swift; sourceTree = "<group>"; };
+		38763004410C7B534DD827D5 /* DetouriOSStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSStateStore.swift; sourceTree = "<group>"; };
+		3EE5A869C94D741A58052EDD /* DetourPairingWebServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPairingWebServer.swift; sourceTree = "<group>"; };
+		4381E41C31545D3203A7B61A /* SwooshExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshExecutor.swift; sourceTree = "<group>"; };
+		43A4A544D0958D670BF082AE /* OfflineMessageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineMessageCache.swift; sourceTree = "<group>"; };
+		452063C76A7A13EBAF8AF9A9 /* WireTypes+Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Board.swift"; sourceTree = "<group>"; };
+		456C853B7FCF3879F3252E77 /* DetourOnboardingNativeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingNativeView.swift; sourceTree = "<group>"; };
+		4D40B756B103935DA8259744 /* SwooshAPIClient+Tools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Tools.swift"; sourceTree = "<group>"; };
+		5054F477CEE22F5FE361C606 /* SwooshAPIClient+Memories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Memories.swift"; sourceTree = "<group>"; };
+		59FF964FEFDFC98C86EAD029 /* SwooshAPIClient+Wallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Wallet.swift"; sourceTree = "<group>"; };
+		5B0C7B1D63F4E49750C60E09 /* DetouriOSVoiceEnrollmentRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSVoiceEnrollmentRecorder.swift; sourceTree = "<group>"; };
+		5CBBEF62E3694AFF9E512D98 /* DetourOmniVoiceDesktopRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOmniVoiceDesktopRenderer.swift; sourceTree = "<group>"; };
+		6042AED9CD4E38DEF3059BDD /* SwooshAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshAPIClient.swift; sourceTree = "<group>"; };
+		61299C23146C8DA05028C158 /* DetourOnboardingContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentView.swift; sourceTree = "<group>"; };
+		656E32AFB945940C01B6FE9C /* SwooshAPIClient+Cron.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Cron.swift"; sourceTree = "<group>"; };
+		65C21CB3391B764F9164DEE1 /* WireTypes+Doctor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Doctor.swift"; sourceTree = "<group>"; };
+		71104E50E6A707890C152009 /* DetourPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPaths.swift; sourceTree = "<group>"; };
+		72C2D9ABCB47E4811B58AAC9 /* DetouriOSLiveSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSLiveSpeechRecognizer.swift; sourceTree = "<group>"; };
+		795D2CA6EEEDA97717306B83 /* SwooshAPIClient+MCP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+MCP.swift"; sourceTree = "<group>"; };
+		7AE2D253FC592A9CCA4DD3C1 /* DetourNativeVoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourNativeVoiceCatalog.swift; sourceTree = "<group>"; };
+		7FE9C3F93442AD30502259B6 /* WireTypes+Skills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Skills.swift"; sourceTree = "<group>"; };
+		8D0815EE890A1BB7389673F4 /* SwooshAPIClient+Firewall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Firewall.swift"; sourceTree = "<group>"; };
+		8FA037957996BC661FC50825 /* SwooshAPIClient+Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Goals.swift"; sourceTree = "<group>"; };
+		90E41BF29E5083622F0CEEAD /* DetouriOSUserActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSUserActivity.swift; sourceTree = "<group>"; };
+		9515F6EF3F4DB22F101BD0B5 /* DetourIOSInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourIOSInstaller.swift; sourceTree = "<group>"; };
+		A3D22C48024B4BCD908EFF7C /* WireTypes+Records.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Records.swift"; sourceTree = "<group>"; };
+		A5793F0518B21084B7BF5DE7 /* SwooshAPIClient+Plugins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Plugins.swift"; sourceTree = "<group>"; };
+		B24D263DA93ED14FE87E85BD /* DetouriOSVoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSVoiceCatalog.swift; sourceTree = "<group>"; };
+		B3FDF97B81DF7E0D60BDCC6A /* SwooshAPIClient+Skills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Skills.swift"; sourceTree = "<group>"; };
+		B69E6E24B3BF57DB5C605A6C /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
+		B9F07549CBA3A3486A3FD22E /* DetourLiveSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourLiveSpeechRecognizer.swift; sourceTree = "<group>"; };
+		BEEBDD612462E37F1E50792A /* WireTypes+Launchpads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Launchpads.swift"; sourceTree = "<group>"; };
+		C020739AC89216898E2C28A6 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		C0DA0AF742491E7D0ECD25C7 /* DetourMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourMacApp.swift; sourceTree = "<group>"; };
+		C221BF28CA46976287FFDD0B /* DetouriOSSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSSpeechService.swift; sourceTree = "<group>"; };
+		C6338ADD5DB971FB116F23A0 /* DetourSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSpeechService.swift; sourceTree = "<group>"; };
+		C8E5CAA92D06BE4A4D6425C8 /* WireTypes+Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Goals.swift"; sourceTree = "<group>"; };
+		CCE400917D211EC51D7DF105 /* DetouriOSPairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSPairing.swift; sourceTree = "<group>"; };
+		CF4E537DF1B7709F68F30EA2 /* WireTypes+Manifestations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Manifestations.swift"; sourceTree = "<group>"; };
+		D372D34B635C1C9277704647 /* WireTypes+Cron.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Cron.swift"; sourceTree = "<group>"; };
 		E1C7AA2E2F507D88558C8D12 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		E9C7AF14DF4880960A920C26 /* WorkspaceScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceScreen.swift; sourceTree = "<group>"; };
-		F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAuthSection.swift; sourceTree = "<group>"; };
-		F74FB3852458ED5ADD01B5C4 /* AudioLevelSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioLevelSource.swift; sourceTree = "<group>"; };
-		F93D3555C518013DB31668CC /* ErrorRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorRow.swift; sourceTree = "<group>"; };
-		FE0805B93272148AA8CC24B4 /* MCPServersScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServersScreen.swift; sourceTree = "<group>"; };
-		FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSVoicePill.swift; sourceTree = "<group>"; };
-		FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFallbackToggleRow.swift; sourceTree = "<group>"; };
+		E1EB5C827DDFBBDA046F8CCA /* WireTypes+Tools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Tools.swift"; sourceTree = "<group>"; };
+		E289A6E9B417AE349F5101E8 /* WireTypes+MCP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+MCP.swift"; sourceTree = "<group>"; };
+		E4BBA73E1E6F51136BE353F8 /* WireTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WireTypes.swift; sourceTree = "<group>"; };
+		E6B22165ABF0F08BEDC45560 /* DetourDeviceDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourDeviceDiscovery.swift; sourceTree = "<group>"; };
+		E6E0D0C4F33919F65DAE8E41 /* WireTypes+Runtime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Runtime.swift"; sourceTree = "<group>"; };
+		E7D7904EAA529FD402D74E5D /* WireTypes+Providers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Providers.swift"; sourceTree = "<group>"; };
+		EB324F9FA19495D844243A30 /* WireTypes+ChatAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+ChatAdapters.swift"; sourceTree = "<group>"; };
+		F5ADB55F731CC92FBA3B7C9D /* DetouriOSOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSOnboardingView.swift; sourceTree = "<group>"; };
+		FA2A739687BA2BF11782B013 /* WireTypes+Plugins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Plugins.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,42 +145,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EA3091CBFE0A0A89806BFC8D /* SwooshClient in Frameworks */,
-				F25A7F82337C8AF5DF9DD1D5 /* SwooshWallet in Frameworks */,
-				21288E9E042EC98DEAABDB42 /* SwooshUI in Frameworks */,
-				765193CEF39C0517B31AB30E /* SwooshGenerativeUI in Frameworks */,
-				F92EBD20EE8FAF8997E958C8 /* SwooshLocalLLM in Frameworks */,
-				3D857AE65C886D729C7FC5A8 /* SwooshFoundation in Frameworks */,
-				930891E34DF50C8A767B6C6E /* SwooshModels in Frameworks */,
-				633C79D8B704DC0CDDF510F2 /* SwooshSTT in Frameworks */,
-				9CA0C70F3E6E19ADFE852634 /* SwooshVoiceProviders in Frameworks */,
-				AEAD82FC6FD8A0BC4B6DF103 /* SwooshLocalVoice in Frameworks */,
-				A8ABD4E366842B1816B38E3F /* SwooshMusic in Frameworks */,
-				687D304497B38E4A798C3B81 /* SwooshVision in Frameworks */,
-				23F4347D1099A97AB5D3E71E /* SwooshTranslation in Frameworks */,
-				B6606D768591ED1AEAD88C6E /* SwooshEmbeddings in Frameworks */,
-				852ADEC763785DAF2B2BB42B /* SwooshImageGen in Frameworks */,
-				7D2D5CECE5F03AE081B3FDBC /* SwooshCapabilities in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C2B666F6BE886C72E6EE5976 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				E233BBA6ACDE68ED0D7B2083 /* SwooshUI in Frameworks */,
-				6F397A9A6C2A0768496FC730 /* SwooshKit in Frameworks */,
-				588B3159F35DB867399DCAAB /* SwooshSecrets in Frameworks */,
-				4E199906DE2655159475FDED /* SwooshWidgets in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D0A2EF10978AC4156D3EF0CB /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				198E92682DEFDB832902218A /* SwooshWidgets in Frameworks */,
-				A0E8296933BE65C8C6BE61BC /* SwooshSecrets in Frameworks */,
+				EA3091CBFE0A0A89806BFC8D /* FluidAudio in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -177,9 +155,9 @@
 		259B725A88850C120F5D47E0 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				55FF97564A6C8A9FEF187FA8 /* Info.plist */,
-				2BD9F5B5A8FC377E7DD9A238 /* Swoosh.entitlements */,
-				84795FA9AF13B8D39F7B3184 /* SwooshApp.swift */,
+				A31458E6A485913A03232DB3 /* Onboarding */,
+				F21A38DF5E30EFD5E1E3D12C /* Support */,
+				C0DA0AF742491E7D0ECD25C7 /* DetourMacApp.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -189,7 +167,6 @@
 			children = (
 				343C5191FC71C48190B03979 /* Swoosh.app */,
 				0BF0AA7C8A538C6F2E2312DF /* SwooshiOS.app */,
-				4248F678DCB78516E8143314 /* SwooshWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -197,58 +174,28 @@
 		3A28E3D5716DDC769F9323AF /* SwooshiOS */ = {
 			isa = PBXGroup;
 			children = (
-				D349D7ED93FB78BA3A1258FC /* ActiveClonePreference.swift */,
-				C89FB1DD84D655A5B16062FD /* AgentRoot.swift */,
-				33346325E9A34E4A89968776 /* Assets.xcassets */,
-				F74FB3852458ED5ADD01B5C4 /* AudioLevelSource.swift */,
-				A41A487D16E069E246C1FE33 /* CapabilityPickerScreen.swift */,
-				403AB8740FE9644AC93AC63F /* ChannelCatalog.swift */,
-				72F1ABF3C0A11470D895C296 /* ChannelsScreen.swift */,
-				780459384A180543717F7EBB /* ChatScreen.swift */,
-				D9B6EBC4115B28A038220938 /* CLAUDE.md */,
-				DE58002BDA52BB34AE57C6DC /* ClientSession.swift */,
-				8D3D0D14AD80C9732F16152B /* ClonedVoicesSection.swift */,
-				DD9130DA046954B1598FC3EE /* CloneVoiceSheet.swift */,
-				F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */,
-				17D656E8BA83FB8FF00A2631 /* ConnectionsScreen.swift */,
-				58838535A8646A8F3287BDFB /* CronScreen.swift */,
-				6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */,
-				F93D3555C518013DB31668CC /* ErrorRow.swift */,
-				3F7E64053038BE7A8B8B69C2 /* IconTile.swift */,
+				72C2D9ABCB47E4811B58AAC9 /* DetouriOSLiveSpeechRecognizer.swift */,
+				27E94B4D16C44A29AE492D33 /* DetouriOSOnboardingStore.swift */,
+				F5ADB55F731CC92FBA3B7C9D /* DetouriOSOnboardingView.swift */,
+				CCE400917D211EC51D7DF105 /* DetouriOSPairing.swift */,
+				C221BF28CA46976287FFDD0B /* DetouriOSSpeechService.swift */,
+				38763004410C7B534DD827D5 /* DetouriOSStateStore.swift */,
+				90E41BF29E5083622F0CEEAD /* DetouriOSUserActivity.swift */,
+				B24D263DA93ED14FE87E85BD /* DetouriOSVoiceCatalog.swift */,
+				5B0C7B1D63F4E49750C60E09 /* DetouriOSVoiceEnrollmentRecorder.swift */,
+				316BE53FA47C795DE1771343 /* DetouriOSVoiceSettings.swift */,
 				E1C7AA2E2F507D88558C8D12 /* Info.plist */,
-				FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */,
-				2C86BA8D17B785C527B1F549 /* LiquidVoiceSphere.swift */,
-				6F82347749598EDE00D671EA /* LoadingRow.swift */,
-				FF6B36C2E17A5DE68BFEA3B4 /* LocalFallbackToggleRow.swift */,
-				E03F8D60340C4FB0E76DEC65 /* LocalModelDownloadRow.swift */,
-				76C6079D285806396765CCF5 /* LocalVoiceDownloadRow.swift */,
-				1208AEE4DDB17E6ACBD41549 /* LocalVoiceSettingsSection.swift */,
-				FE0805B93272148AA8CC24B4 /* MCPServersScreen.swift */,
-				9032466ADEBDE14C943EBAEB /* PairingDetailScreen.swift */,
-				22D902C99CD3D18210E97481 /* PermissionAndPolicyScreens.swift */,
-				8F54ED13C9EEDEC13082338A /* ProviderLogo.swift */,
-				334614E402A5C0CC7A5CBBDE /* RootView.swift */,
-				C49A59F596D847BE428C4C8C /* SettingsScreen.swift */,
-				1AC2A76E420C2E91CB48F3CC /* SideDrawer.swift */,
-				5C47C75353D8DB6E31AC986F /* Swoosh.iOS.entitlements */,
 				02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */,
-				A4C6ACF942D2F88EEA2C6041 /* VoiceHapticsCoordinator.swift */,
-				CBC979FDDA8EC113A147A084 /* VoicePickerScreen.swift */,
-				CB83FAB5CF6100402E906B91 /* WalletAccountDetail.swift */,
-				89C53DA1DAF383C83EB7FF08 /* WalletCreateAccountSheet.swift */,
-				D6D27F0767B034C7D17FEF83 /* WalletScreen.swift */,
-				E1510341AC6E12EEBAAE316F /* WalletSession.swift */,
-				E9C7AF14DF4880960A920C26 /* WorkspaceScreen.swift */,
 			);
 			path = SwooshiOS;
 			sourceTree = "<group>";
 		};
-		3CEDC0AAFCD9F3D1EFE7474B /* Packages */ = {
+		4B0B92C73DC912BBB0706CCE /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				8E059E566BB1D3F49B35A989 /* swoosh */,
+				83A78B1BC0E34DDD2097EEBD /* SwooshClient */,
 			);
-			name = Packages;
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		4CA80AB5FE08310653E98C5B /* Apps */ = {
@@ -259,13 +206,75 @@
 			path = Apps;
 			sourceTree = "<group>";
 		};
-		6E1FB89CDC6DC36B6775F4F7 /* WidgetExtension */ = {
+		83A78B1BC0E34DDD2097EEBD /* SwooshClient */ = {
 			isa = PBXGroup;
 			children = (
-				7B097B464DA3C0AE8A37082E /* SwooshWidgetBundle.swift */,
-				6D0EB8AA916802AA1DF0E84B /* SwooshWidgetExtension.entitlements */,
+				191EA7FD33C6D443FB73F2B3 /* CachedExecutor.swift */,
+				43A4A544D0958D670BF082AE /* OfflineMessageCache.swift */,
+				6042AED9CD4E38DEF3059BDD /* SwooshAPIClient.swift */,
+				656E32AFB945940C01B6FE9C /* SwooshAPIClient+Cron.swift */,
+				37B025FBB12591CB06FC19ED /* SwooshAPIClient+Doctor.swift */,
+				8D0815EE890A1BB7389673F4 /* SwooshAPIClient+Firewall.swift */,
+				8FA037957996BC661FC50825 /* SwooshAPIClient+Goals.swift */,
+				054325916B6D77952D7C73D7 /* SwooshAPIClient+Manifestations.swift */,
+				795D2CA6EEEDA97717306B83 /* SwooshAPIClient+MCP.swift */,
+				5054F477CEE22F5FE361C606 /* SwooshAPIClient+Memories.swift */,
+				A5793F0518B21084B7BF5DE7 /* SwooshAPIClient+Plugins.swift */,
+				B3FDF97B81DF7E0D60BDCC6A /* SwooshAPIClient+Skills.swift */,
+				4D40B756B103935DA8259744 /* SwooshAPIClient+Tools.swift */,
+				59FF964FEFDFC98C86EAD029 /* SwooshAPIClient+Wallet.swift */,
+				4381E41C31545D3203A7B61A /* SwooshExecutor.swift */,
+				C020739AC89216898E2C28A6 /* TokenStore.swift */,
+				E4BBA73E1E6F51136BE353F8 /* WireTypes.swift */,
+				2F969C44684023A1DC4A2746 /* WireTypes+Audit.swift */,
+				452063C76A7A13EBAF8AF9A9 /* WireTypes+Board.swift */,
+				EB324F9FA19495D844243A30 /* WireTypes+ChatAdapters.swift */,
+				D372D34B635C1C9277704647 /* WireTypes+Cron.swift */,
+				65C21CB3391B764F9164DEE1 /* WireTypes+Doctor.swift */,
+				108B18565B3041CE14794F63 /* WireTypes+Firewall.swift */,
+				C8E5CAA92D06BE4A4D6425C8 /* WireTypes+Goals.swift */,
+				BEEBDD612462E37F1E50792A /* WireTypes+Launchpads.swift */,
+				CF4E537DF1B7709F68F30EA2 /* WireTypes+Manifestations.swift */,
+				E289A6E9B417AE349F5101E8 /* WireTypes+MCP.swift */,
+				11D14C6D6740014C8F7DDB8C /* WireTypes+Memories.swift */,
+				FA2A739687BA2BF11782B013 /* WireTypes+Plugins.swift */,
+				E7D7904EAA529FD402D74E5D /* WireTypes+Providers.swift */,
+				A3D22C48024B4BCD908EFF7C /* WireTypes+Records.swift */,
+				E6E0D0C4F33919F65DAE8E41 /* WireTypes+Runtime.swift */,
+				7FE9C3F93442AD30502259B6 /* WireTypes+Skills.swift */,
+				E1EB5C827DDFBBDA046F8CCA /* WireTypes+Tools.swift */,
+				1F0857C7A87992CCDB8FC87C /* WireTypes+Wallet.swift */,
 			);
-			path = WidgetExtension;
+			path = SwooshClient;
+			sourceTree = "<group>";
+		};
+		A31458E6A485913A03232DB3 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				B9F07549CBA3A3486A3FD22E /* DetourLiveSpeechRecognizer.swift */,
+				5CBBEF62E3694AFF9E512D98 /* DetourOmniVoiceDesktopRenderer.swift */,
+				61299C23146C8DA05028C158 /* DetourOnboardingContentView.swift */,
+				456C853B7FCF3879F3252E77 /* DetourOnboardingNativeView.swift */,
+				C6338ADD5DB971FB116F23A0 /* DetourSpeechService.swift */,
+				28155BCA75E36F8802D3046D /* DetourVoiceEnrollmentRecorder.swift */,
+				37BB909539112EDB5CCD1A10 /* DetourWindowConfigurator.swift */,
+				B69E6E24B3BF57DB5C605A6C /* OnboardingStore.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		F21A38DF5E30EFD5E1E3D12C /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				E6B22165ABF0F08BEDC45560 /* DetourDeviceDiscovery.swift */,
+				9515F6EF3F4DB22F101BD0B5 /* DetourIOSInstaller.swift */,
+				7AE2D253FC592A9CCA4DD3C1 /* DetourNativeVoiceCatalog.swift */,
+				02E4177731A337C27B533E2F /* DetourPairingSupport.swift */,
+				3EE5A869C94D741A58052EDD /* DetourPairingWebServer.swift */,
+				71104E50E6A707890C152009 /* DetourPaths.swift */,
+				1D25F8428B5F62E7722EB1F6 /* DetourStateStore.swift */,
+			);
+			path = Support;
 			sourceTree = "<group>";
 		};
 		FA51635871AE63F1C3C16EE9 = {
@@ -273,8 +282,7 @@
 			children = (
 				259B725A88850C120F5D47E0 /* App */,
 				4CA80AB5FE08310653E98C5B /* Apps */,
-				3CEDC0AAFCD9F3D1EFE7474B /* Packages */,
-				6E1FB89CDC6DC36B6775F4F7 /* WidgetExtension */,
+				4B0B92C73DC912BBB0706CCE /* Sources */,
 				387AA0C01093A3E091398435 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -282,32 +290,11 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		1B76FAABD975C05BFC322AA4 /* SwooshWidgetExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = EEC578BB54820FE1F57A18FF /* Build configuration list for PBXNativeTarget "SwooshWidgetExtension" */;
-			buildPhases = (
-				3721CFE9186547B8F32E282F /* Sources */,
-				D0A2EF10978AC4156D3EF0CB /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = SwooshWidgetExtension;
-			packageProductDependencies = (
-				5BC3F322969154F4A837D673 /* SwooshWidgets */,
-				AE88E333D2254FC8546193C1 /* SwooshSecrets */,
-			);
-			productName = SwooshWidgetExtension;
-			productReference = 4248F678DCB78516E8143314 /* SwooshWidgetExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		81E371466FD526039B58885E /* SwooshiOS */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 90EF32ED6D99B8B4177EB046 /* Build configuration list for PBXNativeTarget "SwooshiOS" */;
 			buildPhases = (
 				7E3D01D2AE967AA5FB3858FD /* Sources */,
-				BF82BBD43CA73D9D70994A01 /* Resources */,
 				6C7372F16C09C125B34951E8 /* Frameworks */,
 			);
 			buildRules = (
@@ -316,22 +303,7 @@
 			);
 			name = SwooshiOS;
 			packageProductDependencies = (
-				2ACE0E2888A1233F1C18854E /* SwooshClient */,
-				657F22487AA41B2FBA8A9798 /* SwooshWallet */,
-				067ACC90B8BB5FE569AFFC25 /* SwooshUI */,
-				F04EABFE88B766FD0AD21A37 /* SwooshGenerativeUI */,
-				E0D997B6FCD3DD517DE7F2BE /* SwooshLocalLLM */,
-				B301A88B05ECC967B269FA9C /* SwooshFoundation */,
-				75B0CA904E7690F0705D9A0B /* SwooshModels */,
-				5344EDFE236A78B4605BDACE /* SwooshSTT */,
-				64E6792A9ADCB5AEA31F3613 /* SwooshVoiceProviders */,
-				D7FF5966E699003F7654C7F5 /* SwooshLocalVoice */,
-				CDAE07E9569AB80547D4CA2E /* SwooshMusic */,
-				E7F2A99350D322A8BFBC4238 /* SwooshVision */,
-				4DBE9D6632C9D0599CB3127F /* SwooshTranslation */,
-				9DAF129D8F01B12920642DCF /* SwooshEmbeddings */,
-				C1D8DEB68F839F7A2B4189B9 /* SwooshImageGen */,
-				C8DD494210CF9283BE5DB80A /* SwooshCapabilities */,
+				9CEA1CB12BA0572CBEC69073 /* FluidAudio */,
 			);
 			productName = SwooshiOS;
 			productReference = 0BF0AA7C8A538C6F2E2312DF /* SwooshiOS.app */;
@@ -342,7 +314,6 @@
 			buildConfigurationList = 8E3CAB43F0C731D4DDC5F084 /* Build configuration list for PBXNativeTarget "Swoosh" */;
 			buildPhases = (
 				FD61F42DE11D9C0A0E9AD96A /* Sources */,
-				C2B666F6BE886C72E6EE5976 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -350,10 +321,6 @@
 			);
 			name = Swoosh;
 			packageProductDependencies = (
-				B1E45E49EB414D4CF83F70E0 /* SwooshUI */,
-				C81EAEFD269612149B9F94BF /* SwooshKit */,
-				2894B277640819D641FD9E94 /* SwooshSecrets */,
-				09308C14B898E4305F4304E9 /* SwooshWidgets */,
 			);
 			productName = Swoosh;
 			productReference = 343C5191FC71C48190B03979 /* Swoosh.app */;
@@ -368,10 +335,6 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
-					1B76FAABD975C05BFC322AA4 = {
-						DevelopmentTeam = GY5597YK9P;
-						ProvisioningStyle = Automatic;
-					};
 					81E371466FD526039B58885E = {
 						DevelopmentTeam = GY5597YK9P;
 						ProvisioningStyle = Automatic;
@@ -392,7 +355,7 @@
 			mainGroup = FA51635871AE63F1C3C16EE9;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				5F45DC704C1A7D77A7E933C1 /* XCLocalSwiftPackageReference "." */,
+				09A865B5F47AF35F6D6AAE2C /* XCRemoteSwiftPackageReference "FluidAudio" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 387AA0C01093A3E091398435 /* Products */;
@@ -400,75 +363,62 @@
 			projectRoot = "";
 			targets = (
 				AB245C790549F68851E545BF /* Swoosh */,
-				1B76FAABD975C05BFC322AA4 /* SwooshWidgetExtension */,
 				81E371466FD526039B58885E /* SwooshiOS */,
 			);
 		};
 /* End PBXProject section */
 
-/* Begin PBXResourcesBuildPhase section */
-		BF82BBD43CA73D9D70994A01 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				24A9B4F730F2EC5A2B5E7F21 /* Assets.xcassets in Resources */,
-				22D5D781507FA204C58C15A3 /* CLAUDE.md in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
-		3721CFE9186547B8F32E282F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				79C02F6D43ED99D7E9CD4EF8 /* SwooshWidgetBundle.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		7E3D01D2AE967AA5FB3858FD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4E4EA92D9D68F3D9FFB451C0 /* ActiveClonePreference.swift in Sources */,
-				57C129E0D6B9ED789AF4C191 /* AgentRoot.swift in Sources */,
-				828EE27AA1EAC29C4E994BED /* AudioLevelSource.swift in Sources */,
-				C3312726808315191FD14368 /* CapabilityPickerScreen.swift in Sources */,
-				1AD98FBF282A8C3681D62FCD /* ChannelCatalog.swift in Sources */,
-				A23FBD47D46859CD0B32676B /* ChannelsScreen.swift in Sources */,
-				1D0A0B622C87AC23C99E4CF2 /* ChatScreen.swift in Sources */,
-				10639EA0A47A2B8333A1706B /* ClientSession.swift in Sources */,
-				FFCE3B73F65239780A3ABE3D /* CloneVoiceSheet.swift in Sources */,
-				6948EA80A56C65B6D58405AD /* ClonedVoicesSection.swift in Sources */,
-				B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */,
-				105DA551E8644020D688E312 /* ConnectionsScreen.swift in Sources */,
-				84D2FAA829E69A0C50681CD9 /* CronScreen.swift in Sources */,
-				D0AC05AB13879430D16D0523 /* DoctorScreen.swift in Sources */,
-				D5DCB03232519DF157BF1B89 /* ErrorRow.swift in Sources */,
-				8F9C928AE4827949F555D24A /* IOSVoicePill.swift in Sources */,
-				4949F574DA32CD5B8C0CAE80 /* IconTile.swift in Sources */,
-				1957A2C2550C500139D5420B /* LiquidVoiceSphere.swift in Sources */,
-				64A86B9FA33C788FF9E609CF /* LoadingRow.swift in Sources */,
-				81F9802FDDEC5D16ADEFBA3B /* LocalFallbackToggleRow.swift in Sources */,
-				FB530CEB64B17F5E3C1816CC /* LocalModelDownloadRow.swift in Sources */,
-				AB2301970775606BF4B4F841 /* LocalVoiceDownloadRow.swift in Sources */,
-				D270DFA4E91A9EE7A1CEE991 /* LocalVoiceSettingsSection.swift in Sources */,
-				8E7B6C18331A1D44A71C0025 /* MCPServersScreen.swift in Sources */,
-				2E6F775EF72FEA51ED3EC6AF /* PairingDetailScreen.swift in Sources */,
-				8D6E1CD2344A3BEF608C18C8 /* PermissionAndPolicyScreens.swift in Sources */,
-				00A364C8BB6E156EB8C55081 /* ProviderLogo.swift in Sources */,
-				EB84A11C241383BEE255E3F7 /* RootView.swift in Sources */,
-				8E6426771BF7AAD4AF34F696 /* SettingsScreen.swift in Sources */,
-				14EF26B08F3C69ADE7906F09 /* SideDrawer.swift in Sources */,
+				D8730A9A0D478612B9804D4A /* CachedExecutor.swift in Sources */,
+				A827025251BAD35269241097 /* DetouriOSLiveSpeechRecognizer.swift in Sources */,
+				FB4ECE7ACC53FC2AD252E0E2 /* DetouriOSOnboardingStore.swift in Sources */,
+				98172BE2CBA96AF9F7A0CDB8 /* DetouriOSOnboardingView.swift in Sources */,
+				F21BD365015886BA218A9752 /* DetouriOSPairing.swift in Sources */,
+				A64E5140A26AF1D38D3579AE /* DetouriOSSpeechService.swift in Sources */,
+				69716793A39856E8495A06AC /* DetouriOSStateStore.swift in Sources */,
+				FBFA2235498A712CA3CD03B8 /* DetouriOSUserActivity.swift in Sources */,
+				A4DB56D6A317F23EDD0F95B6 /* DetouriOSVoiceCatalog.swift in Sources */,
+				68AB21B4706B15EE08A73735 /* DetouriOSVoiceEnrollmentRecorder.swift in Sources */,
+				BDA3AEB56260B5F9BD3AEEB5 /* DetouriOSVoiceSettings.swift in Sources */,
+				4D7010F62A6848EA84F47BD5 /* OfflineMessageCache.swift in Sources */,
+				F6F3CEC7621938AA04ABFB64 /* SwooshAPIClient+Cron.swift in Sources */,
+				C99DBDA511E8059AF9FB13ED /* SwooshAPIClient+Doctor.swift in Sources */,
+				0CFB0509B33CF3276A513EA1 /* SwooshAPIClient+Firewall.swift in Sources */,
+				4E511F5548207D9BECB7BCC5 /* SwooshAPIClient+Goals.swift in Sources */,
+				E87EF1D805B14E234A7E77E3 /* SwooshAPIClient+MCP.swift in Sources */,
+				DBE92A23DA7A604A2FA4D825 /* SwooshAPIClient+Manifestations.swift in Sources */,
+				019D346A654745C266CB4FD5 /* SwooshAPIClient+Memories.swift in Sources */,
+				E2B165D918E64366D94C3DB0 /* SwooshAPIClient+Plugins.swift in Sources */,
+				BED65847D5D4380B0DEAC39A /* SwooshAPIClient+Skills.swift in Sources */,
+				8C9F42C6A49DD76713C0827E /* SwooshAPIClient+Tools.swift in Sources */,
+				4958D912632ED426994F98CB /* SwooshAPIClient+Wallet.swift in Sources */,
+				A5A5C04B0EA0D86DEF94D475 /* SwooshAPIClient.swift in Sources */,
+				25E2F54B36443AAD87839F4D /* SwooshExecutor.swift in Sources */,
 				3F643D8B3F106C244C2CE5CD /* SwooshiOSApp.swift in Sources */,
-				812E14C35917FD0503AC43D5 /* VoiceHapticsCoordinator.swift in Sources */,
-				87A218A0D7E5686F396C9EDE /* VoicePickerScreen.swift in Sources */,
-				E052265C132915BC379E8892 /* WalletAccountDetail.swift in Sources */,
-				6AFA1A78264F56022F034DA1 /* WalletCreateAccountSheet.swift in Sources */,
-				5FD22E5D05495E88785BCA72 /* WalletScreen.swift in Sources */,
-				1A3777AC33B62A2A78A398ED /* WalletSession.swift in Sources */,
-				AD2A5C92FFFA296AFBDA36FA /* WorkspaceScreen.swift in Sources */,
+				64B5CE964C17795A354E41F0 /* TokenStore.swift in Sources */,
+				62B5D2660755BABFB58174AD /* WireTypes+Audit.swift in Sources */,
+				034A03C4B406951A54BAA529 /* WireTypes+Board.swift in Sources */,
+				E827714A651A09F2903002CE /* WireTypes+ChatAdapters.swift in Sources */,
+				92157E83EC60F1802588C24E /* WireTypes+Cron.swift in Sources */,
+				34B7D047DDD04FAA58A73BC7 /* WireTypes+Doctor.swift in Sources */,
+				7BC085DB9CA3C089CC63FAAE /* WireTypes+Firewall.swift in Sources */,
+				572052A68DA0E9ECE81AAE9A /* WireTypes+Goals.swift in Sources */,
+				45B67B13D157736CF44AD1E5 /* WireTypes+Launchpads.swift in Sources */,
+				4A488EF43B0A06E3D3E669F3 /* WireTypes+MCP.swift in Sources */,
+				DF80F1D41FCFF367A90FB932 /* WireTypes+Manifestations.swift in Sources */,
+				450A04CCA57D8C7AA4AAD60D /* WireTypes+Memories.swift in Sources */,
+				4F751D6D47EFB1F629E9F723 /* WireTypes+Plugins.swift in Sources */,
+				22E1EBC1A41C15D7E3A2A01F /* WireTypes+Providers.swift in Sources */,
+				FAF1F075EA49E4C5905E7F54 /* WireTypes+Records.swift in Sources */,
+				2995947327AE08527D8BD041 /* WireTypes+Runtime.swift in Sources */,
+				7FDB88D8E98C2277407176CA /* WireTypes+Skills.swift in Sources */,
+				84145A5C28E3CE894C154571 /* WireTypes+Tools.swift in Sources */,
+				2E4B62404441D73921EA8C80 /* WireTypes+Wallet.swift in Sources */,
+				999E40ACFEDC0712C7E08F33 /* WireTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -476,31 +426,28 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				81118F6A362A6E1B9785D0B3 /* SwooshApp.swift in Sources */,
+				8CC8ACF49B02843CB49EA935 /* DetourDeviceDiscovery.swift in Sources */,
+				03B16E818A01105B47A42699 /* DetourIOSInstaller.swift in Sources */,
+				8EC85ADAB074B3F4C188C4F5 /* DetourLiveSpeechRecognizer.swift in Sources */,
+				81266A0E6BBA8505009805A0 /* DetourMacApp.swift in Sources */,
+				5AFC466E0C70966C1DB72F29 /* DetourNativeVoiceCatalog.swift in Sources */,
+				BE7EB31B8F8F672348C26290 /* DetourOmniVoiceDesktopRenderer.swift in Sources */,
+				B425E25FA47303FE3669CC6B /* DetourOnboardingContentView.swift in Sources */,
+				180B8347724F5514D8971C7C /* DetourOnboardingNativeView.swift in Sources */,
+				2EF2FDBDE1BBBBE29D4A2AF6 /* DetourPairingSupport.swift in Sources */,
+				790B29D9C2959E08140052E2 /* DetourPairingWebServer.swift in Sources */,
+				91CA6973398A151FEAAED214 /* DetourPaths.swift in Sources */,
+				AC38478016AEE94B264FCC90 /* DetourSpeechService.swift in Sources */,
+				FDD8369B6E9EF9CBD3BE44EA /* DetourStateStore.swift in Sources */,
+				4B223E57521BA1BE4345B7A5 /* DetourVoiceEnrollmentRecorder.swift in Sources */,
+				AB0594645997E92EDE17BB7C /* DetourWindowConfigurator.swift in Sources */,
+				91DF622A50605543262DCBC0 /* OnboardingStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		27CFC8856770A7BCFE044FF6 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = WidgetExtension/SwooshWidgetExtension.entitlements;
-				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Swoosh Widgets";
-				INFOPLIST_KEY_NSExtension = "[\"NSExtensionPointIdentifier\": \"com.apple.widgetkit-extension\"]";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-					"@executable_path/../../../../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.app.widgets;
-				SDKROOT = macosx;
-			};
-			name = Debug;
-		};
 		35ACBFB97B75517A0998F6A6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -536,6 +483,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = GY5597YK9P;
 				ENABLE_APP_SANDBOX = NO;
@@ -551,6 +499,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.5;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "ai.swoosh.$(PRODUCT_NAME:rfc1034identifier)";
@@ -596,6 +545,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = GY5597YK9P;
 				ENABLE_APP_SANDBOX = NO;
@@ -617,6 +567,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.5;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -631,8 +582,7 @@
 		8F8946C449DB809F00B43C1B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_ENTITLEMENTS = Apps/SwooshiOS/Swoosh.iOS.entitlements;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Apps/SwooshiOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -640,9 +590,9 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.app.ios;
+				PRODUCT_NAME = Detour;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -651,18 +601,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = App/Swoosh.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Swoosh;
+				INFOPLIST_KEY_CFBundleDisplayName = Detour;
 				INFOPLIST_KEY_LSUIElement = NO;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Detour uses your local network to let your iPhone connect to this Mac.";
 				INFOPLIST_KEY_NSMainNibFile = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Detour records a short local voice sample so it can recognize your voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Detour uses local speech recognition to detect the wake word you choose.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.app;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.detour.mac;
+				PRODUCT_NAME = Detour;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -670,8 +623,7 @@
 		B93C35A7C8BFCA75C512FA28 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				CODE_SIGN_ENTITLEMENTS = Apps/SwooshiOS/Swoosh.iOS.entitlements;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = Apps/SwooshiOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -679,9 +631,9 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.app.ios;
+				PRODUCT_NAME = Detour;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -690,36 +642,21 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = App/Swoosh.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Swoosh;
+				INFOPLIST_KEY_CFBundleDisplayName = Detour;
 				INFOPLIST_KEY_LSUIElement = NO;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Detour uses your local network to let your iPhone connect to this Mac.";
 				INFOPLIST_KEY_NSMainNibFile = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Detour records a short local voice sample so it can recognize your voice.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Detour uses local speech recognition to detect the wake word you choose.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.app;
-				SDKROOT = macosx;
-			};
-			name = Release;
-		};
-		E157BD4297CB971D4BFE5117 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = WidgetExtension/SwooshWidgetExtension.entitlements;
-				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Swoosh Widgets";
-				INFOPLIST_KEY_NSExtension = "[\"NSExtensionPointIdentifier\": \"com.apple.widgetkit-extension\"]";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-					"@executable_path/../../../../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.app.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.swoosh.detour.mac;
+				PRODUCT_NAME = Detour;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -754,112 +691,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		EEC578BB54820FE1F57A18FF /* Build configuration list for PBXNativeTarget "SwooshWidgetExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				27CFC8856770A7BCFE044FF6 /* Debug */,
-				E157BD4297CB971D4BFE5117 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		5F45DC704C1A7D77A7E933C1 /* XCLocalSwiftPackageReference "." */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = .;
+/* Begin XCRemoteSwiftPackageReference section */
+		09A865B5F47AF35F6D6AAE2C /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.14.7;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		067ACC90B8BB5FE569AFFC25 /* SwooshUI */ = {
+		9CEA1CB12BA0572CBEC69073 /* FluidAudio */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = SwooshUI;
-		};
-		09308C14B898E4305F4304E9 /* SwooshWidgets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshWidgets;
-		};
-		2894B277640819D641FD9E94 /* SwooshSecrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshSecrets;
-		};
-		2ACE0E2888A1233F1C18854E /* SwooshClient */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshClient;
-		};
-		4DBE9D6632C9D0599CB3127F /* SwooshTranslation */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshTranslation;
-		};
-		5344EDFE236A78B4605BDACE /* SwooshSTT */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshSTT;
-		};
-		5BC3F322969154F4A837D673 /* SwooshWidgets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshWidgets;
-		};
-		64E6792A9ADCB5AEA31F3613 /* SwooshVoiceProviders */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshVoiceProviders;
-		};
-		657F22487AA41B2FBA8A9798 /* SwooshWallet */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshWallet;
-		};
-		75B0CA904E7690F0705D9A0B /* SwooshModels */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshModels;
-		};
-		9DAF129D8F01B12920642DCF /* SwooshEmbeddings */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshEmbeddings;
-		};
-		AE88E333D2254FC8546193C1 /* SwooshSecrets */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshSecrets;
-		};
-		B1E45E49EB414D4CF83F70E0 /* SwooshUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshUI;
-		};
-		B301A88B05ECC967B269FA9C /* SwooshFoundation */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshFoundation;
-		};
-		C1D8DEB68F839F7A2B4189B9 /* SwooshImageGen */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshImageGen;
-		};
-		C81EAEFD269612149B9F94BF /* SwooshKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshKit;
-		};
-		C8DD494210CF9283BE5DB80A /* SwooshCapabilities */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshCapabilities;
-		};
-		CDAE07E9569AB80547D4CA2E /* SwooshMusic */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshMusic;
-		};
-		D7FF5966E699003F7654C7F5 /* SwooshLocalVoice */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshLocalVoice;
-		};
-		E0D997B6FCD3DD517DE7F2BE /* SwooshLocalLLM */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshLocalLLM;
-		};
-		E7F2A99350D322A8BFBC4238 /* SwooshVision */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshVision;
-		};
-		F04EABFE88B766FD0AD21A37 /* SwooshGenerativeUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwooshGenerativeUI;
+			package = 09A865B5F47AF35F6D6AAE2C /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

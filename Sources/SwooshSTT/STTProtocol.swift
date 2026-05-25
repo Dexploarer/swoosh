@@ -1,7 +1,7 @@
 // SwooshSTT/STTProtocol.swift — 0.9R STT provider protocol
 //
 // Common interface for every speech-to-text engine we ship:
-//   • SystemSTTProvider (SFSpeechRecognizer — already wired in SwooshUI)
+//   • SystemSTTProvider (SFSpeechRecognizer)
 //   • WhisperSTTProvider (WhisperKit / Core ML on Apple Silicon)
 //   • Future: cloud (OpenAI Whisper API, Cartesia Sonic-STT, Deepgram)
 //

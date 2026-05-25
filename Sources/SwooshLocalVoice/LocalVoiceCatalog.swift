@@ -18,6 +18,8 @@ private extension URL {
 
 public enum LocalVoiceCatalog {
 
+    public static let defaultKokoroVoiceID = "af_heart"
+
     /// Default selection — Kokoro is the safest "just works" option:
     /// 82M params, ~160 MB on disk, MIT, fits any iPhone shipped in the
     /// last five years.

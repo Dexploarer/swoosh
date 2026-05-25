@@ -31,8 +31,8 @@ actor KokoroAneBackend: Backend {
         // path through for parity with the Backend contract but the
         // package owns the on-disk layout.
         _ = modelPath; _ = model
-        let manager = KokoroAneManager()
-        try await manager.initialize()
+        let manager = KokoroAneManager(defaultVoice: LocalVoiceCatalog.defaultKokoroVoiceID)
+        try await manager.initialize(preloadVoices: [LocalVoiceCatalog.defaultKokoroVoiceID])
         self.manager = manager
         self.initialised = true
     }
@@ -55,7 +55,10 @@ actor KokoroAneBackend: Backend {
         }
         // FluidAudio returns a complete 24 kHz mono 16-bit PCM WAV blob
         // (header included). voiceID maps to one of the Kokoro voice
-        // packs (e.g. "af_heart", "am_michael"); nil → default voice.
-        return try await manager.synthesize(text: text, voice: voiceID)
+        // packs (e.g. "af_heart"); nil → default voice.
+        return try await manager.synthesize(
+            text: text,
+            voice: voiceID ?? LocalVoiceCatalog.defaultKokoroVoiceID
+        )
     }
 }

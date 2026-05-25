@@ -7,9 +7,8 @@
 // in both environments.
 //
 // Lives in SwooshSecrets because it is the lowest-level module that
-// needs it (config-file scavenger, env scavenger). SwooshConfig and
-// SwooshUI re-use the same definition through their SwooshSecrets
-// dependency — previously each carried its own near-identical copy.
+// needs it (config-file scavenger, env scavenger). SwooshConfig re-uses
+// the same definition through its SwooshSecrets dependency.
 
 import Foundation
 

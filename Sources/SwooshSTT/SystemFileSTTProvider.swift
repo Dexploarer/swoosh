@@ -1,7 +1,6 @@
 // SwooshSTT/SystemFileSTTProvider.swift — 0.9R SFSpeechRecognizer for files
 //
-// Apple's SFSpeechRecognizer supports both live mic (handled by
-// SwooshUI.SpeechCapture) and one-shot file transcription via
+// Apple's SFSpeechRecognizer supports both live mic and one-shot file transcription via
 // `SFSpeechURLRecognitionRequest`. This provider covers the file path
 // so the unified `STTProviding` interface works end-to-end without
 // any download or model management — Apple ships the engine for free.

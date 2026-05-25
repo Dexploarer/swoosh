@@ -25,11 +25,8 @@ let package = Package(
         .library(name: "SwooshMLX",       targets: ["SwooshMLX"]),
         .library(name: "SwooshFoundation",targets: ["SwooshFoundation"]),
         .library(name: "SwooshSecrets",   targets: ["SwooshSecrets"]),
-        .library(name: "SwooshUI",        targets: ["SwooshUI"]),
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
-        .library(name: "SwooshWidgets",  targets: ["SwooshWidgets"]),
         .library(name: "SwooshActantBackend", targets: ["SwooshActantBackend"]),
-        .library(name: "SwooshGenerativeUI", targets: ["SwooshGenerativeUI"]),
         .library(name: "SwooshClient",       targets: ["SwooshClient"]),
         .library(name: "SwooshWallet",       targets: ["SwooshWallet"]),
         .library(name: "SwooshDaemonSupport", targets: ["SwooshDaemonSupport"]),
@@ -487,15 +484,6 @@ let package = Package(
             dependencies: ["SwooshSecrets", "SwooshTools"]
         ),
 
-        .target(
-            name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
-        ),
-        .target(
-            name: "SwooshWidgets",
-            dependencies: ["SwooshSecrets", "SwooshProviders"]
-        ),
-
         // ══════════════════════════════════════════════════════════════
         // MARK: - ActantDB backend adapter
         // ══════════════════════════════════════════════════════════════
@@ -508,14 +496,6 @@ let package = Package(
                 .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ActantAgent", package: "swift"),
             ]
-        ),
-
-        // ══════════════════════════════════════════════════════════════
-        // MARK: - Generative UI (agent-emitted, native renderer)
-        // ══════════════════════════════════════════════════════════════
-        .target(
-            name: "SwooshGenerativeUI",
-            dependencies: []
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -586,14 +566,6 @@ let package = Package(
             dependencies: ["SwooshProviders", "SwooshProviderBridge", "SwooshSecrets", "SwooshTools", "SwooshCore", "SwooshModels"]
         ),
         .testTarget(
-            name: "SwooshUITests",
-            dependencies: ["SwooshUI"]
-        ),
-        .testTarget(
-            name: "SwooshWidgetsTests",
-            dependencies: ["SwooshWidgets"]
-        ),
-        .testTarget(
             name: "SwooshActantBackendTests",
             dependencies: [
                 "SwooshActantBackend",
@@ -602,10 +574,6 @@ let package = Package(
                 "SwooshApprovals",
                 .product(name: "ActantDB", package: "swift"),
             ]
-        ),
-        .testTarget(
-            name: "SwooshGenerativeUITests",
-            dependencies: ["SwooshGenerativeUI"]
         ),
         .testTarget(
             name: "SwooshAPITests",

@@ -1,7 +1,7 @@
 // SwooshCLI/DaemonPairCommand.swift — iOS pairing QR code subcommand — 0.4A
 //
 // `swoosh daemon pair` mints (or reads) the daemon bearer token, picks a
-// reachable host URL, and prints the JSON-payload QR code the iOS app
+// reachable host URL, and prints the deep-link QR code the iOS app
 // scans on first launch. QR rendering and local-IP discovery live in
 // CLIPairing.swift; bearer-token generation lives in CLIBearerToken.swift.
 

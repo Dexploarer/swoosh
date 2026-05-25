@@ -60,6 +60,10 @@ final class LocalVoiceCatalogTests: XCTestCase {
         XCTAssertEqual(LocalVoiceCatalog.defaultModel.id, k.id)
     }
 
+    func test_catalog_defaultKokoroVoiceIsMale() {
+        XCTAssertEqual(LocalVoiceCatalog.defaultKokoroVoiceID, "af_heart")
+    }
+
     func test_catalog_omniVoiceEntry() {
         // OmniVoice is the multilingual / cloning play.
         let o = LocalVoiceCatalog.omniVoice

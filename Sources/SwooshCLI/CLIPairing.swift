@@ -118,14 +118,17 @@ enum CLIPairing {
         #endif
     }
 
-    /// JSON blob that the iOS app's QR scanner expects. Exposed so tests
-    /// can verify the wire shape without re-rendering the QR pixels.
+    /// Deep link that the iOS app's `onOpenURL` pairing handler expects.
+    /// Exposed so tests can verify the wire shape without re-rendering the QR pixels.
     static func pairingPayload(host: String, token: String) -> String? {
-        let payload: [String: String] = ["host": host, "token": token]
-        guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]) else {
-            return nil
-        }
-        return String(data: data, encoding: .utf8)
+        var components = URLComponents()
+        components.scheme = "swoosh"
+        components.host = "pair"
+        components.queryItems = [
+            URLQueryItem(name: "host", value: host),
+            URLQueryItem(name: "token", value: token)
+        ]
+        return components.url?.absoluteString
     }
 
     /// Interface name match for `localIPAddress`. macOS uses `en*`,

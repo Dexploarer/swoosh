@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Swoosh</string>
+	<string>Detour</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -17,38 +17,50 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>ai.swoosh.detour.pairing</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>swoosh</string>
+				<string>detour</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_swoosh._tcp</string>
 	</array>
-	<key>NSCameraUsageDescription</key>
-	<string>Detour lets you attach a photo from the camera to your next message. Images stay on your device until you send.</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>Swoosh uses Face ID to unlock the wallet keys stored on this device. Your private keys never leave the iPhone.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Swoosh connects to the swooshd daemon running on your Mac so the same agent can answer from your phone.</string>
+	<string>Connect to your Mac.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Swoosh listens to your voice and turns it into chat input. Audio is processed on-device.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Detour lets you attach a photo from your library to your next message. Selection happens through the system picker.</string>
+	<string>Use your voice during setup.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Swoosh transcribes your spoken commands into text so you can talk to the agent hands-free.</string>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-	</dict>
+	<string>Turn speech into setup text.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>ai.swoosh.detour.onboarding</string>
+	</array>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>

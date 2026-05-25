@@ -1,8 +1,7 @@
 // SwooshClient/SwooshAPIClient+Doctor.swift — 0.4A Doctor endpoint
 //
 // Wire method for `GET /api/doctor` — runs the daemon-side
-// `DoctorRunner` and returns a `DoctorReportResponse`. Used by the iOS
-// Diagnostics surface (Apps/SwooshiOS/DoctorScreen.swift).
+// `DoctorRunner` and returns a `DoctorReportResponse`.
 
 import Foundation
 

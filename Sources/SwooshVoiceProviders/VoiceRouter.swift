@@ -107,9 +107,8 @@ public final class VoiceRouter {
     }
 
     /// Build the active TTS provider conforming to `TTSProviding`.
-    /// Returns nil for `.system` (which lives in SwooshUI's `TTSEngine`)
-    /// and for the on-device choices (which need the SwooshLocalVoice
-    /// module — wired by `activeTTSProvider()` in module clients).
+    /// Returns nil for `.system` and for the on-device choices (which need
+    /// the SwooshLocalVoice module — wired by module clients).
     public func activeCloudTTSProvider() throws -> (any TTSProviding)? {
         switch currentTTSChoice {
         case .system, .kokoroLocal, .styleTTS2Local, .pocketTTSLocal, .omniVoiceLocal:
@@ -157,10 +156,8 @@ public final class VoiceRouter {
         return WhisperModel(rawValue: raw) ?? .smallMultilingual
     }
 
-    /// Build the active **file-transcription** STT provider. For live-mic
-    /// dictation, keep using `SwooshUI.SpeechCapture` directly — its
-    /// AVAudioEngine integration is purpose-built for low-latency mic
-    /// capture and isn't replaceable by a file-based provider.
+    /// Build the active **file-transcription** STT provider. Live-mic
+    /// dictation should be handled by a UI-level AVAudioEngine pipeline.
     public func activeSTTProvider() -> any STTProviding {
         switch currentSTTChoice {
         case .system:

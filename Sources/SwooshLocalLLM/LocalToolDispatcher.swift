@@ -47,8 +47,8 @@ public enum LocalToolDispatcher {
     public typealias LocalAudit = @Sendable (_ name: String, _ jsonArgs: String) -> Void
 
     /// Lock-protected slots for the dispatch hook and the audit hook. Both
-    /// are written once at app startup (e.g. from `SwooshiOSApp.init`) and
-    /// then read by every tool call, so `OSAllocatedUnfairLock` is the
+    /// are written once by the client host and then read by every tool call,
+    /// so `OSAllocatedUnfairLock` is the
     /// cheapest correctness-preserving primitive — it replaces the previous
     /// `nonisolated(unsafe) static var` slots, which had no synchronization
     /// and tripped Swift 6 strict-concurrency checks.

@@ -1,13 +1,12 @@
 // SwooshVoiceProviders/TTSProviding.swift — 0.9R Cloud TTS provider protocol
 //
-// Common interface for every TTS engine — system (AVSpeechSynthesizer
-// in SwooshUI), cloud (ElevenLabs, OpenAI, Cartesia), local generators
+// Common interface for every TTS engine — system AVSpeechSynthesizer,
+// cloud (ElevenLabs, OpenAI, Cartesia), local generators
 // (future Orpheus/Kokoro). Each provider returns audio bytes for a
 // given text + voice; the caller plays them through AVAudioPlayer.
 //
 // API key story: each cloud provider reads its key from `SecretStoring`
-// (Keychain). The picker UI in SwooshUI prompts the user to enter the
-// key on first selection.
+// (Keychain). UI clients prompt the user to enter the key on first selection.
 
 import Foundation
 

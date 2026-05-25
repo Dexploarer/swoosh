@@ -2,7 +2,7 @@
 //
 // Hummingbird router with three layers:
 //
-//   1. Public routes  — `/health`, `/api/version`. No auth, safe to expose.
+//   1. Public routes  — `/health`, `/pair`, `/api/version`. No auth, safe to expose.
 //   2. Auth-gated     — every other `/api/*` route. Requires a bearer token.
 //                       When the daemon was started without one, the entire
 //                       `/api/*` tree is shadow-mounted under DenyAllMiddleware
@@ -101,6 +101,13 @@ public struct SwooshAPIServer: Sendable {
 
         // ── Public routes ────────────────────────────────────────────────
         router.get("/health") { _, _ in "ok" }
+        router.get("/pair") { request, context -> EditedResponse<String> in
+            let query = try request.uri.decodeQuery(as: PairingPageQuery.self, context: context)
+            return EditedResponse(
+                headers: [.contentType: "text/html; charset=utf-8"],
+                response: pairingInstallPage(query: query)
+            )
+        }
         router.get("/api/version") { _, _ -> APIVersion in
             APIVersion(name: "Swoosh", version: buildVersion)
         }
@@ -669,5 +676,4 @@ public struct SwooshAPIServer: Sendable {
         )
     }
 }
-
 

@@ -1,24 +1,21 @@
-// Apps/SwooshiOS/SwooshiOSApp.swift — Swoosh iOS app entry point
-//
-// The iOS app is a thin client to swooshd running on the user's Mac. It
-// never embeds the kernel or any subprocess — every chat turn round-trips
-// through `POST /api/agent/chat`. Pairing is a one-time step: copy the
-// bearer token printed in `swooshd`'s startup log into Settings → Pair.
+// SwooshiOSApp.swift — rebuilt Detour iPhone and iPad entry point (0.5A)
 
 import SwiftUI
-import SwooshClient
 
 @main
 struct SwooshiOSApp: App {
-    @State private var session = ClientSession()
+    @StateObject private var store = DetouriOSOnboardingStore()
+    @StateObject private var speech = DetouriOSSpeechService()
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(session)
-                .task { await session.refresh() }
+            DetouriOSOnboardingView(store: store, speech: speech)
+                .preferredColorScheme(.dark)
                 .onOpenURL { url in
-                    Task { await session.pair(url: url) }
+                    store.handlePairingURL(url)
+                    Task {
+                        await store.refreshPairedMacReachability()
+                    }
                 }
         }
     }
