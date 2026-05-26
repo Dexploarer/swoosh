@@ -15,6 +15,7 @@ Backend/SwooshDB/.build
 
 # Claude Code runtime artifacts
 .claude/scheduled_tasks.lock
+.claude/worktrees/
 
 # Local design references — not part of the repo
 /image.png
