@@ -14,7 +14,7 @@ struct DetourMacApp: App {
             DetourOnboardingNativeView(
                 store: store,
                 speech: speech,
-                onExit: { DetourWindowActions.minimizeVisibleWindows() }
+                onExit: { DetourWindowActions.minimizeMainWindow() }
             )
             .background(DetourWindowConfigurator())
             .ignoresSafeArea()
@@ -38,17 +38,36 @@ struct DetourMacApp: App {
 }
 
 @MainActor
-private enum DetourWindowActions {
-    static func minimizeVisibleWindows() {
-        let targetWindows = [
-            NSApp.keyWindow,
-            NSApp.mainWindow,
-            NSApp.windows.first { $0.isVisible && !$0.isMiniaturized }
-        ].compactMap { $0 }
+enum DetourWindowActions {
+    static let mainWindowIdentifier = NSUserInterfaceItemIdentifier("ai.swoosh.detour.main")
 
-        if let window = targetWindows.first {
-            window.miniaturize(nil)
+    static func showMainWindow() {
+        guard let window = mainWindow() else { return }
+
+        NSApp.setActivationPolicy(.regular)
+        NSApp.presentationOptions = [.autoHideMenuBar]
+        NSApp.activate(ignoringOtherApps: true)
+
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        } else {
+            window.makeKeyAndOrderFront(nil)
         }
+    }
+
+    static func minimizeMainWindow() {
+        guard let window = mainWindow(), window.isVisible, !window.isMiniaturized else { return }
+        window.miniaturize(nil)
+    }
+
+    static func markAsMainWindow(_ window: NSWindow) {
+        window.identifier = mainWindowIdentifier
+    }
+
+    private static func mainWindow() -> NSWindow? {
+        NSApp.windows.first { $0.identifier == mainWindowIdentifier }
+            ?? NSApp.mainWindow
+            ?? NSApp.keyWindow
     }
 }
 
@@ -56,29 +75,11 @@ private enum DetourWindowActions {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         applyDockIcon()
-        bringIntroForward()
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            self.bringIntroForward()
-        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        bringIntroForward()
-        return true
-    }
-
-    private func bringIntroForward() {
-        NSApp.setActivationPolicy(.regular)
-        NSApp.presentationOptions = [.autoHideMenuBar]
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.windows.forEach { window in
-            if window.isMiniaturized {
-                window.deminiaturize(nil)
-            }
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-        }
+        DetourWindowActions.showMainWindow()
+        return false
     }
 
     private func applyDockIcon() {

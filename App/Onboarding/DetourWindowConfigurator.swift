@@ -4,23 +4,28 @@ import AppKit
 import SwiftUI
 
 struct DetourWindowConfigurator: NSViewRepresentable {
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
-            configure(view.window)
+            configure(view.window, coordinator: context.coordinator)
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
         DispatchQueue.main.async {
-            configure(nsView.window)
+            configure(nsView.window, coordinator: context.coordinator)
         }
     }
 
-    private func configure(_ window: NSWindow?) {
+    private func configure(_ window: NSWindow?, coordinator: Coordinator) {
         guard let window else { return }
 
+        DetourWindowActions.markAsMainWindow(window)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.titleVisibility = .hidden
@@ -39,7 +44,12 @@ struct DetourWindowConfigurator: NSViewRepresentable {
             window.setFrame(screen.frame, display: true)
         }
 
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        guard !coordinator.didInitialShow else { return }
+        coordinator.didInitialShow = true
+        DetourWindowActions.showMainWindow()
+    }
+
+    final class Coordinator {
+        var didInitialShow = false
     }
 }

@@ -59,13 +59,13 @@ struct DetourTrayMenuView: View {
     private var actions: some View {
         HStack(spacing: 10) {
             Button("Open Detour") {
-                DetourTrayActions.openMainWindow()
+                DetourWindowActions.showMainWindow()
             }
             .buttonStyle(.borderedProminent)
 
             Button("Review setup") {
                 store.reopenPersonalizationSetup()
-                DetourTrayActions.openMainWindow()
+                DetourWindowActions.showMainWindow()
             }
 
             Spacer()
@@ -86,21 +86,6 @@ struct DetourTrayMenuView: View {
             "Scanning this Mac."
         default:
             "Onboarding is in progress."
-        }
-    }
-}
-
-@MainActor
-enum DetourTrayActions {
-    static func openMainWindow() {
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows where !window.className.contains("StatusBar") {
-            if window.isMiniaturized {
-                window.deminiaturize(nil)
-            }
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
         }
     }
 }
