@@ -14,7 +14,8 @@ import Security
 extension DetourPersonalizationRunner {
     func applyCredentialApprovals(
         result: DetourPersonalizationScanResult,
-        approvedCandidateIDs: Set<String>
+        approvedCandidateIDs: Set<String>,
+        setupCandidateScopes: [String: DetourDelegationRole]
     ) throws -> DetourCredentialApplyResult {
         let approved = result.setupCandidates.filter { approvedCandidateIDs.contains($0.id) }
         let providerIDs = Set(approved.compactMap(\.credentialProviderID))
@@ -38,12 +39,17 @@ extension DetourPersonalizationRunner {
                 storeValues: true
             )
         }
+        let xExport = exportApprovedXBrowserSessionCredentials(
+            candidates: result.setupCandidates,
+            approvedCandidateIDs: approvedCandidateIDs,
+            setupCandidateScopes: setupCandidateScopes
+        )
         return DetourCredentialApplyResult(
             requestedProviderIDs: providerIDs,
             verifiedProviderIDs: verifiedProviders,
             requestedKeys: keys,
-            importedLegacyKeys: Set(legacyResult.importedKeys),
-            availableLegacyKeys: Set(legacyResult.availableKeys)
+            importedLegacyKeys: Set(legacyResult.importedKeys).union(xExport.importedKeys),
+            availableLegacyKeys: Set(legacyResult.availableKeys).union(xExport.importedKeys)
         )
     }
 

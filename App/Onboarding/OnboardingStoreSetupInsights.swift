@@ -48,7 +48,7 @@ extension OnboardingStore {
             setupCandidateScopes.removeValue(forKey: rawID)
         }
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func setupInsightConfiguredCredentialKeys(publicID: String) -> [String] {
@@ -96,10 +96,11 @@ extension OnboardingStore {
     func prepareSetupInsightDoctor(publicID: String) {
         guard setupInsightReportItemID(publicID: publicID) != nil else { return }
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func reopenPersonalizationSetup() {
+        guard step != .complete else { return }
         step = personalizationResult == nil ? .askingPersonalizationScan : .reviewingPersonalizationScan
         saveProfile(onboardingCompleted: false)
     }

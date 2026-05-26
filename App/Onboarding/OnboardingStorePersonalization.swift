@@ -18,21 +18,21 @@ extension OnboardingStore {
                 let scope = setupCandidateScopes[candidate.id] ?? candidate.scope
                 let scopeText = scope.map(reviewScopeDescription) ?? "saved without a perspective"
                 let selectedText = deniedSetupCandidateIDs.contains(candidate.id) ? "removed" : "selected"
-                return "\(candidate.title) - \(scopeText) - \(selectedText)"
+                return DetourSetupInsightRedaction.display("\(candidate.title) - \(scopeText) - \(selectedText)")
             }
             .joined(separator: "\n")
-        let signals = result.signals.joined(separator: "\n")
-        let access = result.accessItems.joined(separator: "\n")
-        let accounts = result.accounts.joined(separator: "\n")
-        let plugins = result.plugins.joined(separator: "\n")
-        let goals = result.goals.joined(separator: "\n")
+        let signals = result.signals.map(DetourSetupInsightRedaction.display).joined(separator: "\n")
+        let access = result.accessItems.map(DetourSetupInsightRedaction.display).joined(separator: "\n")
+        let accounts = result.accounts.map(DetourSetupInsightRedaction.display).joined(separator: "\n")
+        let plugins = result.plugins.map(DetourSetupInsightRedaction.display).joined(separator: "\n")
+        let goals = result.goals.map(DetourSetupInsightRedaction.display).joined(separator: "\n")
         let relationships = result.relationshipCandidates
             .prefix(12)
             .map { candidate in
                 if let count = candidate.messageCount {
-                    return "\(candidate.displayName) - \(count) messages"
+                    return DetourSetupInsightRedaction.display("\(candidate.displayName) - \(count) messages")
                 }
-                return "\(candidate.displayName) - \(candidate.source)"
+                return DetourSetupInsightRedaction.display("\(candidate.displayName) - \(candidate.source)")
             }
             .joined(separator: "\n")
         return [
@@ -59,10 +59,10 @@ extension OnboardingStore {
         switch role {
         case .user:
             let name = userName.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "use as \(name.isEmpty ? "the user" : name)"
+            return "use as \(name.isEmpty ? "the user" : DetourSetupInsightRedaction.display(name))"
         case .agent:
             let name = agentName.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "use as \(name.isEmpty ? Self.defaultAgentName : name)"
+            return "use as \(name.isEmpty ? Self.defaultAgentName : DetourSetupInsightRedaction.display(name))"
         }
     }
 
@@ -77,7 +77,39 @@ extension OnboardingStore {
 
     func setCredentialInheritanceConsent(_ allowed: Bool) {
         credentialInheritanceConsent = allowed ? .fullPersonalization() : DetourCredentialInheritanceConsent()
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
+    }
+
+    func saveHomeConfiguration(
+        userName newUserName: String,
+        agentName newAgentName: String,
+        wakeWord newWakeWord: String,
+        voiceRecognitionEnabled: Bool,
+        credentialConsent consent: DetourCredentialInheritanceConsent
+    ) {
+        let nextUserName = trimmed(newUserName)
+        let nextAgentName = trimmed(newAgentName)
+        let nextWakeWord = trimmed(newWakeWord)
+        if !nextUserName.isEmpty {
+            userName = nextUserName
+            userNameDraft = nextUserName
+        }
+        if !nextAgentName.isEmpty {
+            agentName = nextAgentName
+            agentNameDraft = nextAgentName
+        }
+        voiceRecognition.wakeWord = nextWakeWord.isEmpty ? defaultWakeWord : nextWakeWord
+        voiceRecognition.enabled = voiceRecognitionEnabled
+        wakeWordDraft = voiceRecognition.wakeWord
+        credentialInheritanceConsent = consent
+        saveProfile(onboardingCompleted: step == .complete)
+    }
+
+    func saveHomeModelSelection(providerID: String?, modelID: String?) {
+        config.preferredProviderID = providerID
+        config.preferredModelID = modelID
+        config.updatedAt = .now
+        saveConfig()
     }
 
     func startPersonalizationScan() {
@@ -89,6 +121,38 @@ extension OnboardingStore {
         setupApplicationReport = nil
         step = .runningPersonalizationScan
         saveProfile(onboardingCompleted: false)
+    }
+
+    func startInAppConfigurationScan() {
+        personalizationProgress = .idle
+        personalizationResult = nil
+        approvedSetupCandidateIDs = []
+        deniedSetupCandidateIDs = []
+        setupCandidateScopes = [:]
+        setupApplicationReport = nil
+        saveProfile(onboardingCompleted: step == .complete)
+    }
+
+    func runInAppConfigurationScan(
+        onProgress: @escaping @MainActor (DetourPersonalizationProgress) -> Void
+    ) async {
+        let scannedResult = await setupGraph.scan(
+            agentName: agentName,
+            userName: userName,
+            credentialConsent: credentialInheritanceConsent
+        ) { [weak self] progress in
+            self?.personalizationProgress = progress
+            onProgress(progress)
+        }
+        let result = stateStore.sanitizedPersonalizationReport(scannedResult)
+        personalizationResult = result
+        approvedSetupCandidateIDs = Set(result.setupCandidates.filter(\.selected).map(\.id))
+        deniedSetupCandidateIDs = Set(result.setupCandidates.filter { !$0.selected }.map(\.id))
+        setupCandidateScopes = defaultSetupCandidateScopes(result.setupCandidates)
+        setupApplicationReport = nil
+        delegationProfiles = result.delegationProfiles
+        personalizationProgress = .complete
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func runPersonalizationScan(
@@ -111,7 +175,7 @@ extension OnboardingStore {
         delegationProfiles = result.delegationProfiles
         personalizationProgress = .complete
         step = .reviewingPersonalizationScan
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func selectAllPersonalizationCandidates() {
@@ -119,7 +183,7 @@ extension OnboardingStore {
         approvedSetupCandidateIDs = Set(result.setupCandidates.map(\.id))
         deniedSetupCandidateIDs = []
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func clearPersonalizationCandidates() {
@@ -127,7 +191,7 @@ extension OnboardingStore {
         approvedSetupCandidateIDs = []
         deniedSetupCandidateIDs = Set(result.setupCandidates.map(\.id))
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func excludePersonalizationCandidates(matching terms: [String]) {
@@ -151,7 +215,7 @@ extension OnboardingStore {
         approvedSetupCandidateIDs.subtract(matches)
         deniedSetupCandidateIDs.formUnion(matches)
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func selectPersonalizationCandidates(matching terms: [String]) {
@@ -175,7 +239,7 @@ extension OnboardingStore {
         approvedSetupCandidateIDs.formUnion(matches)
         deniedSetupCandidateIDs.subtract(matches)
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func setPersonalizationCandidateScope(matching terms: [String], role: DetourDelegationRole) {
@@ -201,7 +265,7 @@ extension OnboardingStore {
             deniedSetupCandidateIDs.remove(id)
         }
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func setPersonalizationCandidateApproval(id: String, approved: Bool) {
@@ -214,7 +278,7 @@ extension OnboardingStore {
             deniedSetupCandidateIDs.insert(id)
         }
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func setPersonalizationCandidateScope(id: String, role: DetourDelegationRole) {
@@ -223,7 +287,7 @@ extension OnboardingStore {
         approvedSetupCandidateIDs.insert(id)
         deniedSetupCandidateIDs.remove(id)
         setupApplicationReport = nil
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
     }
 
     func personalizationCandidateScope(_ candidate: DetourSetupCandidate) -> DetourDelegationRole? {
@@ -280,7 +344,7 @@ extension OnboardingStore {
         )
         setupApplicationReport = initialReport
         onProgress(initialReport)
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
         let report = await setupGraph.apply(
             result: result,
             approvedCandidateIDs: approvedSetupCandidateIDs,
@@ -290,11 +354,12 @@ extension OnboardingStore {
         ) { [weak self] report in
             self?.setupApplicationReport = report
             onProgress(report)
-            self?.saveProfile(onboardingCompleted: false)
+            let completed = self?.step == .complete
+            self?.saveProfile(onboardingCompleted: completed)
         }
         setupApplicationReport = report
         isApplyingSetup = false
-        saveProfile(onboardingCompleted: false)
+        saveProfile(onboardingCompleted: step == .complete)
         onProgress(report)
         return false
     }

@@ -17,6 +17,7 @@ enum DetourSetupInsightRedaction {
                 options: .regularExpression
             )
         }
+        output = maskEmails(in: output)
         output = collapsed(output)
         guard !output.isEmpty else { return "" }
         return wholeValueIsSecret(output) ? "Saved credential" : output
@@ -24,7 +25,7 @@ enum DetourSetupInsightRedaction {
 
     static func displayOptional(_ value: String?) -> String? {
         guard let value else { return nil }
-        let display = identifierDisplay(value)
+        let display = display(value)
         return display.isEmpty ? nil : display
     }
 
@@ -135,7 +136,7 @@ enum DetourSetupInsightRedaction {
         let displayed = display(value)
         return displayed
             .replacingOccurrences(
-                of: "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
+                of: "[A-Z0-9._%+*\\-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
                 with: "email",
                 options: [.regularExpression, .caseInsensitive]
             )
@@ -154,4 +155,34 @@ enum DetourSetupInsightRedaction {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private static func maskEmails(in value: String) -> String {
+        let pattern = "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return value
+        }
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        let matches = regex.matches(in: value, options: [], range: range)
+        guard !matches.isEmpty else { return value }
+        var pieces: [String] = []
+        var cursor = value.startIndex
+        for match in matches {
+            guard let matchRange = Range(match.range, in: value) else { continue }
+            pieces.append(String(value[cursor..<matchRange.lowerBound]))
+            pieces.append(maskedEmail(String(value[matchRange])))
+            cursor = matchRange.upperBound
+        }
+        pieces.append(String(value[cursor..<value.endIndex]))
+        return pieces.joined()
+    }
+
+    private static func maskedEmail(_ email: String) -> String {
+        guard let at = email.firstIndex(of: "@") else { return email }
+        let local = String(email[..<at])
+        let domain = String(email[at...])
+        guard !local.isEmpty else { return "***\(domain)" }
+        let visibleCount = local.count >= 4 ? min(3, local.count) : 1
+        let visible = String(local.prefix(visibleCount))
+        let hiddenCount = max(local.count - visibleCount, 3)
+        return "\(visible)\(String(repeating: "*", count: hiddenCount))\(domain)"
+    }
 }

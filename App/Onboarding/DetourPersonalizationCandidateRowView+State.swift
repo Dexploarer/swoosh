@@ -85,12 +85,12 @@ extension DetourPersonalizationCandidateRowView {
 
     var userDisplayName: String {
         let trimmed = userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "you" : trimmed
+        return trimmed.isEmpty ? "you" : DetourSetupInsightRedaction.display(trimmed)
     }
 
     var agentDisplayName: String {
         let trimmed = agentName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Detour" : trimmed
+        return trimmed.isEmpty ? "Detour" : DetourSetupInsightRedaction.display(trimmed)
     }
 
     func rowTitle(_ candidate: DetourSetupCandidate) -> String {
@@ -101,22 +101,23 @@ extension DetourPersonalizationCandidateRowView {
            let provider = providerName(candidate) {
             return "\(provider) key"
         }
-        return candidate.title
+        return DetourSetupInsightRedaction.display(candidate.title)
     }
 
     func rowDetail(_ candidate: DetourSetupCandidate) -> String {
-        [
+        let detail = [
             plainDescription(candidate),
             ownerDescription,
             duplicateDescription(candidate),
         ].compactMap(\.self).joined(separator: " ")
+        return DetourSetupInsightRedaction.display(detail)
     }
 
     func plainDescription(_ candidate: DetourSetupCandidate) -> String {
         if let handle = xHandle(candidate) {
             let browser = browserName(candidate) ?? "the browser"
             if let owner = xAccountOwner(candidate) {
-                return "Signed-in X account @\(handle) found in \(browser) for \(owner)."
+                return "Signed-in X account @\(handle) found in \(browser) for \(DetourSetupInsightRedaction.display(owner))."
             }
             return "Signed-in X account @\(handle) found in \(browser)."
         }

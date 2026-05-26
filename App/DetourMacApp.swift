@@ -11,12 +11,19 @@ struct DetourMacApp: App {
 
     var body: some Scene {
         WindowGroup {
-            DetourOnboardingNativeView(
-                store: store,
-                speech: speech,
-                onExit: { DetourWindowActions.minimizeMainWindow() }
-            )
-            .background(DetourWindowConfigurator())
+            Group {
+                if store.step == .complete {
+                    DetourHomeView(store: store)
+                } else {
+                    DetourOnboardingNativeView(
+                        store: store,
+                        speech: speech,
+                        onExit: { DetourWindowActions.minimizeMainWindow() }
+                    )
+                    .ignoresSafeArea()
+                }
+            }
+            .background(DetourWindowConfigurator(style: store.step == .complete ? .home : .onboarding))
             .ignoresSafeArea()
         }
         .windowStyle(.hiddenTitleBar)
@@ -60,6 +67,14 @@ enum DetourWindowActions {
         window.miniaturize(nil)
     }
 
+    static func expandForCanvas() {
+        resizeMainWindow(to: NSSize(width: 1460, height: 900), minimum: NSSize(width: 1180, height: 720))
+    }
+
+    static func fitHomeWindow() {
+        resizeMainWindow(to: NSSize(width: 1120, height: 760), minimum: NSSize(width: 980, height: 660))
+    }
+
     static func markAsMainWindow(_ window: NSWindow) {
         window.identifier = mainWindowIdentifier
     }
@@ -68,6 +83,22 @@ enum DetourWindowActions {
         NSApp.windows.first { $0.identifier == mainWindowIdentifier }
             ?? NSApp.mainWindow
             ?? NSApp.keyWindow
+    }
+
+    private static func resizeMainWindow(to size: NSSize, minimum: NSSize) {
+        guard let window = mainWindow() else { return }
+        let center = CGPoint(x: window.frame.midX, y: window.frame.midY)
+        window.minSize = minimum
+        window.setContentSize(size)
+        var frame = window.frame
+        frame.origin.x = center.x - frame.width / 2
+        frame.origin.y = center.y - frame.height / 2
+        if let screenFrame = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
+            frame.origin.x = min(max(frame.minX, screenFrame.minX), max(screenFrame.maxX - frame.width, screenFrame.minX))
+            frame.origin.y = min(max(frame.minY, screenFrame.minY), max(screenFrame.maxY - frame.height, screenFrame.minY))
+        }
+        window.setFrame(frame, display: true, animate: true)
+        showMainWindow()
     }
 }
 

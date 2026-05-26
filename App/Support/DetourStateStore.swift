@@ -203,6 +203,8 @@ struct DetourConfig: Codable, Equatable {
 
     var schemaVersion: Int
     var speech: Speech
+    var preferredProviderID: String?
+    var preferredModelID: String?
     var updatedAt: Date
 
     static func defaultConfig() -> DetourConfig {
@@ -213,6 +215,8 @@ struct DetourConfig: Codable, Equatable {
                 rateMultiplier: 0.92,
                 pitchMultiplier: 1.02
             ),
+            preferredProviderID: nil,
+            preferredModelID: nil,
             updatedAt: .now
         )
     }

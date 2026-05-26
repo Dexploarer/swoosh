@@ -14,6 +14,8 @@ extension DetourPersonalizationRunner {
     ) -> [DetourSetupCandidate] {
         var candidates: [DetourSetupCandidate] = []
         addConnectorCandidates(installedApps: installedApps, auth: auth, messages: messages, to: &candidates)
+        addCodexConnectorCandidates(to: &candidates)
+        addOpenHumanIntegrationCandidates(installedApps: installedApps, auth: auth, to: &candidates)
         addAddonCandidates(auth: auth, to: &candidates)
         addMCPServerCandidates(installedApps: installedApps, auth: auth, to: &candidates)
         addCredentialCandidates(auth: auth, to: &candidates)

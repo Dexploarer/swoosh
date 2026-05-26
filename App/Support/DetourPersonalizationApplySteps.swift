@@ -72,7 +72,8 @@ struct DetourCredentialApplyStep: DetourPersonalizationApplyStep {
         do {
             let result = try context.services.applyCredentialApprovals(
                 result: context.result,
-                approvedCandidateIDs: context.approvedCandidateIDs
+                approvedCandidateIDs: context.approvedCandidateIDs,
+                setupCandidateScopes: context.setupCandidateScopes
             )
             context.publish(context.services.credentialApplicationItem(
                 candidates,

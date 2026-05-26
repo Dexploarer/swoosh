@@ -115,8 +115,8 @@ public actor SwooshAPIClient {
         return try await execute(request, as: ProviderMutationResponse.self)
     }
 
-    public func selectProvider(providerID: String) async throws -> ProviderMutationResponse {
-        let body = try encoder.encode(ProviderSelectionRequest(providerID: providerID))
+    public func selectProvider(providerID: String, modelID: String? = nil) async throws -> ProviderMutationResponse {
+        let body = try encoder.encode(ProviderSelectionRequest(providerID: providerID, modelID: modelID))
         let request = try makeRequest(method: "POST", path: "api/providers/select", body: body)
         return try await execute(request, as: ProviderMutationResponse.self)
     }

@@ -51,11 +51,12 @@ extension SwooshDaemon {
     ) -> SwooshAPIRuntimeSources {
         return SwooshAPIRuntimeSources(
                 providers: {
-                    let preferredProviderID = (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+                    let runtimeConfig = try? configStore.load(SwooshRuntimeConfig.self)
                     let summary = await SwooshDaemon.makeProviderSummaries(
                         secrets: secrets,
                         activeProvider: providerInfo,
-                        preferredProviderID: preferredProviderID
+                        preferredProviderID: runtimeConfig?.preferredProviderID,
+                        preferredModelID: SwooshDaemon.selectedRuntimeModelID(runtimeConfig?.modelPath)
                     )
                     return ProvidersResponse(
                         providers: summary.providers,
@@ -102,11 +103,12 @@ extension SwooshDaemon {
                     SwooshDaemon.mediaResponse(root: swooshDir.appendingPathComponent("artifacts", isDirectory: true))
                 },
                 readiness: {
-                    let preferredProviderID = (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+                    let runtimeConfig = try? configStore.load(SwooshRuntimeConfig.self)
                     let summary = await SwooshDaemon.makeProviderSummaries(
                         secrets: secrets,
                         activeProvider: providerInfo,
-                        preferredProviderID: preferredProviderID
+                        preferredProviderID: runtimeConfig?.preferredProviderID,
+                        preferredModelID: SwooshDaemon.selectedRuntimeModelID(runtimeConfig?.modelPath)
                     )
                     let skills = (try? await skillStore.listAll()) ?? []
                     let activeProvider = summary.providers.first { $0.id == summary.activeProviderID }

@@ -172,14 +172,15 @@ struct SwooshDaemon {
                 secrets: secrets,
                 preferredProviderID: runtimeConfig?.preferredProviderID
             )
+            let selectedModel = SwooshDaemon.selectedRuntimeModelID(runtimeConfig?.modelPath) ?? info.model
             modelProvider = ProviderBridgeAdapter(
                 router: router,
                 role: .primaryChat,
-                modelName: info.model,
+                modelName: selectedModel,
                 defaultProviderID: ProviderFactory.providerID(forDetectedProviderName: info.name)
             )
             hasMetaModel = true
-            log("Provider: \(info.name) (\(info.model))")
+            log("Provider: \(info.name) (\(selectedModel))")
         } else {
             modelProvider = LocalDiagnosticProvider()
             hasMetaModel = false
@@ -509,7 +510,8 @@ struct SwooshDaemon {
         let providerSummaries = await makeProviderSummaries(
             secrets: secrets,
             activeProvider: providerInfo,
-            preferredProviderID: runtimeConfig?.preferredProviderID
+            preferredProviderID: runtimeConfig?.preferredProviderID,
+            preferredModelID: SwooshDaemon.selectedRuntimeModelID(runtimeConfig?.modelPath)
         )
         let codexAuth = CodexAuthManager(workingDirectory: swooshDir)
         let skillSummaries = loadedSkills

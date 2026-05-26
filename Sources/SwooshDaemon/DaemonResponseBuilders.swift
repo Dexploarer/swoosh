@@ -33,7 +33,8 @@ extension SwooshDaemon {
     static func makeProviderSummaries(
         secrets: KeychainSecretStore,
         activeProvider: (name: String, model: String)?,
-        preferredProviderID: String? = nil
+        preferredProviderID: String? = nil,
+        preferredModelID: String? = nil
     ) async -> (providers: [ProviderSummary], activeProviderID: String?, preferredProviderID: String?) {
         let openAIConfigured = await secrets.exists(SecretRef("openai", "api_key"))
         let openRouterConfigured = await secrets.exists(SecretRef("openrouter", "api_key"))
@@ -44,7 +45,7 @@ extension SwooshDaemon {
 
         let env = ProcessInfo.processInfo.environment
         let mlxModelEnv = env["SWOOSH_MLX_MODEL"]?.trimmingCharacters(in: .whitespaces)
-        let mlxModel = (mlxModelEnv?.isEmpty == false) ? mlxModelEnv : ModelDefaults.localMLXModelID
+        let mlxModel = mlxModelEnv.flatMap { $0.isEmpty ? nil : $0 } ?? ModelDefaults.localMLXModelID
         let mlxConfigured = MLXInferenceEngine.isAppleSilicon
         let foundationEnabled = env["SWOOSH_FOUNDATION_MODEL"] == "1"
 
@@ -57,7 +58,7 @@ extension SwooshDaemon {
             ProviderSummary(
                 id: ModelDefaults.codexProviderID,
                 name: "ChatGPT (via Codex)",
-                model: codexConfigured ? ModelDefaults.codexModelID : nil,
+                model: codexConfigured ? modelForProvider(ModelDefaults.codexProviderID, preferredProviderID, preferredModelID, ModelDefaults.codexModelID) : nil,
                 configured: codexConfigured,
                 active: activeID == "codex",
                 status: codexConfigured ? "signed_in" : "needs_signin"
@@ -65,7 +66,7 @@ extension SwooshDaemon {
             ProviderSummary(
                 id: ModelDefaults.openAIProviderID,
                 name: "OpenAI API",
-                model: ModelDefaults.openAIModelID,
+                model: modelForProvider(ModelDefaults.openAIProviderID, preferredProviderID, preferredModelID, ModelDefaults.openAIModelID),
                 configured: openAIConfigured,
                 active: activeID == "openai",
                 status: openAIConfigured ? "configured" : "missing_key"
@@ -73,7 +74,7 @@ extension SwooshDaemon {
             ProviderSummary(
                 id: ModelDefaults.openRouterProviderID,
                 name: "OpenRouter",
-                model: ModelDefaults.openRouterModelID,
+                model: modelForProvider(ModelDefaults.openRouterProviderID, preferredProviderID, preferredModelID, ModelDefaults.openRouterModelID),
                 configured: openRouterConfigured,
                 active: activeID == "openrouter",
                 status: openRouterConfigured ? "configured" : "missing_key"
@@ -81,7 +82,7 @@ extension SwooshDaemon {
             ProviderSummary(
                 id: ModelDefaults.elizaCloudProviderID,
                 name: "Eliza Cloud",
-                model: ModelDefaults.elizaCloudModelID,
+                model: modelForProvider(ModelDefaults.elizaCloudProviderID, preferredProviderID, preferredModelID, ModelDefaults.elizaCloudModelID),
                 configured: elizaCloudConfigured,
                 active: activeID == ModelDefaults.elizaCloudProviderID,
                 status: elizaCloudConfigured ? "configured" : "missing_key"
@@ -92,7 +93,7 @@ extension SwooshDaemon {
             providers.append(ProviderSummary(
                 id: ModelDefaults.localFoundationProviderID,
                 name: "Apple Foundation Models",
-                model: ModelDefaults.localFoundationModelID,
+                model: modelForProvider(ModelDefaults.localFoundationProviderID, preferredProviderID, preferredModelID, ModelDefaults.localFoundationModelID),
                 configured: true,
                 active: activeID == ModelDefaults.localFoundationProviderID,
                 status: "running"
@@ -102,7 +103,7 @@ extension SwooshDaemon {
             providers.append(ProviderSummary(
                 id: ModelDefaults.localMLXProviderID,
                 name: "MLX Local",
-                model: mlxModel,
+                model: modelForProvider(ModelDefaults.localMLXProviderID, preferredProviderID, preferredModelID, mlxModel),
                 configured: true,
                 active: activeID == ModelDefaults.localMLXProviderID,
                 status: (activeID == ModelDefaults.localMLXProviderID) ? "running" : "available"
@@ -111,7 +112,7 @@ extension SwooshDaemon {
         providers.append(ProviderSummary(
             id: ModelDefaults.localOpenAIProviderID,
             name: localServers.first?.name ?? "Ollama / Local OpenAI",
-            model: localModel,
+            model: localModel.map { modelForProvider(ModelDefaults.localOpenAIProviderID, preferredProviderID, preferredModelID, $0) },
             configured: localModel != nil,
             active: activeID == ModelDefaults.localOpenAIProviderID,
             status: localModel == nil ? "not_running" : "running"
@@ -129,6 +130,21 @@ extension SwooshDaemon {
         }
 
         return (providers, activeID, preferredProviderID)
+    }
+
+    static func selectedRuntimeModelID(_ modelPath: String?) -> String? {
+        let trimmed = modelPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return nil }
+        return ["auto", "hybrid", "local", "cloud"].contains(trimmed.lowercased()) ? nil : trimmed
+    }
+
+    private static func modelForProvider(
+        _ providerID: String,
+        _ preferredProviderID: String?,
+        _ preferredModelID: String?,
+        _ fallback: String
+    ) -> String {
+        providerID == preferredProviderID ? (preferredModelID ?? fallback) : fallback
     }
 
     static func skillSummary(_ skill: SkillDocument) -> SkillSummary {
@@ -193,7 +209,7 @@ extension SwooshDaemon {
             throw APIError.badRequest("apiKey is required")
         }
         try await secrets.set(key, ref: SecretRef(request.providerID, "api_key"))
-        try savePreferredProvider(request.providerID, configStore: configStore)
+        try savePreferredProvider(request.providerID, modelID: nil, configStore: configStore)
         return try await providerMutationResponse(
             message: "Key stored in the Mac keychain. Restart swooshd to move chat onto this provider.",
             configStore: configStore,
@@ -209,6 +225,7 @@ extension SwooshDaemon {
         currentProvider: (name: String, model: String)?
     ) async throws -> ProviderMutationResponse {
         let known = [
+            ModelDefaults.routerProviderID,
             ModelDefaults.codexProviderID,
             ModelDefaults.openAIProviderID,
             ModelDefaults.openRouterProviderID,
@@ -220,7 +237,7 @@ extension SwooshDaemon {
         guard known.contains(request.providerID) else {
             throw APIError.badRequest("unknown provider: \(request.providerID)")
         }
-        try savePreferredProvider(request.providerID, configStore: configStore)
+        try savePreferredProvider(request.providerID, modelID: request.modelID, configStore: configStore)
         return try await providerMutationResponse(
             message: "Provider preference saved. Restart swooshd to apply it to new chat turns.",
             configStore: configStore,
@@ -706,16 +723,26 @@ extension SwooshDaemon {
         return MediaGalleryResponse(items: Array(items.prefix(200)), root: root.path)
     }
 
-    private static func savePreferredProvider(_ providerID: String, configStore: SwooshConfigStore) throws {
+    private static func savePreferredProvider(_ providerID: String, modelID: String?, configStore: SwooshConfigStore) throws {
         let current = try? configStore.load(SwooshRuntimeConfig.self)
+        let selectedProvider = providerID == ModelDefaults.routerProviderID ? nil : providerID
+        let selectedModel = modelID?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelPath: String
+        if let selectedModel, !selectedModel.isEmpty {
+            modelPath = selectedModel
+        } else if current?.preferredProviderID == selectedProvider {
+            modelPath = current?.modelPath ?? UnifiedModelCatalog.defaultModel(providerID: providerID) ?? "auto"
+        } else {
+            modelPath = UnifiedModelCatalog.defaultModel(providerID: providerID) ?? "auto"
+        }
         let updated = SwooshRuntimeConfig(
             version: current?.version ?? 1,
             setupMode: current?.setupMode ?? "phone",
             permissionProfile: current?.permissionProfile ?? PermissionProfilePreset.developer.rawValue,
-            modelPath: current?.modelPath ?? "auto",
+            modelPath: selectedProvider == nil ? "auto" : modelPath,
             daemonHost: current?.daemonHost ?? "0.0.0.0",
             daemonPort: current?.daemonPort ?? 8787,
-            preferredProviderID: providerID,
+            preferredProviderID: selectedProvider,
             localDiagnosticFallback: current?.localDiagnosticFallback ?? true,
             toolPolicy: current?.toolPolicy,
             safetyConfig: current?.safetyConfig,
@@ -730,11 +757,13 @@ extension SwooshDaemon {
         secrets: KeychainSecretStore,
         currentProvider: (name: String, model: String)?
     ) async throws -> ProviderMutationResponse {
-        let preferredProviderID = (try? configStore.load(SwooshRuntimeConfig.self).preferredProviderID)
+        let runtimeConfig = try? configStore.load(SwooshRuntimeConfig.self)
+        let preferredProviderID = runtimeConfig?.preferredProviderID
         let summary = await makeProviderSummaries(
             secrets: secrets,
             activeProvider: currentProvider,
-            preferredProviderID: preferredProviderID
+            preferredProviderID: preferredProviderID,
+            preferredModelID: selectedRuntimeModelID(runtimeConfig?.modelPath)
         )
         return ProviderMutationResponse(
             providers: summary.providers,

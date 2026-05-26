@@ -247,9 +247,9 @@ public struct ConnectorStatusTool: SwooshTool {
         case "AGENTMAIL_API_KEY":
             return ["agentmail.api_key", "legacy.AGENTMAIL_API_KEY"]
         case "X_AUTH_TOKEN":
-            return ["x.auth_token", "legacy.X_AUTH_TOKEN"]
+            return ["x.auth_token", "x.agent_auth_token", "x.user_auth_token", "legacy.X_AUTH_TOKEN"]
         case "X_CT0":
-            return ["x.ct0", "legacy.X_CT0"]
+            return ["x.ct0", "x.agent_ct0", "x.user_ct0", "legacy.X_CT0"]
         default:
             return ["legacy.\(key)"]
         }

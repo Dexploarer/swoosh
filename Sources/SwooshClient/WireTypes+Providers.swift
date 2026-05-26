@@ -43,9 +43,11 @@ public struct ProviderAuthRequest: Codable, Sendable {
 
 public struct ProviderSelectionRequest: Codable, Sendable {
     public let providerID: String
+    public let modelID: String?
 
-    public init(providerID: String) {
+    public init(providerID: String, modelID: String? = nil) {
         self.providerID = providerID
+        self.modelID = modelID
     }
 }
 

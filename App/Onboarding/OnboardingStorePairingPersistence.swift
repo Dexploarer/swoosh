@@ -254,12 +254,17 @@ extension OnboardingStore {
 
     func saveProfile(onboardingCompleted: Bool) {
         do {
+            let existing = try? stateStore.loadProfile()
+            let completed = onboardingCompleted
+                || step == .complete
+                || existing?.onboardingCompleted == true
+                || existing?.onboardingStage == .complete
             try stateStore.saveProfile(
                 DetourProfile(
                     userName: userName,
                     agentName: agentName.isEmpty ? nil : agentName,
-                    onboardingStage: Self.persistedStage(from: step),
-                    onboardingCompleted: onboardingCompleted,
+                    onboardingStage: completed ? .complete : Self.persistedStage(from: step),
+                    onboardingCompleted: completed,
                     wantsOtherAppleDevices: wantsOtherAppleDevices,
                     voiceRecognition: voiceRecognition,
                     credentialInheritance: credentialInheritanceConsent,

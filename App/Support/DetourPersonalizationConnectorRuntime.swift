@@ -81,6 +81,57 @@ extension DetourPersonalizationRunner {
                 requiredCredentialKeys: ["LINEAR_API_KEY", "LINEAR_ACCESS_TOKEN"],
                 toolNameFragments: ["linear"]
             )
+        case "connector.notion":
+            return ConnectorPluginSpec(
+                candidateID: candidateID,
+                pluginID: "notion",
+                displayName: "Notion",
+                requiredCredentialKeys: ["NOTION_TOKEN", "NOTION_API_KEY"],
+                toolNameFragments: ["notion"]
+            )
+        case "connector.openai-platform":
+            return ConnectorPluginSpec(
+                candidateID: candidateID,
+                pluginID: "openai-platform",
+                displayName: "OpenAI Platform",
+                requiredCredentialKeys: ["OPENAI_API_KEY", "CODEX_AUTH_TOKEN"],
+                toolNameFragments: ["openai", "codex"]
+            )
+        case "connector.google-drive":
+            return ConnectorPluginSpec(
+                candidateID: candidateID,
+                pluginID: "google-drive",
+                displayName: "Google Drive",
+                requiredCredentialKeys: [],
+                toolNameFragments: ["google", "drive"]
+            )
+        case "connector.hugging-face":
+            return ConnectorPluginSpec(
+                candidateID: candidateID,
+                pluginID: "hugging-face",
+                displayName: "Hugging Face",
+                requiredCredentialKeys: ["HF_TOKEN", "HUGGINGFACE_TOKEN"],
+                toolNameFragments: ["hugging", "hf"]
+            )
+        case "connector.adobe-photoshop":
+            return ConnectorPluginSpec(
+                candidateID: candidateID,
+                pluginID: "adobe-photoshop",
+                displayName: "Adobe Photoshop",
+                requiredCredentialKeys: [],
+                toolNameFragments: ["photoshop", "adobe"]
+            )
+        case "connector.ace-knowledge-graph":
+            return ConnectorPluginSpec(
+                candidateID: candidateID,
+                pluginID: "ace-knowledge-graph",
+                displayName: "Ace Knowledge Graph",
+                requiredCredentialKeys: [],
+                toolNameFragments: ["ace", "knowledge", "graph"]
+            )
+        case "connector.figma", "connector.vercel", "connector.canva", "connector.heygen",
+             "connector.mem", "connector.jam", "connector.binance", "connector.mangaboom":
+            return codexConnectorPluginSpec(candidateID)
         default:
             let slug = candidateID
                 .replacingOccurrences(of: "connector.", with: "")
@@ -88,7 +139,7 @@ extension DetourPersonalizationRunner {
             return ConnectorPluginSpec(
                 candidateID: candidateID,
                 pluginID: slug,
-                displayName: slug.capitalized,
+                displayName: connectorDisplayName(slug),
                 requiredCredentialKeys: [],
                 toolNameFragments: [slug]
             )

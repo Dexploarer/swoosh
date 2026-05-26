@@ -37,6 +37,8 @@ targets:
     platform: macOS
     sources:
       - path: App
+      - path: Sources/SwooshClient
+      - path: Sources/SwooshModels
     dependencies:
       - sdk: AppIntents.framework
     settings:
