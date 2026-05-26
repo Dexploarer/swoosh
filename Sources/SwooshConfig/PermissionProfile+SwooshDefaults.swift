@@ -95,6 +95,7 @@ extension PermissionProfile {
         .calendarRead, .calendarWrite, .remindersRead, .remindersWrite,
         .shortcutsRun, .scheduleRead, .scheduleWrite, .scheduleRun,
         .appUsageRead, .focusModeRead,
+        .accountDelegationRead,
         .videoGenerate, .threeDGenerate,
     ])
 

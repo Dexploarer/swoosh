@@ -4,10 +4,13 @@ import Foundation
 
 struct PairingPageQuery: Decodable {
     let host: String
-    let token: String
+    let pairing: String
     let app: String?
     let min_ios_version: String?
     let install: String?
+    let callback: String?
+    let setup_url: String?
+    let code: String?
 }
 
 func pairingInstallPage(query: PairingPageQuery) -> String {
@@ -87,7 +90,10 @@ private func pairingDeepLink(query: PairingPageQuery) -> String {
     components.host = "pair"
     components.queryItems = [
         URLQueryItem(name: "host", value: query.host),
-        URLQueryItem(name: "token", value: query.token),
+        URLQueryItem(name: "pairing", value: query.pairing),
+        URLQueryItem(name: "callback", value: query.callback),
+        URLQueryItem(name: "setup_url", value: query.setup_url),
+        URLQueryItem(name: "code", value: query.code),
         URLQueryItem(name: "app", value: query.app ?? "ai.swoosh.app.ios"),
         URLQueryItem(name: "min_ios_version", value: query.min_ios_version ?? "0.5")
     ]

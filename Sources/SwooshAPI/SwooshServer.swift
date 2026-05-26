@@ -50,6 +50,7 @@ public struct SwooshAPIServer: Sendable {
     private let port: Int
     private let hostname: String
     private let token: String?
+    private let additionalTokens: @Sendable () -> [String]
     private let agent: AgentHandle?
     private let snapshot: SwooshAPISnapshot
     private let runtimeSources: SwooshAPIRuntimeSources
@@ -69,6 +70,7 @@ public struct SwooshAPIServer: Sendable {
         port: Int = 8787,
         hostname: String = "127.0.0.1",
         token: String? = nil,
+        additionalTokens: @escaping @Sendable () -> [String] = { [] },
         kernel: AgentKernel? = nil,
         toolLoop: AgentToolLoop? = nil,
         snapshot: SwooshAPISnapshot = SwooshAPISnapshot(),
@@ -77,6 +79,7 @@ public struct SwooshAPIServer: Sendable {
         self.port = port
         self.hostname = hostname
         self.token = token
+        self.additionalTokens = additionalTokens
         if let toolLoop {
             self.agent = .toolLoop(ToolLoopHandle(toolLoop))
         } else if let kernel {
@@ -115,7 +118,7 @@ public struct SwooshAPIServer: Sendable {
         // ── Auth-gated routes ───────────────────────────────────────────
         let apiGroup = router.group("/api")
         if let token {
-            apiGroup.add(middleware: BearerAuthMiddleware(token: token))
+            apiGroup.add(middleware: BearerAuthMiddleware(token: token, additionalTokens: additionalTokens))
         } else {
             apiGroup.add(middleware: DenyAllMiddleware())
         }
@@ -676,4 +679,3 @@ public struct SwooshAPIServer: Sendable {
         )
     }
 }
-

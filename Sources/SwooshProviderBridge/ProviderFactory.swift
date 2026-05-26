@@ -302,9 +302,7 @@ public struct ProviderFactory {
     /// Reverse mapping for `detectActiveProvider` output: turn the
     /// human-readable name back into the canonical provider ID. The two
     /// must stay in sync — if `detectProvider` emits a new name, add it
-    /// here. Cases that don't appear in any branch of `detectProvider`
-    /// were removed (specifically "Apple Foundation" — that provider is
-    /// not currently part of the detection chain).
+    /// here.
     public static func providerID(forDetectedProviderName name: String) -> String {
         switch name {
         case "ChatGPT (Codex)": return ModelDefaults.codexProviderID
@@ -312,6 +310,7 @@ public struct ProviderFactory {
         case "OpenRouter": return ModelDefaults.openRouterProviderID
         case "Eliza Cloud": return ModelDefaults.elizaCloudProviderID
         case "MLX Local": return ModelDefaults.localMLXProviderID
+        case "Apple Foundation": return ModelDefaults.localFoundationProviderID
         default: return ModelDefaults.localOpenAIProviderID
         }
     }

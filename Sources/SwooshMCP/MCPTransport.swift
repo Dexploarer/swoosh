@@ -17,6 +17,7 @@ public enum MCPTransportError: Error, Sendable, Equatable {
     case spawnFailed(String)
     case writeFailed(String)
     case processExited(code: Int32)
+    case httpStatus(Int)
     case closed
     case unsupportedPlatform
 }

@@ -56,6 +56,8 @@ extension ToolsetID {
              .web, .evm, .solana, .launchpads, .hyperliquid, .uniswap, .mcp,
              .skills, .goals, .manifesting, .mediaGen:
             return [.macOS, .iOS, .linux]
+        case .connectors:
+            return [.macOS, .linux]
         // The plugin host loads dynamic code (Swift entrypoints, executables,
         // wasm) — server-side only. The iOS app talks to plugins through the
         // daemon's HTTP API, never directly.

@@ -4,20 +4,19 @@ import AVFoundation
 import OSLog
 
 private let detourSpeechLog = Logger(subsystem: "ai.swoosh.detour.mac", category: "Speech")
+private let detourSharedOmniVoice = DetourOmniVoiceDesktopRenderer()
 
 @MainActor
 final class DetourSpeechService: NSObject, ObservableObject {
-    private let synthesizer = AVSpeechSynthesizer()
-    private let omniVoice = DetourOmniVoiceDesktopRenderer()
+    private let omniVoice = detourSharedOmniVoice
     private var localAudioPlayer: AVAudioPlayer?
     private var localAudioPlayerID: ObjectIdentifier?
     private var speakTask: Task<Void, Never>?
-    private var speechCompletion: CheckedContinuation<Void, Never>?
+    private var speechCompletion: DetourSpeechCompletion?
     private var activeSpeechID: UUID?
 
     override init() {
         super.init()
-        synthesizer.delegate = self
         Task { [omniVoice] in
             do {
                 try await omniVoice.prepare()
@@ -35,7 +34,6 @@ final class DetourSpeechService: NSObject, ObservableObject {
         localAudioPlayer?.stop()
         localAudioPlayer = nil
         localAudioPlayerID = nil
-        synthesizer.stopSpeaking(at: .immediate)
         if let speechID {
             finishSpeech(speechID: speechID)
         }
@@ -47,14 +45,14 @@ final class DetourSpeechService: NSObject, ObservableObject {
 
     func speakAndWait(_ text: String, speech: DetourConfig.Speech) async {
         await withCheckedContinuation { continuation in
-            startSpeaking(text, speech: speech, completion: continuation)
+            startSpeaking(text, speech: speech, completion: DetourSpeechCompletion(continuation))
         }
     }
 
     private func startSpeaking(
         _ text: String,
         speech: DetourConfig.Speech,
-        completion: CheckedContinuation<Void, Never>?
+        completion: DetourSpeechCompletion?
     ) {
         stop()
         let speechID = UUID()
@@ -75,6 +73,8 @@ final class DetourSpeechService: NSObject, ObservableObject {
                     return
                 }
                 try playLocalAudio(at: output, speechID: speechID)
+            } catch is CancellationError {
+                finishSpeech(speechID: speechID)
             } catch {
                 detourSpeechLog.error("[DetourSpeechService] OmniVoice render failed error=\(error.localizedDescription, privacy: .public)")
                 finishSpeech(speechID: speechID)
@@ -133,25 +133,26 @@ final class DetourSpeechService: NSObject, ObservableObject {
     }
 }
 
-extension DetourSpeechService: AVAudioPlayerDelegate, AVSpeechSynthesizerDelegate {
+@MainActor
+private final class DetourSpeechCompletion {
+    private var continuation: CheckedContinuation<Void, Never>?
+
+    init(_ continuation: CheckedContinuation<Void, Never>) {
+        self.continuation = continuation
+    }
+
+    func resume() {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume()
+    }
+}
+
+extension DetourSpeechService: AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         let playerID = ObjectIdentifier(player)
         Task { @MainActor in
             finishSpeech(playerID: playerID)
-        }
-    }
-
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            guard let activeSpeechID else { return }
-            finishSpeech(speechID: activeSpeechID)
-        }
-    }
-
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in
-            guard let activeSpeechID else { return }
-            finishSpeech(speechID: activeSpeechID)
         }
     }
 }

@@ -13,10 +13,11 @@ struct ChatSDKTests {
         #expect(ids.isSuperset(of: [
             "slack", "teams", "googleChat", "discord", "telegram", "github", "linear", "whatsApp", "messenger", "web",
             "beeperMatrix", "photonIMessage", "resendEmail", "zernioSocial", "liveblocks", "webex", "baileys", "sendblue",
-            "blooio", "zalo", "mattermost", "swoosh",
+            "agentmail", "blooio", "zalo", "mattermost", "swoosh",
         ]))
         #expect(statuses.first { $0.id == "web" }?.enabled == true)
         #expect(statuses.first { $0.id == "slack" }?.configured == false)
+        #expect(statuses.first { $0.id == "agentmail" }?.missingCredentials == ["AGENTMAIL_API_KEY"])
         #expect(statuses.first { $0.id == "webex" }?.definition.distribution == .community)
     }
 

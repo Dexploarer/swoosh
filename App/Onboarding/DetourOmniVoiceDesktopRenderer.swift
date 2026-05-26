@@ -1,12 +1,16 @@
 // DetourOmniVoiceDesktopRenderer.swift — local OmniVoice bridge for macOS onboarding (0.5A)
 
 import Foundation
+import CryptoKit
 import OSLog
 
 private let detourOmniVoiceLog = Logger(subsystem: "ai.swoosh.detour.mac", category: "OmniVoice")
 
 actor DetourOmniVoiceDesktopRenderer {
     private let environment: [String: String]
+    private var worker: DetourOmniVoiceWorker?
+    private var workerStartupTask: Task<DetourOmniVoiceWorker, Error>?
+    private var renderTasks: [String: Task<URL, Error>] = [:]
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         self.environment = environment
@@ -15,65 +19,125 @@ actor DetourOmniVoiceDesktopRenderer {
     func prepare() async throws {
         let directories = try DetourPaths.ensureDirectories()
         _ = try resolveOrBootstrapExecutable(directories: directories)
+        _ = try await resolveWorker(directories: directories)
     }
 
     func render(text: String, referenceAudio: URL?, referenceText: String?) async throws -> URL {
         let directories = try DetourPaths.ensureDirectories()
-        let executablePath = try resolveOrBootstrapExecutable(directories: directories)
-        let output = directories.voice.appendingPathComponent("omnivoice-\(UUID().uuidString).wav", isDirectory: false)
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = arguments(
+        _ = try resolveOrBootstrapExecutable(directories: directories)
+        let referenceAudio = existingReferenceAudio(referenceAudio)
+        let cacheURL = try cachedOutputURL(
+            directories: directories,
             text: text,
-            output: output,
-            referenceAudio: existingReferenceAudio(referenceAudio),
+            referenceAudio: referenceAudio,
             referenceText: referenceText
         )
-
-        var environment = ProcessInfo.processInfo.environment
-        environment["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-        environment["HF_HOME"] = directories.voice.appendingPathComponent("hf", isDirectory: true).path(percentEncoded: false)
-        process.environment = environment
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0,
-              FileManager.default.fileExists(atPath: output.path(percentEncoded: false)) else {
-            let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let message = String(data: data, encoding: .utf8) ?? "OmniVoice failed."
-            throw DetourOmniVoiceDesktopRendererError.renderFailed(message)
+        if FileManager.default.fileExists(atPath: cacheURL.path(percentEncoded: false)) {
+            return cacheURL
+        }
+        let cacheKey = cacheURL.deletingPathExtension().lastPathComponent
+        if let renderTask = renderTasks[cacheKey] {
+            return try await renderTask.value
         }
 
-        return output
+        let worker = try await resolveWorker(directories: directories)
+        let output = directories.voice.appendingPathComponent("omnivoice-\(UUID().uuidString).wav", isDirectory: false)
+        let request = DetourOmniVoiceWorkerRequest(
+            text: text,
+            output: output.path(percentEncoded: false),
+            refAudio: referenceAudio?.path(percentEncoded: false),
+            refText: referenceText,
+            instruct: referenceAudio == nil ? "male, American accent, natural, low pitch" : nil,
+            numStep: omniVoiceStepCount,
+            guidanceScale: omniVoiceGuidanceScale,
+            speed: omniVoiceSpeed
+        )
+
+        let renderTask = Task<URL, Error> {
+            let renderedURL = try await worker.render(request: request)
+            return try Self.moveRenderedAudio(renderedURL, to: cacheURL)
+        }
+        renderTasks[cacheKey] = renderTask
+        defer { renderTasks[cacheKey] = nil }
+
+        do {
+            return try await renderTask.value
+        } catch {
+            if !worker.isRunning {
+                self.worker = nil
+            }
+            throw error
+        }
     }
 
-    private func arguments(
-        text: String,
-        output: URL,
-        referenceAudio: URL?,
-        referenceText: String?
-    ) -> [String] {
-        var args = [
-            "--model", "k2-fsa/OmniVoice",
-            "--text", text,
-            "--output", output.path(percentEncoded: false)
-        ]
-        if let referenceAudio {
-            args += ["--ref_audio", referenceAudio.path(percentEncoded: false)]
-            if let referenceText,
-               !referenceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                args += ["--ref_text", referenceText]
-            }
-        } else {
-            args += ["--instruct", "male, American accent, natural, low pitch"]
+    private func resolveWorker(directories: DetourDirectories) async throws -> DetourOmniVoiceWorker {
+        if let worker, worker.isRunning {
+            return worker
         }
-        return args
+        if let workerStartupTask {
+            return try await workerStartupTask.value
+        }
+
+        let executablePath = try resolveOrBootstrapExecutable(directories: directories)
+        let python = URL(fileURLWithPath: executablePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("python", isDirectory: false)
+            .path(percentEncoded: false)
+        guard FileManager.default.isExecutableFile(atPath: python) else {
+            throw DetourOmniVoiceDesktopRendererError.bootstrapFailed("OmniVoice Python runtime was not found.")
+        }
+
+        let script = try writeWorkerScript(directories: directories)
+        var workerEnvironment = environment
+        workerEnvironment["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+        workerEnvironment["HF_HOME"] = directories.voice.appendingPathComponent("hf", isDirectory: true).path(percentEncoded: false)
+        let device = omniVoiceDevice
+        let startupTask = Task<DetourOmniVoiceWorker, Error> {
+            try await DetourOmniVoiceWorker.start(
+                python: python,
+                script: script,
+                model: "k2-fsa/OmniVoice",
+                device: device,
+                environment: workerEnvironment
+            )
+        }
+        workerStartupTask = startupTask
+        do {
+            let worker = try await startupTask.value
+            self.worker = worker
+            workerStartupTask = nil
+            return worker
+        } catch {
+            workerStartupTask = nil
+            throw error
+        }
+    }
+
+    private var omniVoiceDevice: String? {
+        environment["SWOOSH_OMNIVOICE_DEVICE"]
+    }
+
+    private var omniVoiceStepCount: Int {
+        Int(environment["SWOOSH_OMNIVOICE_NUM_STEP"] ?? "") ?? 12
+    }
+
+    private var omniVoiceGuidanceScale: Double {
+        Double(environment["SWOOSH_OMNIVOICE_GUIDANCE_SCALE"] ?? "") ?? 1.5
+    }
+
+    private var omniVoiceSpeed: Double? {
+        Double(environment["SWOOSH_OMNIVOICE_SPEED"] ?? "")
+    }
+
+    private func writeWorkerScript(directories: DetourDirectories) throws -> String {
+        let url = directories.voice.appendingPathComponent("omnivoice-worker.py", isDirectory: false)
+        let content = Self.workerScript
+        if let existing = try? String(contentsOf: url, encoding: .utf8),
+           existing == content {
+            return url.path(percentEncoded: false)
+        }
+        try content.write(to: url, atomically: true, encoding: .utf8)
+        return url.path(percentEncoded: false)
     }
 
     private func existingReferenceAudio(_ referenceAudio: URL?) -> URL? {
@@ -82,6 +146,79 @@ actor DetourOmniVoiceDesktopRenderer {
             return referenceAudio
         }
         return nil
+    }
+
+    private func cachedOutputURL(
+        directories: DetourDirectories,
+        text: String,
+        referenceAudio: URL?,
+        referenceText: String?
+    ) throws -> URL {
+        let cacheDirectory = directories.voice.appendingPathComponent("render-cache", isDirectory: true)
+        try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+        let key = Self.cacheKey(
+            text: text,
+            referenceAudio: referenceAudio,
+            referenceText: referenceText,
+            instruct: referenceAudio == nil ? "male, American accent, natural, low pitch" : nil,
+            numStep: omniVoiceStepCount,
+            guidanceScale: omniVoiceGuidanceScale,
+            speed: omniVoiceSpeed
+        )
+        return cacheDirectory.appendingPathComponent("\(key).wav", isDirectory: false)
+    }
+
+    private static func cacheKey(
+        text: String,
+        referenceAudio: URL?,
+        referenceText: String?,
+        instruct: String?,
+        numStep: Int,
+        guidanceScale: Double,
+        speed: Double?
+    ) -> String {
+        let key = DetourOmniVoiceCacheKey(
+            text: text.trimmingCharacters(in: .whitespacesAndNewlines),
+            referenceAudio: referenceAudio.map(referenceFingerprint),
+            referenceText: referenceText?.trimmingCharacters(in: .whitespacesAndNewlines),
+            instruct: instruct,
+            numStep: numStep,
+            guidanceScale: guidanceScale,
+            speed: speed
+        )
+        let data = (try? JSONEncoder().encode(key)) ?? Data()
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func referenceFingerprint(_ url: URL) -> String {
+        let path = url.path(percentEncoded: false)
+        let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+        let size = (attributes?[.size] as? NSNumber)?.uint64Value ?? 0
+        let modified = (attributes?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
+        return "\(path)|\(size)|\(modified)"
+    }
+
+    private static func moveRenderedAudio(_ renderedURL: URL, to cacheURL: URL) throws -> URL {
+        let fileManager = FileManager.default
+        let renderedPath = renderedURL.path(percentEncoded: false)
+        let cachePath = cacheURL.path(percentEncoded: false)
+        if fileManager.fileExists(atPath: cachePath) {
+            if renderedPath != cachePath {
+                try? fileManager.removeItem(at: renderedURL)
+            }
+            return cacheURL
+        }
+        try fileManager.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        do {
+            try fileManager.moveItem(at: renderedURL, to: cacheURL)
+        } catch {
+            if fileManager.fileExists(atPath: cachePath) {
+                try? fileManager.removeItem(at: renderedURL)
+                return cacheURL
+            }
+            throw error
+        }
+        return cacheURL
     }
 
     private func resolveOrBootstrapExecutable(directories: DetourDirectories) throws -> String {
@@ -387,6 +524,237 @@ actor DetourOmniVoiceDesktopRenderer {
             throw DetourOmniVoiceDesktopRendererError.bootstrapFailed(message)
         }
         return String(data: output, encoding: .utf8) ?? ""
+    }
+
+    private static let workerScript = """
+import argparse
+import json
+import logging
+import sys
+import traceback
+
+import soundfile as sf
+import torch
+
+from omnivoice.cli.infer import get_best_device
+from omnivoice.models.omnivoice import OmniVoice
+
+
+def compact(values):
+    return {key: value for key, value in values.items() if value is not None}
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", default="k2-fsa/OmniVoice")
+    parser.add_argument("--device", default=None)
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s",
+        level=logging.INFO,
+        stream=sys.stderr,
+        force=True,
+    )
+    device = args.device or get_best_device()
+    logging.info("Loading model from %s on %s ...", args.model, device)
+    model = OmniVoice.from_pretrained(args.model, device_map=device, dtype=torch.float16)
+    print(json.dumps({"ready": True, "device": device}), flush=True)
+
+    for line in sys.stdin:
+        try:
+            request = json.loads(line)
+            audios = model.generate(**compact({
+                "text": request["text"],
+                "ref_audio": request.get("ref_audio"),
+                "ref_text": request.get("ref_text"),
+                "instruct": request.get("instruct"),
+                "num_step": request.get("num_step"),
+                "guidance_scale": request.get("guidance_scale"),
+                "speed": request.get("speed"),
+            }))
+            sf.write(request["output"], audios[0], model.sampling_rate)
+            print(json.dumps({"ok": True, "output": request["output"]}), flush=True)
+        except BaseException as error:
+            logging.error("Render failed: %s\\n%s", error, traceback.format_exc())
+            print(json.dumps({"ok": False, "error": str(error)}), flush=True)
+
+
+if __name__ == "__main__":
+    main()
+"""
+}
+
+private struct DetourOmniVoiceWorkerRequest: Codable, Sendable {
+    var text: String
+    var output: String
+    var refAudio: String?
+    var refText: String?
+    var instruct: String?
+    var numStep: Int
+    var guidanceScale: Double
+    var speed: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case text
+        case output
+        case refAudio = "ref_audio"
+        case refText = "ref_text"
+        case instruct
+        case numStep = "num_step"
+        case guidanceScale = "guidance_scale"
+        case speed
+    }
+}
+
+private struct DetourOmniVoiceCacheKey: Codable, Sendable {
+    var text: String
+    var referenceAudio: String?
+    var referenceText: String?
+    var instruct: String?
+    var numStep: Int
+    var guidanceScale: Double
+    var speed: Double?
+}
+
+private struct DetourOmniVoiceWorkerReady: Decodable, Sendable {
+    var ready: Bool
+    var device: String?
+    var error: String?
+}
+
+private struct DetourOmniVoiceWorkerResponse: Decodable, Sendable {
+    var ok: Bool
+    var output: String?
+    var error: String?
+}
+
+private final class DetourOmniVoiceWorker: @unchecked Sendable {
+    private let process: Process
+    private let input: FileHandle
+    private let output: FileHandle
+    private let errorOutput: FileHandle
+    private let renderLock = NSLock()
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
+
+    private init(process: Process, input: FileHandle, output: FileHandle, errorOutput: FileHandle) {
+        self.process = process
+        self.input = input
+        self.output = output
+        self.errorOutput = errorOutput
+        self.errorOutput.readabilityHandler = { handle in
+            _ = handle.availableData
+        }
+    }
+
+    var isRunning: Bool {
+        process.isRunning
+    }
+
+    static func start(
+        python: String,
+        script: String,
+        model: String,
+        device: String?,
+        environment: [String: String]
+    ) async throws -> DetourOmniVoiceWorker {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: python)
+        var arguments = [script, "--model", model]
+        if let device {
+            arguments += ["--device", device]
+        }
+        process.arguments = arguments
+        process.environment = environment
+
+        let inputPipe = Pipe()
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        process.standardInput = inputPipe
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+        try process.run()
+
+        let worker = DetourOmniVoiceWorker(
+            process: process,
+            input: inputPipe.fileHandleForWriting,
+            output: outputPipe.fileHandleForReading,
+            errorOutput: errorPipe.fileHandleForReading
+        )
+        let ready: DetourOmniVoiceWorkerReady = try await worker.readDecodableLine()
+        guard ready.ready else {
+            worker.terminate()
+            throw DetourOmniVoiceDesktopRendererError.renderFailed(ready.error ?? "OmniVoice worker did not become ready.")
+        }
+        detourOmniVoiceLog.info("[DetourOmniVoiceDesktopRenderer] worker ready device=\(ready.device ?? "unknown", privacy: .public)")
+        return worker
+    }
+
+    func render(request: DetourOmniVoiceWorkerRequest) async throws -> URL {
+        try await Task.detached { [self] in
+            try renderBlocking(request: request)
+        }.value
+    }
+
+    private func renderBlocking(request: DetourOmniVoiceWorkerRequest) throws -> URL {
+        renderLock.lock()
+        defer { renderLock.unlock() }
+        guard process.isRunning else {
+            throw DetourOmniVoiceDesktopRendererError.renderFailed("OmniVoice worker is not running.")
+        }
+
+        var data = try encoder.encode(request)
+        data.append(0x0A)
+        input.write(data)
+
+        let response: DetourOmniVoiceWorkerResponse = try readDecodableLineBlocking()
+        guard response.ok,
+              let output = response.output,
+              FileManager.default.fileExists(atPath: output) else {
+            throw DetourOmniVoiceDesktopRendererError.renderFailed(response.error ?? "OmniVoice did not render audio.")
+        }
+        return URL(fileURLWithPath: output)
+    }
+
+    private func readDecodableLine<Value: Decodable & Sendable>() async throws -> Value {
+        try await Task.detached { [self] in
+            try readDecodableLineBlocking()
+        }.value
+    }
+
+    private func readDecodableLineBlocking<Value: Decodable>() throws -> Value {
+        let line = try readLineBlocking()
+        guard let data = line.data(using: .utf8) else {
+            throw DetourOmniVoiceDesktopRendererError.renderFailed("OmniVoice returned invalid UTF-8.")
+        }
+        return try decoder.decode(Value.self, from: data)
+    }
+
+    private func readLineBlocking() throws -> String {
+        var data = Data()
+        while true {
+            let byte = output.readData(ofLength: 1)
+            if byte.isEmpty {
+                throw DetourOmniVoiceDesktopRendererError.renderFailed("OmniVoice worker closed stdout.")
+            }
+            if byte[0] == 0x0A {
+                return String(decoding: data, as: UTF8.self)
+            }
+            data.append(byte)
+        }
+    }
+
+    func terminate() {
+        errorOutput.readabilityHandler = nil
+        try? input.close()
+        if process.isRunning {
+            process.terminate()
+        }
+    }
+
+    deinit {
+        terminate()
     }
 }
 

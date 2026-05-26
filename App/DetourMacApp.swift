@@ -29,6 +29,11 @@ struct DetourMacApp: App {
                 .keyboardShortcut("q")
             }
         }
+
+        MenuBarExtra("Detour", systemImage: "sparkles") {
+            DetourTrayMenuView(store: store)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
 
@@ -50,6 +55,7 @@ private enum DetourWindowActions {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        applyDockIcon()
         bringIntroForward()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
@@ -72,6 +78,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
+        }
+    }
+
+    private func applyDockIcon() {
+        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+           let icon = NSImage(contentsOf: iconURL) {
+            NSApp.applicationIconImage = icon
         }
     }
 }

@@ -81,7 +81,8 @@ public final class Swoosh: Sendable {
             sessionStore: sessionStore,
             auditLogger: auditLogger,
             modelProvider: modelProvider,
-            skillCatalogProvider: config.skillCatalogProvider
+            skillCatalogProvider: config.skillCatalogProvider,
+            personalizationLoader: config.personalizationLoader
         )
         let toolLoop = config.toolRegistry.map {
             AgentToolLoop(
@@ -93,7 +94,8 @@ public final class Swoosh: Sendable {
                 modelProvider: modelProvider,
                 toolRegistry: $0,
                 policy: config.toolPolicy,
-                skillCatalogProvider: config.skillCatalogProvider
+                skillCatalogProvider: config.skillCatalogProvider,
+                personalizationLoader: config.personalizationLoader
             )
         }
         return Swoosh(kernel: kernel, toolLoop: toolLoop)
@@ -115,6 +117,7 @@ public struct SwooshConfiguration: Sendable {
     /// tool loop inject `(id, title, description)` for every promotable
     /// skill into the system prompt.
     public var skillCatalogProvider: SkillCatalogProviding? = nil
+    public var personalizationLoader: (any PersonalizationContextLoading)? = nil
 
     public init() {}
 }

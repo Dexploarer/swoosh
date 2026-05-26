@@ -78,6 +78,12 @@ struct DefaultToolRegistrarTests {
         #expect(hasScout)
     }
 
+    @Test("Registry contains connector status tool")
+    func registryContainsConnectorStatus() async {
+        let names = await TestHarness().toolNames()
+        #expect(names.contains("connector.status"))
+    }
+
     @Test("Re-registering is idempotent on tool count")
     func idempotent() async {
         let harness = TestHarness()

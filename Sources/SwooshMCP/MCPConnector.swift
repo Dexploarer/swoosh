@@ -5,7 +5,7 @@
 // "tools the registry knows about".
 //
 // Safety contract preserved:
-//   • Only stdio profiles connect here (HTTP transport is a later slice).
+//   • Stdio and HTTP profiles connect here.
 //   • The registry's existing gates still apply: a server must be enabled
 //     before registerDiscoveredTools accepts its tools.
 //   • Imported tools stay UNTRUSTED — registry policy and trust level are
@@ -61,20 +61,33 @@ public struct MCPConnector: Sendable {
     private let secretResolver: SecretResolver
     private let clientInfo: MCPClientInfo
     private let requestTimeout: TimeInterval
+    private let httpSender: HTTPMCPTransport.Configuration.Sender?
 
     public init(clientInfo: MCPClientInfo = .swoosh,
                 requestTimeout: TimeInterval = 30,
                 secretResolver: @escaping SecretResolver = { _ in nil }) {
+        self.init(
+            clientInfo: clientInfo,
+            requestTimeout: requestTimeout,
+            httpSender: nil,
+            secretResolver: secretResolver
+        )
+    }
+
+    public init(clientInfo: MCPClientInfo = .swoosh,
+                requestTimeout: TimeInterval = 30,
+                httpSender: HTTPMCPTransport.Configuration.Sender?,
+                secretResolver: @escaping SecretResolver = { _ in nil }) {
         self.clientInfo = clientInfo
         self.requestTimeout = requestTimeout
+        self.httpSender = httpSender
         self.secretResolver = secretResolver
     }
 
     // ── Build a client from a profile ─────────────────────────────
 
     #if os(macOS) || os(Linux)
-    /// Builds (but does not connect) an MCPClient for a stdio profile.
-    /// HTTP transport is not yet implemented.
+    /// Builds (but does not connect) an MCPClient for a configured profile.
     public func makeClient(for profile: MCPServerProfile,
                            stderrSink: @escaping @Sendable (String) -> Void = { _ in }) async throws -> MCPClient {
         switch profile.transport {
@@ -94,11 +107,34 @@ public struct MCPConnector: Sendable {
             )
             let transport = StdioMCPTransport(config: config, stderrSink: stderrSink)
             return MCPClient(transport: transport, clientInfo: clientInfo, requestTimeout: requestTimeout)
-        case .http:
-            throw MCPConnectorError.unsupportedTransport("http transport not yet implemented")
+        case .http(let cfg):
+            guard let endpoint = URL(string: cfg.baseURL) else {
+                throw MCPConnectorError.unsupportedTransport("invalid http MCP baseURL")
+            }
+            guard !cfg.localOnly || Self.isLocalEndpoint(endpoint) else {
+                throw MCPConnectorError.unsupportedTransport("http MCP server is not local; set localOnly=false for hosted MCP")
+            }
+            var headers: [String: String] = [:]
+            if let ref = cfg.authorizationSecretRef,
+               let raw = await secretResolver(ref)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !raw.isEmpty {
+                headers["Authorization"] = raw.localizedCaseInsensitiveContains("bearer ") ? raw : "Bearer \(raw)"
+                headers["x-api-key"] = raw
+            }
+            let transport = HTTPMCPTransport(config: .init(endpoint: endpoint, headers: headers, sender: httpSender))
+            return MCPClient(transport: transport, clientInfo: clientInfo, requestTimeout: requestTimeout)
         }
     }
     #endif
+
+    private static func isLocalEndpoint(_ url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        if host == "localhost" || host.hasSuffix(".local") { return true }
+        if host == "127.0.0.1" || host == "::1" { return true }
+        if host.hasPrefix("10.") || host.hasPrefix("192.168.") { return true }
+        let private172 = (16...31).map { "172.\($0)." }
+        return private172.contains { host.hasPrefix($0) }
+    }
 
     // ── Connect + discover + register ─────────────────────────────
 

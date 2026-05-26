@@ -7,66 +7,129 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0150F2599F462618AA62CC47 /* DetourPersonalizationKeychainAuthInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA6C4B98124F8EF675B46D85 /* DetourPersonalizationKeychainAuthInventory.swift */; };
 		019D346A654745C266CB4FD5 /* SwooshAPIClient+Memories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5054F477CEE22F5FE361C606 /* SwooshAPIClient+Memories.swift */; };
+		02AF7B4CCF76848BDF794A75 /* DetourPersonalizationConnectorSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8022D50533F514AB77AE154F /* DetourPersonalizationConnectorSetup.swift */; };
 		034A03C4B406951A54BAA529 /* WireTypes+Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = 452063C76A7A13EBAF8AF9A9 /* WireTypes+Board.swift */; };
 		03B16E818A01105B47A42699 /* DetourIOSInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9515F6EF3F4DB22F101BD0B5 /* DetourIOSInstaller.swift */; };
+		09D8254F610967C3BE21A526 /* OnboardingStorePersonalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF60940289BBA8C238B1B5C0 /* OnboardingStorePersonalization.swift */; };
+		0A401852F51A94FD4BFE193E /* DetourSetupTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE77AFB80FB72E87A38A71C1 /* DetourSetupTransfer.swift */; };
 		0CFB0509B33CF3276A513EA1 /* SwooshAPIClient+Firewall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D0815EE890A1BB7389673F4 /* SwooshAPIClient+Firewall.swift */; };
+		160E586F74E8C49303810794 /* DetourOnboardingContentViewVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F2B19273D3073DAC4F0BA9 /* DetourOnboardingContentViewVisibility.swift */; };
+		16451E272A2F73B505690305 /* DetourPersonalizationUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD8FC3D169A5BF6F6E983AC /* DetourPersonalizationUtilities.swift */; };
 		180B8347724F5514D8971C7C /* DetourOnboardingNativeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 456C853B7FCF3879F3252E77 /* DetourOnboardingNativeView.swift */; };
+		189A8D004ADCECE5B610340B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 964BACE9AEB7BC18FBFCF9D9 /* PrivacyInfo.xcprivacy */; };
+		1AD26BBF9B793477C98EC8C0 /* OnboardingStorePairingPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF793629637A628673D15D7F /* OnboardingStorePairingPersistence.swift */; };
+		1D472CE42EEC5A72E9D75FC7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 83BFB1AA73A48106300293DB /* PrivacyInfo.xcprivacy */; };
 		22E1EBC1A41C15D7E3A2A01F /* WireTypes+Providers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7D7904EAA529FD402D74E5D /* WireTypes+Providers.swift */; };
+		23114439CA9AE2FC644429FF /* DetourPersonalizationInventories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8721609F39754F09C130455D /* DetourPersonalizationInventories.swift */; };
+		2448D99835E5F37AC2068D21 /* DetourPersonalizationSetupGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0E2DB740D2B187DEE9B6B8 /* DetourPersonalizationSetupGraph.swift */; };
+		2500D5D3749338ACEAA8E010 /* DetourSetupInsightCharts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97F1A8829568523CA16E2AD6 /* DetourSetupInsightCharts.swift */; };
 		25E2F54B36443AAD87839F4D /* SwooshExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4381E41C31545D3203A7B61A /* SwooshExecutor.swift */; };
+		275A66978695EC77FE346396 /* DetourPersonalizationReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC164CA8FCBF62E678D14BF /* DetourPersonalizationReview.swift */; };
+		28FEF09C703F653D33BB08FB /* DetourOnboardingSetupConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD7CB372B417EC71FE1AC3BE /* DetourOnboardingSetupConfiguration.swift */; };
 		2995947327AE08527D8BD041 /* WireTypes+Runtime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E0D0C4F33919F65DAE8E41 /* WireTypes+Runtime.swift */; };
+		2A2A723A02B2C3F0AE6EEDC6 /* DetourOnboardingContentViewVoiceActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA1D7A85D4B0666B15F4618D /* DetourOnboardingContentViewVoiceActions.swift */; };
+		2D2C6B48083E378877802A1B /* DetourPersonalizationAuthInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E58AAAC987120054D0D6CB /* DetourPersonalizationAuthInventory.swift */; };
 		2E4B62404441D73921EA8C80 /* WireTypes+Wallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F0857C7A87992CCDB8FC87C /* WireTypes+Wallet.swift */; };
 		2EF2FDBDE1BBBBE29D4A2AF6 /* DetourPairingSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02E4177731A337C27B533E2F /* DetourPairingSupport.swift */; };
+		2F356311D086B2437B83A4E8 /* DetourPersonalizationBrowserAccountInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D1309D7EB5B70B9952B54D /* DetourPersonalizationBrowserAccountInventory.swift */; };
 		34B7D047DDD04FAA58A73BC7 /* WireTypes+Doctor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65C21CB3391B764F9164DEE1 /* WireTypes+Doctor.swift */; };
+		355CE3BF18D224EB5C6F4A49 /* DetourOnboardingPersonalizationReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57D7A2156E64C15EB815A21B /* DetourOnboardingPersonalizationReview.swift */; };
+		3D6556188472C742BA98099C /* DetourPersonalizationScanSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887A457BCEE33F9760D1904C /* DetourPersonalizationScanSteps.swift */; };
+		3F483188C8E96AF1AC592763 /* DetourOnboardingContentViewSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C8D292E83E1EEC4EE102C36 /* DetourOnboardingContentViewSpeech.swift */; };
 		3F643D8B3F106C244C2CE5CD /* SwooshiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */; };
 		450A04CCA57D8C7AA4AAD60D /* WireTypes+Memories.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D14C6D6740014C8F7DDB8C /* WireTypes+Memories.swift */; };
 		45B67B13D157736CF44AD1E5 /* WireTypes+Launchpads.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEBDD612462E37F1E50792A /* WireTypes+Launchpads.swift */; };
+		4634CEAA83B6A3FEAA59C8A1 /* DetourPersonalizationApplySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99BC800045A7A899B00D3945 /* DetourPersonalizationApplySupport.swift */; };
 		4958D912632ED426994F98CB /* SwooshAPIClient+Wallet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59FF964FEFDFC98C86EAD029 /* SwooshAPIClient+Wallet.swift */; };
+		4A13F2360EDCED0DC76A443D /* DetourTrayMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AE6E8CC8C57CCD8A906A82F /* DetourTrayMenuView.swift */; };
 		4A488EF43B0A06E3D3E669F3 /* WireTypes+MCP.swift in Sources */ = {isa = PBXBuildFile; fileRef = E289A6E9B417AE349F5101E8 /* WireTypes+MCP.swift */; };
 		4B223E57521BA1BE4345B7A5 /* DetourVoiceEnrollmentRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28155BCA75E36F8802D3046D /* DetourVoiceEnrollmentRecorder.swift */; };
 		4D7010F62A6848EA84F47BD5 /* OfflineMessageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A4A544D0958D670BF082AE /* OfflineMessageCache.swift */; };
 		4E511F5548207D9BECB7BCC5 /* SwooshAPIClient+Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA037957996BC661FC50825 /* SwooshAPIClient+Goals.swift */; };
 		4F751D6D47EFB1F629E9F723 /* WireTypes+Plugins.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2A739687BA2BF11782B013 /* WireTypes+Plugins.swift */; };
+		53FB571DAEC1593112FD2063 /* DetourPersonalizationCandidateRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A116136ECBD3F8C3C5223954 /* DetourPersonalizationCandidateRowView.swift */; };
+		569CC7A52FB0F12A7FF5ED48 /* DetourLegacyVaultImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A01582E343B29EF1BB2203 /* DetourLegacyVaultImporter.swift */; };
 		572052A68DA0E9ECE81AAE9A /* WireTypes+Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E5CAA92D06BE4A4D6425C8 /* WireTypes+Goals.swift */; };
+		587EA9A9F13B27C9FF5E7F39 /* DetourPersonalizationCandidateBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC317A7F41CE53A8813E574 /* DetourPersonalizationCandidateBuilder.swift */; };
+		592951DA7273F896986E12D0 /* DetourOnboardingContentViewCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A46A43AEED33EF644EC026 /* DetourOnboardingContentViewCommands.swift */; };
 		5AFC466E0C70966C1DB72F29 /* DetourNativeVoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE2D253FC592A9CCA4DD3C1 /* DetourNativeVoiceCatalog.swift */; };
+		5E30376CC34F9873E8CDFB11 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C85D4534A02858907F23799C /* AppIntents.framework */; };
 		62B5D2660755BABFB58174AD /* WireTypes+Audit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F969C44684023A1DC4A2746 /* WireTypes+Audit.swift */; };
+		63AD4917BB9633A9A4E2ED2D /* OnboardingStoreSetupInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7507C1A16BA5FCD4ED0035BD /* OnboardingStoreSetupInsights.swift */; };
 		64B5CE964C17795A354E41F0 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C020739AC89216898E2C28A6 /* TokenStore.swift */; };
+		68808546C6177AACD40AB5D1 /* DetourPersonalizationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FAFA75FC6C90A660E63EF0 /* DetourPersonalizationModels.swift */; };
 		68AB21B4706B15EE08A73735 /* DetouriOSVoiceEnrollmentRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B0C7B1D63F4E49750C60E09 /* DetouriOSVoiceEnrollmentRecorder.swift */; };
 		69716793A39856E8495A06AC /* DetouriOSStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38763004410C7B534DD827D5 /* DetouriOSStateStore.swift */; };
+		6C28DBF41AEE59149254C39A /* DetourPairingPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90D8C632FE2A21D89C63881C /* DetourPairingPage.swift */; };
+		70E40B35366EAA3C69F83F3F /* DetourOnboardingContentViewControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E20CE209072346AB73D524 /* DetourOnboardingContentViewControls.swift */; };
+		73D8BBE3AEBDD4C74E6BCED5 /* DetourPersonalizationPlanningBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF801700C26D89EB5BB057FB /* DetourPersonalizationPlanningBuilder.swift */; };
+		78427D7825808BD3BE33DE2C /* DetouriOSSetupTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45479955B0C2B46873482492 /* DetouriOSSetupTransfer.swift */; };
 		790B29D9C2959E08140052E2 /* DetourPairingWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EE5A869C94D741A58052EDD /* DetourPairingWebServer.swift */; };
 		7BC085DB9CA3C089CC63FAAE /* WireTypes+Firewall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 108B18565B3041CE14794F63 /* WireTypes+Firewall.swift */; };
+		7C8264B419DD7D121721C0CA /* DetourOnboardingContentViewLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE144AF2B3C5E396E21FB05 /* DetourOnboardingContentViewLayout.swift */; };
 		7FDB88D8E98C2277407176CA /* WireTypes+Skills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FE9C3F93442AD30502259B6 /* WireTypes+Skills.swift */; };
 		81266A0E6BBA8505009805A0 /* DetourMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DA0AF742491E7D0ECD25C7 /* DetourMacApp.swift */; };
 		84145A5C28E3CE894C154571 /* WireTypes+Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1EB5C827DDFBBDA046F8CCA /* WireTypes+Tools.swift */; };
+		8813D4C5AEDDD44E43E1D659 /* DetourPersonalizationSummaries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B61B003AEFF2106AA6EA1A8 /* DetourPersonalizationSummaries.swift */; };
 		8C9F42C6A49DD76713C0827E /* SwooshAPIClient+Tools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D40B756B103935DA8259744 /* SwooshAPIClient+Tools.swift */; };
 		8CC8ACF49B02843CB49EA935 /* DetourDeviceDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6B22165ABF0F08BEDC45560 /* DetourDeviceDiscovery.swift */; };
 		8EC85ADAB074B3F4C188C4F5 /* DetourLiveSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9F07549CBA3A3486A3FD22E /* DetourLiveSpeechRecognizer.swift */; };
+		8F17EEC4FE1C1782B61A69C8 /* DetourPersonalizationMCPSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4136D3591CDDA40D8049E7A /* DetourPersonalizationMCPSetup.swift */; };
 		91CA6973398A151FEAAED214 /* DetourPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71104E50E6A707890C152009 /* DetourPaths.swift */; };
 		91DF622A50605543262DCBC0 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B69E6E24B3BF57DB5C605A6C /* OnboardingStore.swift */; };
 		92157E83EC60F1802588C24E /* WireTypes+Cron.swift in Sources */ = {isa = PBXBuildFile; fileRef = D372D34B635C1C9277704647 /* WireTypes+Cron.swift */; };
 		98172BE2CBA96AF9F7A0CDB8 /* DetouriOSOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5ADB55F731CC92FBA3B7C9D /* DetouriOSOnboardingView.swift */; };
 		999E40ACFEDC0712C7E08F33 /* WireTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4BBA73E1E6F51136BE353F8 /* WireTypes.swift */; };
+		9D7ADEA02947B898D13949FB /* DetourSetupInsightCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96BF7E8DCCB4603E213E01F5 /* DetourSetupInsightCopy.swift */; };
+		A247E723272610B7699AA6C6 /* DetourPersonalizationConnectorRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAC9178F151AC6854927D041 /* DetourPersonalizationConnectorRuntime.swift */; };
+		A4233C9A9305E72C3D72E798 /* DetourSetupInsightProjectionGroups.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D62CDF00AFEC3089ADC1F6F /* DetourSetupInsightProjectionGroups.swift */; };
 		A4DB56D6A317F23EDD0F95B6 /* DetouriOSVoiceCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24D263DA93ED14FE87E85BD /* DetouriOSVoiceCatalog.swift */; };
 		A5A5C04B0EA0D86DEF94D475 /* SwooshAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6042AED9CD4E38DEF3059BDD /* SwooshAPIClient.swift */; };
 		A64E5140A26AF1D38D3579AE /* DetouriOSSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C221BF28CA46976287FFDD0B /* DetouriOSSpeechService.swift */; };
+		A75361D1BE0477C42C26FA19 /* DetourSetupInsightItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C595F24D6DBA93B3351274 /* DetourSetupInsightItemRow.swift */; };
 		A827025251BAD35269241097 /* DetouriOSLiveSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C2D9ABCB47E4811B58AAC9 /* DetouriOSLiveSpeechRecognizer.swift */; };
+		A861AA464C99387DBB5139AB /* DetourOnboardingContentViewActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F244CE71F5734165472AE629 /* DetourOnboardingContentViewActions.swift */; };
 		AB0594645997E92EDE17BB7C /* DetourWindowConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BB909539112EDB5CCD1A10 /* DetourWindowConfigurator.swift */; };
 		AC38478016AEE94B264FCC90 /* DetourSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6338ADD5DB971FB116F23A0 /* DetourSpeechService.swift */; };
+		AFB8151BC733BB6710B0FC5A /* DetourPersonalizationResultBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D65A17B3E670F2F058335B8 /* DetourPersonalizationResultBuilder.swift */; };
+		B120D91A11DE0206A0CB6E52 /* DetourSetupInsightProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E80818257C317E36E90F37 /* DetourSetupInsightProjection.swift */; };
 		B425E25FA47303FE3669CC6B /* DetourOnboardingContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61299C23146C8DA05028C158 /* DetourOnboardingContentView.swift */; };
+		B6A066DBB00DC8C7C2F09527 /* OnboardingStoreVoiceDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BB5019EA85977E807EFDA91 /* OnboardingStoreVoiceDevices.swift */; };
+		B89B99D078FDC05A80917997 /* DetourPersonalizationCalibrationSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4898B24D84BD013B6CCD5968 /* DetourPersonalizationCalibrationSupport.swift */; };
 		BDA3AEB56260B5F9BD3AEEB5 /* DetouriOSVoiceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 316BE53FA47C795DE1771343 /* DetouriOSVoiceSettings.swift */; };
 		BE7EB31B8F8F672348C26290 /* DetourOmniVoiceDesktopRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CBBEF62E3694AFF9E512D98 /* DetourOmniVoiceDesktopRenderer.swift */; };
 		BED65847D5D4380B0DEAC39A /* SwooshAPIClient+Skills.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FDF97B81DF7E0D60BDCC6A /* SwooshAPIClient+Skills.swift */; };
+		BF209ED7D6B0D748AB371AB4 /* DetourOnboardingContentViewSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6EDDBE12CC75ED2A39224B8 /* DetourOnboardingContentViewSetup.swift */; };
+		BF957395439804901F285AC8 /* DetourPersonalizationInventoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8F838005E31CB0D06595A64 /* DetourPersonalizationInventoryModels.swift */; };
+		C00E27BA098F4717D1CD9EB9 /* DetourSetupInsightProjectionSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = C375542503C8CF399A2572A3 /* DetourSetupInsightProjectionSections.swift */; };
+		C3D4FCE8E310558EBAFA0D41 /* DetourSetupInsightRedaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A955B99A9A1EB7E89726620 /* DetourSetupInsightRedaction.swift */; };
+		C848CCD43CCBAAF211DD3D48 /* OnboardingStoreCollectionExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35D21C0D43F15672AC6EB58 /* OnboardingStoreCollectionExtensions.swift */; };
 		C99DBDA511E8059AF9FB13ED /* SwooshAPIClient+Doctor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37B025FBB12591CB06FC19ED /* SwooshAPIClient+Doctor.swift */; };
+		CD7F53D9D5E3BF8138288DDC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1A894EFE911FDFE5E5B7D00 /* Assets.xcassets */; };
+		D035D50083BD45B30F4E2F2E /* DetourOnboardingAuxiliaryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C415B79DFC43F1D18DCBA7 /* DetourOnboardingAuxiliaryViews.swift */; };
+		D075A76177766D8EA5368A07 /* DetourPersonalizationScanCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390AEF0B04080A6FEE7A2366 /* DetourPersonalizationScanCommands.swift */; };
 		D8730A9A0D478612B9804D4A /* CachedExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 191EA7FD33C6D443FB73F2B3 /* CachedExecutor.swift */; };
+		D98409B17EF3F95260E19836 /* DetourSetupInsightProjectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C788ECFD0FAE5B0EDC0F3244 /* DetourSetupInsightProjectionState.swift */; };
 		DBE92A23DA7A604A2FA4D825 /* SwooshAPIClient+Manifestations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054325916B6D77952D7C73D7 /* SwooshAPIClient+Manifestations.swift */; };
+		DCC8C8C8FF7128869F26B4A3 /* DetourPersonalizationCandidateRowView+State.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B3F383B875FA94E46A84DDD /* DetourPersonalizationCandidateRowView+State.swift */; };
+		DF735E1D4B3E320B82A5E7BB /* DetourAgentPresenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B5C5FA2D56B08F395CFE488 /* DetourAgentPresenceView.swift */; };
 		DF80F1D41FCFF367A90FB932 /* WireTypes+Manifestations.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF4E537DF1B7709F68F30EA2 /* WireTypes+Manifestations.swift */; };
+		E0A1FDB6DF5EABF7C5A0710B /* DetourPersonalizationXAccountInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 158723E70859921F5FFDC292 /* DetourPersonalizationXAccountInventory.swift */; };
+		E145C40F7AFDDA310B16E06F /* DetourSetupInsightModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D7699823D998EE840B1AA5 /* DetourSetupInsightModels.swift */; };
 		E2B165D918E64366D94C3DB0 /* SwooshAPIClient+Plugins.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5793F0518B21084B7BF5DE7 /* SwooshAPIClient+Plugins.swift */; };
 		E827714A651A09F2903002CE /* WireTypes+ChatAdapters.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB324F9FA19495D844243A30 /* WireTypes+ChatAdapters.swift */; };
 		E87EF1D805B14E234A7E77E3 /* SwooshAPIClient+MCP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795D2CA6EEEDA97717306B83 /* SwooshAPIClient+MCP.swift */; };
 		EA3091CBFE0A0A89806BFC8D /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 9CEA1CB12BA0572CBEC69073 /* FluidAudio */; };
 		F21BD365015886BA218A9752 /* DetouriOSPairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE400917D211EC51D7DF105 /* DetouriOSPairing.swift */; };
 		F6F3CEC7621938AA04ABFB64 /* SwooshAPIClient+Cron.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656E32AFB945940C01B6FE9C /* SwooshAPIClient+Cron.swift */; };
+		F7E16147E99336E5355E624B /* DetourSetupMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12894115D8BE33900B569A17 /* DetourSetupMapView.swift */; };
+		F81BE1902B64BBB6BE0971E9 /* DetourPersonalizationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEA87962E4851FA78504ACF /* DetourPersonalizationRunner.swift */; };
+		F938F01E8C86E44FEEC39F5A /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C85D4534A02858907F23799C /* AppIntents.framework */; };
 		FAF1F075EA49E4C5905E7F54 /* WireTypes+Records.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D22C48024B4BCD908EFF7C /* WireTypes+Records.swift */; };
+		FAF4877F6AD9F85B5A7ACC36 /* DetourPersonalizationApplySteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08444A1F6FA27747B6C33F6 /* DetourPersonalizationApplySteps.swift */; };
+		FB4D978262BC8E9B51268642 /* DetourPersonalizationRelationshipSummaries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92408508A14FB2FF8A763268 /* DetourPersonalizationRelationshipSummaries.swift */; };
 		FB4ECE7ACC53FC2AD252E0E2 /* DetouriOSOnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27E94B4D16C44A29AE492D33 /* DetouriOSOnboardingStore.swift */; };
 		FBFA2235498A712CA3CD03B8 /* DetouriOSUserActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E41BF29E5083622F0CEEAD /* DetouriOSUserActivity.swift */; };
 		FDD8369B6E9EF9CBD3BE44EA /* DetourStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D25F8428B5F62E7722EB1F6 /* DetourStateStore.swift */; };
@@ -75,59 +138,119 @@
 /* Begin PBXFileReference section */
 		02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshiOSApp.swift; sourceTree = "<group>"; };
 		02E4177731A337C27B533E2F /* DetourPairingSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPairingSupport.swift; sourceTree = "<group>"; };
+		04A01582E343B29EF1BB2203 /* DetourLegacyVaultImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourLegacyVaultImporter.swift; sourceTree = "<group>"; };
 		054325916B6D77952D7C73D7 /* SwooshAPIClient+Manifestations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Manifestations.swift"; sourceTree = "<group>"; };
+		0AE6E8CC8C57CCD8A906A82F /* DetourTrayMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourTrayMenuView.swift; sourceTree = "<group>"; };
 		0BF0AA7C8A538C6F2E2312DF /* SwooshiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SwooshiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		108B18565B3041CE14794F63 /* WireTypes+Firewall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Firewall.swift"; sourceTree = "<group>"; };
 		11D14C6D6740014C8F7DDB8C /* WireTypes+Memories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Memories.swift"; sourceTree = "<group>"; };
+		12894115D8BE33900B569A17 /* DetourSetupMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupMapView.swift; sourceTree = "<group>"; };
+		158723E70859921F5FFDC292 /* DetourPersonalizationXAccountInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationXAccountInventory.swift; sourceTree = "<group>"; };
 		191EA7FD33C6D443FB73F2B3 /* CachedExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedExecutor.swift; sourceTree = "<group>"; };
+		1D0E2DB740D2B187DEE9B6B8 /* DetourPersonalizationSetupGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationSetupGraph.swift; sourceTree = "<group>"; };
 		1D25F8428B5F62E7722EB1F6 /* DetourStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourStateStore.swift; sourceTree = "<group>"; };
 		1F0857C7A87992CCDB8FC87C /* WireTypes+Wallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Wallet.swift"; sourceTree = "<group>"; };
 		27E94B4D16C44A29AE492D33 /* DetouriOSOnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSOnboardingStore.swift; sourceTree = "<group>"; };
 		28155BCA75E36F8802D3046D /* DetourVoiceEnrollmentRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourVoiceEnrollmentRecorder.swift; sourceTree = "<group>"; };
+		2AEA87962E4851FA78504ACF /* DetourPersonalizationRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationRunner.swift; sourceTree = "<group>"; };
+		2B61B003AEFF2106AA6EA1A8 /* DetourPersonalizationSummaries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationSummaries.swift; sourceTree = "<group>"; };
+		2D65A17B3E670F2F058335B8 /* DetourPersonalizationResultBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationResultBuilder.swift; sourceTree = "<group>"; };
+		2DC164CA8FCBF62E678D14BF /* DetourPersonalizationReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationReview.swift; sourceTree = "<group>"; };
 		2F969C44684023A1DC4A2746 /* WireTypes+Audit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Audit.swift"; sourceTree = "<group>"; };
 		316BE53FA47C795DE1771343 /* DetouriOSVoiceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSVoiceSettings.swift; sourceTree = "<group>"; };
 		343C5191FC71C48190B03979 /* Swoosh.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Swoosh.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		37B025FBB12591CB06FC19ED /* SwooshAPIClient+Doctor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Doctor.swift"; sourceTree = "<group>"; };
 		37BB909539112EDB5CCD1A10 /* DetourWindowConfigurator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourWindowConfigurator.swift; sourceTree = "<group>"; };
 		38763004410C7B534DD827D5 /* DetouriOSStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSStateStore.swift; sourceTree = "<group>"; };
+		390AEF0B04080A6FEE7A2366 /* DetourPersonalizationScanCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationScanCommands.swift; sourceTree = "<group>"; };
 		3EE5A869C94D741A58052EDD /* DetourPairingWebServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPairingWebServer.swift; sourceTree = "<group>"; };
+		42E58AAAC987120054D0D6CB /* DetourPersonalizationAuthInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationAuthInventory.swift; sourceTree = "<group>"; };
 		4381E41C31545D3203A7B61A /* SwooshExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshExecutor.swift; sourceTree = "<group>"; };
 		43A4A544D0958D670BF082AE /* OfflineMessageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineMessageCache.swift; sourceTree = "<group>"; };
 		452063C76A7A13EBAF8AF9A9 /* WireTypes+Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Board.swift"; sourceTree = "<group>"; };
+		45479955B0C2B46873482492 /* DetouriOSSetupTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSSetupTransfer.swift; sourceTree = "<group>"; };
 		456C853B7FCF3879F3252E77 /* DetourOnboardingNativeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingNativeView.swift; sourceTree = "<group>"; };
+		4898B24D84BD013B6CCD5968 /* DetourPersonalizationCalibrationSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationCalibrationSupport.swift; sourceTree = "<group>"; };
+		49A46A43AEED33EF644EC026 /* DetourOnboardingContentViewCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewCommands.swift; sourceTree = "<group>"; };
+		49D7699823D998EE840B1AA5 /* DetourSetupInsightModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightModels.swift; sourceTree = "<group>"; };
+		4B3F383B875FA94E46A84DDD /* DetourPersonalizationCandidateRowView+State.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DetourPersonalizationCandidateRowView+State.swift"; sourceTree = "<group>"; };
+		4BB5019EA85977E807EFDA91 /* OnboardingStoreVoiceDevices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStoreVoiceDevices.swift; sourceTree = "<group>"; };
+		4C8D292E83E1EEC4EE102C36 /* DetourOnboardingContentViewSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewSpeech.swift; sourceTree = "<group>"; };
 		4D40B756B103935DA8259744 /* SwooshAPIClient+Tools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Tools.swift"; sourceTree = "<group>"; };
 		5054F477CEE22F5FE361C606 /* SwooshAPIClient+Memories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Memories.swift"; sourceTree = "<group>"; };
+		50E20CE209072346AB73D524 /* DetourOnboardingContentViewControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewControls.swift; sourceTree = "<group>"; };
+		52E80818257C317E36E90F37 /* DetourSetupInsightProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightProjection.swift; sourceTree = "<group>"; };
+		55FF97564A6C8A9FEF187FA8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		57D7A2156E64C15EB815A21B /* DetourOnboardingPersonalizationReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingPersonalizationReview.swift; sourceTree = "<group>"; };
 		59FF964FEFDFC98C86EAD029 /* SwooshAPIClient+Wallet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Wallet.swift"; sourceTree = "<group>"; };
 		5B0C7B1D63F4E49750C60E09 /* DetouriOSVoiceEnrollmentRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSVoiceEnrollmentRecorder.swift; sourceTree = "<group>"; };
 		5CBBEF62E3694AFF9E512D98 /* DetourOmniVoiceDesktopRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOmniVoiceDesktopRenderer.swift; sourceTree = "<group>"; };
+		5DD8FC3D169A5BF6F6E983AC /* DetourPersonalizationUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationUtilities.swift; sourceTree = "<group>"; };
 		6042AED9CD4E38DEF3059BDD /* SwooshAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwooshAPIClient.swift; sourceTree = "<group>"; };
 		61299C23146C8DA05028C158 /* DetourOnboardingContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentView.swift; sourceTree = "<group>"; };
 		656E32AFB945940C01B6FE9C /* SwooshAPIClient+Cron.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Cron.swift"; sourceTree = "<group>"; };
 		65C21CB3391B764F9164DEE1 /* WireTypes+Doctor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Doctor.swift"; sourceTree = "<group>"; };
+		6B5C5FA2D56B08F395CFE488 /* DetourAgentPresenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourAgentPresenceView.swift; sourceTree = "<group>"; };
+		6FC317A7F41CE53A8813E574 /* DetourPersonalizationCandidateBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationCandidateBuilder.swift; sourceTree = "<group>"; };
 		71104E50E6A707890C152009 /* DetourPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPaths.swift; sourceTree = "<group>"; };
 		72C2D9ABCB47E4811B58AAC9 /* DetouriOSLiveSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSLiveSpeechRecognizer.swift; sourceTree = "<group>"; };
+		7507C1A16BA5FCD4ED0035BD /* OnboardingStoreSetupInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStoreSetupInsights.swift; sourceTree = "<group>"; };
 		795D2CA6EEEDA97717306B83 /* SwooshAPIClient+MCP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+MCP.swift"; sourceTree = "<group>"; };
 		7AE2D253FC592A9CCA4DD3C1 /* DetourNativeVoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourNativeVoiceCatalog.swift; sourceTree = "<group>"; };
 		7FE9C3F93442AD30502259B6 /* WireTypes+Skills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Skills.swift"; sourceTree = "<group>"; };
+		8022D50533F514AB77AE154F /* DetourPersonalizationConnectorSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationConnectorSetup.swift; sourceTree = "<group>"; };
+		83BFB1AA73A48106300293DB /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		83F2B19273D3073DAC4F0BA9 /* DetourOnboardingContentViewVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewVisibility.swift; sourceTree = "<group>"; };
+		8721609F39754F09C130455D /* DetourPersonalizationInventories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationInventories.swift; sourceTree = "<group>"; };
+		887A457BCEE33F9760D1904C /* DetourPersonalizationScanSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationScanSteps.swift; sourceTree = "<group>"; };
+		89C415B79DFC43F1D18DCBA7 /* DetourOnboardingAuxiliaryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingAuxiliaryViews.swift; sourceTree = "<group>"; };
+		8A955B99A9A1EB7E89726620 /* DetourSetupInsightRedaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightRedaction.swift; sourceTree = "<group>"; };
 		8D0815EE890A1BB7389673F4 /* SwooshAPIClient+Firewall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Firewall.swift"; sourceTree = "<group>"; };
 		8FA037957996BC661FC50825 /* SwooshAPIClient+Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Goals.swift"; sourceTree = "<group>"; };
+		90D8C632FE2A21D89C63881C /* DetourPairingPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPairingPage.swift; sourceTree = "<group>"; };
 		90E41BF29E5083622F0CEEAD /* DetouriOSUserActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSUserActivity.swift; sourceTree = "<group>"; };
+		92408508A14FB2FF8A763268 /* DetourPersonalizationRelationshipSummaries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationRelationshipSummaries.swift; sourceTree = "<group>"; };
 		9515F6EF3F4DB22F101BD0B5 /* DetourIOSInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourIOSInstaller.swift; sourceTree = "<group>"; };
+		964BACE9AEB7BC18FBFCF9D9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		96BF7E8DCCB4603E213E01F5 /* DetourSetupInsightCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightCopy.swift; sourceTree = "<group>"; };
+		96D1309D7EB5B70B9952B54D /* DetourPersonalizationBrowserAccountInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationBrowserAccountInventory.swift; sourceTree = "<group>"; };
+		97F1A8829568523CA16E2AD6 /* DetourSetupInsightCharts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightCharts.swift; sourceTree = "<group>"; };
+		99BC800045A7A899B00D3945 /* DetourPersonalizationApplySupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationApplySupport.swift; sourceTree = "<group>"; };
+		9D62CDF00AFEC3089ADC1F6F /* DetourSetupInsightProjectionGroups.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightProjectionGroups.swift; sourceTree = "<group>"; };
+		A116136ECBD3F8C3C5223954 /* DetourPersonalizationCandidateRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationCandidateRowView.swift; sourceTree = "<group>"; };
+		A35D21C0D43F15672AC6EB58 /* OnboardingStoreCollectionExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStoreCollectionExtensions.swift; sourceTree = "<group>"; };
 		A3D22C48024B4BCD908EFF7C /* WireTypes+Records.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Records.swift"; sourceTree = "<group>"; };
 		A5793F0518B21084B7BF5DE7 /* SwooshAPIClient+Plugins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Plugins.swift"; sourceTree = "<group>"; };
+		A6EDDBE12CC75ED2A39224B8 /* DetourOnboardingContentViewSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewSetup.swift; sourceTree = "<group>"; };
+		AF60940289BBA8C238B1B5C0 /* OnboardingStorePersonalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStorePersonalization.swift; sourceTree = "<group>"; };
+		B08444A1F6FA27747B6C33F6 /* DetourPersonalizationApplySteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationApplySteps.swift; sourceTree = "<group>"; };
+		B1A894EFE911FDFE5E5B7D00 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B24D263DA93ED14FE87E85BD /* DetouriOSVoiceCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSVoiceCatalog.swift; sourceTree = "<group>"; };
+		B3FAFA75FC6C90A660E63EF0 /* DetourPersonalizationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationModels.swift; sourceTree = "<group>"; };
 		B3FDF97B81DF7E0D60BDCC6A /* SwooshAPIClient+Skills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwooshAPIClient+Skills.swift"; sourceTree = "<group>"; };
+		B4136D3591CDDA40D8049E7A /* DetourPersonalizationMCPSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationMCPSetup.swift; sourceTree = "<group>"; };
 		B69E6E24B3BF57DB5C605A6C /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
 		B9F07549CBA3A3486A3FD22E /* DetourLiveSpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourLiveSpeechRecognizer.swift; sourceTree = "<group>"; };
+		BD7CB372B417EC71FE1AC3BE /* DetourOnboardingSetupConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingSetupConfiguration.swift; sourceTree = "<group>"; };
+		BE77AFB80FB72E87A38A71C1 /* DetourSetupTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupTransfer.swift; sourceTree = "<group>"; };
 		BEEBDD612462E37F1E50792A /* WireTypes+Launchpads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Launchpads.swift"; sourceTree = "<group>"; };
 		C020739AC89216898E2C28A6 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		C0DA0AF742491E7D0ECD25C7 /* DetourMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourMacApp.swift; sourceTree = "<group>"; };
 		C221BF28CA46976287FFDD0B /* DetouriOSSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSSpeechService.swift; sourceTree = "<group>"; };
+		C375542503C8CF399A2572A3 /* DetourSetupInsightProjectionSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightProjectionSections.swift; sourceTree = "<group>"; };
 		C6338ADD5DB971FB116F23A0 /* DetourSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSpeechService.swift; sourceTree = "<group>"; };
+		C788ECFD0FAE5B0EDC0F3244 /* DetourSetupInsightProjectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightProjectionState.swift; sourceTree = "<group>"; };
+		C85D4534A02858907F23799C /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		C8E5CAA92D06BE4A4D6425C8 /* WireTypes+Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Goals.swift"; sourceTree = "<group>"; };
+		CA1D7A85D4B0666B15F4618D /* DetourOnboardingContentViewVoiceActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewVoiceActions.swift; sourceTree = "<group>"; };
+		CCE144AF2B3C5E396E21FB05 /* DetourOnboardingContentViewLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewLayout.swift; sourceTree = "<group>"; };
 		CCE400917D211EC51D7DF105 /* DetouriOSPairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSPairing.swift; sourceTree = "<group>"; };
 		CF4E537DF1B7709F68F30EA2 /* WireTypes+Manifestations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Manifestations.swift"; sourceTree = "<group>"; };
 		D372D34B635C1C9277704647 /* WireTypes+Cron.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Cron.swift"; sourceTree = "<group>"; };
+		D8C595F24D6DBA93B3351274 /* DetourSetupInsightItemRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourSetupInsightItemRow.swift; sourceTree = "<group>"; };
+		DA6C4B98124F8EF675B46D85 /* DetourPersonalizationKeychainAuthInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationKeychainAuthInventory.swift; sourceTree = "<group>"; };
+		DAC9178F151AC6854927D041 /* DetourPersonalizationConnectorRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationConnectorRuntime.swift; sourceTree = "<group>"; };
+		DF793629637A628673D15D7F /* OnboardingStorePairingPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStorePairingPersistence.swift; sourceTree = "<group>"; };
 		E1C7AA2E2F507D88558C8D12 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E1EB5C827DDFBBDA046F8CCA /* WireTypes+Tools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Tools.swift"; sourceTree = "<group>"; };
 		E289A6E9B417AE349F5101E8 /* WireTypes+MCP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+MCP.swift"; sourceTree = "<group>"; };
@@ -136,7 +259,10 @@
 		E6E0D0C4F33919F65DAE8E41 /* WireTypes+Runtime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Runtime.swift"; sourceTree = "<group>"; };
 		E7D7904EAA529FD402D74E5D /* WireTypes+Providers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Providers.swift"; sourceTree = "<group>"; };
 		EB324F9FA19495D844243A30 /* WireTypes+ChatAdapters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+ChatAdapters.swift"; sourceTree = "<group>"; };
+		EF801700C26D89EB5BB057FB /* DetourPersonalizationPlanningBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationPlanningBuilder.swift; sourceTree = "<group>"; };
+		F244CE71F5734165472AE629 /* DetourOnboardingContentViewActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourOnboardingContentViewActions.swift; sourceTree = "<group>"; };
 		F5ADB55F731CC92FBA3B7C9D /* DetouriOSOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetouriOSOnboardingView.swift; sourceTree = "<group>"; };
+		F8F838005E31CB0D06595A64 /* DetourPersonalizationInventoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetourPersonalizationInventoryModels.swift; sourceTree = "<group>"; };
 		FA2A739687BA2BF11782B013 /* WireTypes+Plugins.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WireTypes+Plugins.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -146,18 +272,39 @@
 			buildActionMask = 2147483647;
 			files = (
 				EA3091CBFE0A0A89806BFC8D /* FluidAudio in Frameworks */,
+				5E30376CC34F9873E8CDFB11 /* AppIntents.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C2B666F6BE886C72E6EE5976 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F938F01E8C86E44FEEC39F5A /* AppIntents.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		021059164C60E27D92090880 /* Charts */ = {
+			isa = PBXGroup;
+			children = (
+				97F1A8829568523CA16E2AD6 /* DetourSetupInsightCharts.swift */,
+			);
+			path = Charts;
+			sourceTree = "<group>";
+		};
 		259B725A88850C120F5D47E0 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				A31458E6A485913A03232DB3 /* Onboarding */,
 				F21A38DF5E30EFD5E1E3D12C /* Support */,
+				B272A1FDE4F02C074EA342BD /* Tray */,
+				B1A894EFE911FDFE5E5B7D00 /* Assets.xcassets */,
 				C0DA0AF742491E7D0ECD25C7 /* DetourMacApp.swift */,
+				55FF97564A6C8A9FEF187FA8 /* Info.plist */,
+				83BFB1AA73A48106300293DB /* PrivacyInfo.xcprivacy */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -178,6 +325,7 @@
 				27E94B4D16C44A29AE492D33 /* DetouriOSOnboardingStore.swift */,
 				F5ADB55F731CC92FBA3B7C9D /* DetouriOSOnboardingView.swift */,
 				CCE400917D211EC51D7DF105 /* DetouriOSPairing.swift */,
+				45479955B0C2B46873482492 /* DetouriOSSetupTransfer.swift */,
 				C221BF28CA46976287FFDD0B /* DetouriOSSpeechService.swift */,
 				38763004410C7B534DD827D5 /* DetouriOSStateStore.swift */,
 				90E41BF29E5083622F0CEEAD /* DetouriOSUserActivity.swift */,
@@ -185,9 +333,19 @@
 				5B0C7B1D63F4E49750C60E09 /* DetouriOSVoiceEnrollmentRecorder.swift */,
 				316BE53FA47C795DE1771343 /* DetouriOSVoiceSettings.swift */,
 				E1C7AA2E2F507D88558C8D12 /* Info.plist */,
+				964BACE9AEB7BC18FBFCF9D9 /* PrivacyInfo.xcprivacy */,
 				02DB720ACD211F31668F8A0A /* SwooshiOSApp.swift */,
 			);
 			path = SwooshiOS;
+			sourceTree = "<group>";
+		};
+		3E3EA81AC4B533476CECB2B6 /* Spatial */ = {
+			isa = PBXGroup;
+			children = (
+				6B5C5FA2D56B08F395CFE488 /* DetourAgentPresenceView.swift */,
+				12894115D8BE33900B569A17 /* DetourSetupMapView.swift */,
+			);
+			path = Spatial;
 			sourceTree = "<group>";
 		};
 		4B0B92C73DC912BBB0706CCE /* Sources */ = {
@@ -251,16 +409,53 @@
 		A31458E6A485913A03232DB3 /* Onboarding */ = {
 			isa = PBXGroup;
 			children = (
+				021059164C60E27D92090880 /* Charts */,
+				3E3EA81AC4B533476CECB2B6 /* Spatial */,
 				B9F07549CBA3A3486A3FD22E /* DetourLiveSpeechRecognizer.swift */,
 				5CBBEF62E3694AFF9E512D98 /* DetourOmniVoiceDesktopRenderer.swift */,
+				89C415B79DFC43F1D18DCBA7 /* DetourOnboardingAuxiliaryViews.swift */,
 				61299C23146C8DA05028C158 /* DetourOnboardingContentView.swift */,
+				F244CE71F5734165472AE629 /* DetourOnboardingContentViewActions.swift */,
+				49A46A43AEED33EF644EC026 /* DetourOnboardingContentViewCommands.swift */,
+				50E20CE209072346AB73D524 /* DetourOnboardingContentViewControls.swift */,
+				CCE144AF2B3C5E396E21FB05 /* DetourOnboardingContentViewLayout.swift */,
+				A6EDDBE12CC75ED2A39224B8 /* DetourOnboardingContentViewSetup.swift */,
+				4C8D292E83E1EEC4EE102C36 /* DetourOnboardingContentViewSpeech.swift */,
+				83F2B19273D3073DAC4F0BA9 /* DetourOnboardingContentViewVisibility.swift */,
+				CA1D7A85D4B0666B15F4618D /* DetourOnboardingContentViewVoiceActions.swift */,
 				456C853B7FCF3879F3252E77 /* DetourOnboardingNativeView.swift */,
+				57D7A2156E64C15EB815A21B /* DetourOnboardingPersonalizationReview.swift */,
+				BD7CB372B417EC71FE1AC3BE /* DetourOnboardingSetupConfiguration.swift */,
+				A116136ECBD3F8C3C5223954 /* DetourPersonalizationCandidateRowView.swift */,
+				4B3F383B875FA94E46A84DDD /* DetourPersonalizationCandidateRowView+State.swift */,
+				D8C595F24D6DBA93B3351274 /* DetourSetupInsightItemRow.swift */,
 				C6338ADD5DB971FB116F23A0 /* DetourSpeechService.swift */,
 				28155BCA75E36F8802D3046D /* DetourVoiceEnrollmentRecorder.swift */,
 				37BB909539112EDB5CCD1A10 /* DetourWindowConfigurator.swift */,
 				B69E6E24B3BF57DB5C605A6C /* OnboardingStore.swift */,
+				A35D21C0D43F15672AC6EB58 /* OnboardingStoreCollectionExtensions.swift */,
+				DF793629637A628673D15D7F /* OnboardingStorePairingPersistence.swift */,
+				AF60940289BBA8C238B1B5C0 /* OnboardingStorePersonalization.swift */,
+				7507C1A16BA5FCD4ED0035BD /* OnboardingStoreSetupInsights.swift */,
+				4BB5019EA85977E807EFDA91 /* OnboardingStoreVoiceDevices.swift */,
 			);
 			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		B272A1FDE4F02C074EA342BD /* Tray */ = {
+			isa = PBXGroup;
+			children = (
+				0AE6E8CC8C57CCD8A906A82F /* DetourTrayMenuView.swift */,
+			);
+			path = Tray;
+			sourceTree = "<group>";
+		};
+		E0A872496E6F9E5A90E4551F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C85D4534A02858907F23799C /* AppIntents.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		F21A38DF5E30EFD5E1E3D12C /* Support */ = {
@@ -268,10 +463,44 @@
 			children = (
 				E6B22165ABF0F08BEDC45560 /* DetourDeviceDiscovery.swift */,
 				9515F6EF3F4DB22F101BD0B5 /* DetourIOSInstaller.swift */,
+				04A01582E343B29EF1BB2203 /* DetourLegacyVaultImporter.swift */,
 				7AE2D253FC592A9CCA4DD3C1 /* DetourNativeVoiceCatalog.swift */,
+				90D8C632FE2A21D89C63881C /* DetourPairingPage.swift */,
 				02E4177731A337C27B533E2F /* DetourPairingSupport.swift */,
 				3EE5A869C94D741A58052EDD /* DetourPairingWebServer.swift */,
 				71104E50E6A707890C152009 /* DetourPaths.swift */,
+				B08444A1F6FA27747B6C33F6 /* DetourPersonalizationApplySteps.swift */,
+				99BC800045A7A899B00D3945 /* DetourPersonalizationApplySupport.swift */,
+				42E58AAAC987120054D0D6CB /* DetourPersonalizationAuthInventory.swift */,
+				96D1309D7EB5B70B9952B54D /* DetourPersonalizationBrowserAccountInventory.swift */,
+				4898B24D84BD013B6CCD5968 /* DetourPersonalizationCalibrationSupport.swift */,
+				6FC317A7F41CE53A8813E574 /* DetourPersonalizationCandidateBuilder.swift */,
+				DAC9178F151AC6854927D041 /* DetourPersonalizationConnectorRuntime.swift */,
+				8022D50533F514AB77AE154F /* DetourPersonalizationConnectorSetup.swift */,
+				8721609F39754F09C130455D /* DetourPersonalizationInventories.swift */,
+				F8F838005E31CB0D06595A64 /* DetourPersonalizationInventoryModels.swift */,
+				DA6C4B98124F8EF675B46D85 /* DetourPersonalizationKeychainAuthInventory.swift */,
+				B4136D3591CDDA40D8049E7A /* DetourPersonalizationMCPSetup.swift */,
+				B3FAFA75FC6C90A660E63EF0 /* DetourPersonalizationModels.swift */,
+				EF801700C26D89EB5BB057FB /* DetourPersonalizationPlanningBuilder.swift */,
+				92408508A14FB2FF8A763268 /* DetourPersonalizationRelationshipSummaries.swift */,
+				2D65A17B3E670F2F058335B8 /* DetourPersonalizationResultBuilder.swift */,
+				2DC164CA8FCBF62E678D14BF /* DetourPersonalizationReview.swift */,
+				2AEA87962E4851FA78504ACF /* DetourPersonalizationRunner.swift */,
+				390AEF0B04080A6FEE7A2366 /* DetourPersonalizationScanCommands.swift */,
+				887A457BCEE33F9760D1904C /* DetourPersonalizationScanSteps.swift */,
+				1D0E2DB740D2B187DEE9B6B8 /* DetourPersonalizationSetupGraph.swift */,
+				2B61B003AEFF2106AA6EA1A8 /* DetourPersonalizationSummaries.swift */,
+				5DD8FC3D169A5BF6F6E983AC /* DetourPersonalizationUtilities.swift */,
+				158723E70859921F5FFDC292 /* DetourPersonalizationXAccountInventory.swift */,
+				96BF7E8DCCB4603E213E01F5 /* DetourSetupInsightCopy.swift */,
+				49D7699823D998EE840B1AA5 /* DetourSetupInsightModels.swift */,
+				52E80818257C317E36E90F37 /* DetourSetupInsightProjection.swift */,
+				9D62CDF00AFEC3089ADC1F6F /* DetourSetupInsightProjectionGroups.swift */,
+				C375542503C8CF399A2572A3 /* DetourSetupInsightProjectionSections.swift */,
+				C788ECFD0FAE5B0EDC0F3244 /* DetourSetupInsightProjectionState.swift */,
+				8A955B99A9A1EB7E89726620 /* DetourSetupInsightRedaction.swift */,
+				BE77AFB80FB72E87A38A71C1 /* DetourSetupTransfer.swift */,
 				1D25F8428B5F62E7722EB1F6 /* DetourStateStore.swift */,
 			);
 			path = Support;
@@ -283,6 +512,7 @@
 				259B725A88850C120F5D47E0 /* App */,
 				4CA80AB5FE08310653E98C5B /* Apps */,
 				4B0B92C73DC912BBB0706CCE /* Sources */,
+				E0A872496E6F9E5A90E4551F /* Frameworks */,
 				387AA0C01093A3E091398435 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -295,6 +525,7 @@
 			buildConfigurationList = 90EF32ED6D99B8B4177EB046 /* Build configuration list for PBXNativeTarget "SwooshiOS" */;
 			buildPhases = (
 				7E3D01D2AE967AA5FB3858FD /* Sources */,
+				BF82BBD43CA73D9D70994A01 /* Resources */,
 				6C7372F16C09C125B34951E8 /* Frameworks */,
 			);
 			buildRules = (
@@ -314,6 +545,8 @@
 			buildConfigurationList = 8E3CAB43F0C731D4DDC5F084 /* Build configuration list for PBXNativeTarget "Swoosh" */;
 			buildPhases = (
 				FD61F42DE11D9C0A0E9AD96A /* Sources */,
+				8E57EA4D93AD20573B46EF88 /* Resources */,
+				C2B666F6BE886C72E6EE5976 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -368,6 +601,26 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		8E57EA4D93AD20573B46EF88 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD7F53D9D5E3BF8138288DDC /* Assets.xcassets in Resources */,
+				1D472CE42EEC5A72E9D75FC7 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF82BBD43CA73D9D70994A01 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				189A8D004ADCECE5B610340B /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		7E3D01D2AE967AA5FB3858FD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -378,6 +631,7 @@
 				FB4ECE7ACC53FC2AD252E0E2 /* DetouriOSOnboardingStore.swift in Sources */,
 				98172BE2CBA96AF9F7A0CDB8 /* DetouriOSOnboardingView.swift in Sources */,
 				F21BD365015886BA218A9752 /* DetouriOSPairing.swift in Sources */,
+				78427D7825808BD3BE33DE2C /* DetouriOSSetupTransfer.swift in Sources */,
 				A64E5140A26AF1D38D3579AE /* DetouriOSSpeechService.swift in Sources */,
 				69716793A39856E8495A06AC /* DetouriOSStateStore.swift in Sources */,
 				FBFA2235498A712CA3CD03B8 /* DetouriOSUserActivity.swift in Sources */,
@@ -426,22 +680,79 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DF735E1D4B3E320B82A5E7BB /* DetourAgentPresenceView.swift in Sources */,
 				8CC8ACF49B02843CB49EA935 /* DetourDeviceDiscovery.swift in Sources */,
 				03B16E818A01105B47A42699 /* DetourIOSInstaller.swift in Sources */,
+				569CC7A52FB0F12A7FF5ED48 /* DetourLegacyVaultImporter.swift in Sources */,
 				8EC85ADAB074B3F4C188C4F5 /* DetourLiveSpeechRecognizer.swift in Sources */,
 				81266A0E6BBA8505009805A0 /* DetourMacApp.swift in Sources */,
 				5AFC466E0C70966C1DB72F29 /* DetourNativeVoiceCatalog.swift in Sources */,
 				BE7EB31B8F8F672348C26290 /* DetourOmniVoiceDesktopRenderer.swift in Sources */,
+				D035D50083BD45B30F4E2F2E /* DetourOnboardingAuxiliaryViews.swift in Sources */,
 				B425E25FA47303FE3669CC6B /* DetourOnboardingContentView.swift in Sources */,
+				A861AA464C99387DBB5139AB /* DetourOnboardingContentViewActions.swift in Sources */,
+				592951DA7273F896986E12D0 /* DetourOnboardingContentViewCommands.swift in Sources */,
+				70E40B35366EAA3C69F83F3F /* DetourOnboardingContentViewControls.swift in Sources */,
+				7C8264B419DD7D121721C0CA /* DetourOnboardingContentViewLayout.swift in Sources */,
+				BF209ED7D6B0D748AB371AB4 /* DetourOnboardingContentViewSetup.swift in Sources */,
+				3F483188C8E96AF1AC592763 /* DetourOnboardingContentViewSpeech.swift in Sources */,
+				160E586F74E8C49303810794 /* DetourOnboardingContentViewVisibility.swift in Sources */,
+				2A2A723A02B2C3F0AE6EEDC6 /* DetourOnboardingContentViewVoiceActions.swift in Sources */,
 				180B8347724F5514D8971C7C /* DetourOnboardingNativeView.swift in Sources */,
+				355CE3BF18D224EB5C6F4A49 /* DetourOnboardingPersonalizationReview.swift in Sources */,
+				28FEF09C703F653D33BB08FB /* DetourOnboardingSetupConfiguration.swift in Sources */,
+				6C28DBF41AEE59149254C39A /* DetourPairingPage.swift in Sources */,
 				2EF2FDBDE1BBBBE29D4A2AF6 /* DetourPairingSupport.swift in Sources */,
 				790B29D9C2959E08140052E2 /* DetourPairingWebServer.swift in Sources */,
 				91CA6973398A151FEAAED214 /* DetourPaths.swift in Sources */,
+				FAF4877F6AD9F85B5A7ACC36 /* DetourPersonalizationApplySteps.swift in Sources */,
+				4634CEAA83B6A3FEAA59C8A1 /* DetourPersonalizationApplySupport.swift in Sources */,
+				2D2C6B48083E378877802A1B /* DetourPersonalizationAuthInventory.swift in Sources */,
+				2F356311D086B2437B83A4E8 /* DetourPersonalizationBrowserAccountInventory.swift in Sources */,
+				B89B99D078FDC05A80917997 /* DetourPersonalizationCalibrationSupport.swift in Sources */,
+				587EA9A9F13B27C9FF5E7F39 /* DetourPersonalizationCandidateBuilder.swift in Sources */,
+				DCC8C8C8FF7128869F26B4A3 /* DetourPersonalizationCandidateRowView+State.swift in Sources */,
+				53FB571DAEC1593112FD2063 /* DetourPersonalizationCandidateRowView.swift in Sources */,
+				A247E723272610B7699AA6C6 /* DetourPersonalizationConnectorRuntime.swift in Sources */,
+				02AF7B4CCF76848BDF794A75 /* DetourPersonalizationConnectorSetup.swift in Sources */,
+				23114439CA9AE2FC644429FF /* DetourPersonalizationInventories.swift in Sources */,
+				BF957395439804901F285AC8 /* DetourPersonalizationInventoryModels.swift in Sources */,
+				0150F2599F462618AA62CC47 /* DetourPersonalizationKeychainAuthInventory.swift in Sources */,
+				8F17EEC4FE1C1782B61A69C8 /* DetourPersonalizationMCPSetup.swift in Sources */,
+				68808546C6177AACD40AB5D1 /* DetourPersonalizationModels.swift in Sources */,
+				73D8BBE3AEBDD4C74E6BCED5 /* DetourPersonalizationPlanningBuilder.swift in Sources */,
+				FB4D978262BC8E9B51268642 /* DetourPersonalizationRelationshipSummaries.swift in Sources */,
+				AFB8151BC733BB6710B0FC5A /* DetourPersonalizationResultBuilder.swift in Sources */,
+				275A66978695EC77FE346396 /* DetourPersonalizationReview.swift in Sources */,
+				F81BE1902B64BBB6BE0971E9 /* DetourPersonalizationRunner.swift in Sources */,
+				D075A76177766D8EA5368A07 /* DetourPersonalizationScanCommands.swift in Sources */,
+				3D6556188472C742BA98099C /* DetourPersonalizationScanSteps.swift in Sources */,
+				2448D99835E5F37AC2068D21 /* DetourPersonalizationSetupGraph.swift in Sources */,
+				8813D4C5AEDDD44E43E1D659 /* DetourPersonalizationSummaries.swift in Sources */,
+				16451E272A2F73B505690305 /* DetourPersonalizationUtilities.swift in Sources */,
+				E0A1FDB6DF5EABF7C5A0710B /* DetourPersonalizationXAccountInventory.swift in Sources */,
+				2500D5D3749338ACEAA8E010 /* DetourSetupInsightCharts.swift in Sources */,
+				9D7ADEA02947B898D13949FB /* DetourSetupInsightCopy.swift in Sources */,
+				A75361D1BE0477C42C26FA19 /* DetourSetupInsightItemRow.swift in Sources */,
+				E145C40F7AFDDA310B16E06F /* DetourSetupInsightModels.swift in Sources */,
+				B120D91A11DE0206A0CB6E52 /* DetourSetupInsightProjection.swift in Sources */,
+				A4233C9A9305E72C3D72E798 /* DetourSetupInsightProjectionGroups.swift in Sources */,
+				C00E27BA098F4717D1CD9EB9 /* DetourSetupInsightProjectionSections.swift in Sources */,
+				D98409B17EF3F95260E19836 /* DetourSetupInsightProjectionState.swift in Sources */,
+				C3D4FCE8E310558EBAFA0D41 /* DetourSetupInsightRedaction.swift in Sources */,
+				F7E16147E99336E5355E624B /* DetourSetupMapView.swift in Sources */,
+				0A401852F51A94FD4BFE193E /* DetourSetupTransfer.swift in Sources */,
 				AC38478016AEE94B264FCC90 /* DetourSpeechService.swift in Sources */,
 				FDD8369B6E9EF9CBD3BE44EA /* DetourStateStore.swift in Sources */,
+				4A13F2360EDCED0DC76A443D /* DetourTrayMenuView.swift in Sources */,
 				4B223E57521BA1BE4345B7A5 /* DetourVoiceEnrollmentRecorder.swift in Sources */,
 				AB0594645997E92EDE17BB7C /* DetourWindowConfigurator.swift in Sources */,
 				91DF622A50605543262DCBC0 /* OnboardingStore.swift in Sources */,
+				C848CCD43CCBAAF211DD3D48 /* OnboardingStoreCollectionExtensions.swift in Sources */,
+				1AD26BBF9B793477C98EC8C0 /* OnboardingStorePairingPersistence.swift in Sources */,
+				09D8254F610967C3BE21A526 /* OnboardingStorePersonalization.swift in Sources */,
+				63AD4917BB9633A9A4E2ED2D /* OnboardingStoreSetupInsights.swift in Sources */,
+				B6A066DBB00DC8C7C2F09527 /* OnboardingStoreVoiceDevices.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -602,14 +913,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Detour;
-				INFOPLIST_KEY_LSUIElement = NO;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Detour uses your local network to let your iPhone connect to this Mac.";
-				INFOPLIST_KEY_NSMainNibFile = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Detour records a short local voice sample so it can recognize your voice.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Detour uses local speech recognition to detect the wake word you choose.";
+				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -643,14 +947,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Detour;
-				INFOPLIST_KEY_LSUIElement = NO;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Detour uses your local network to let your iPhone connect to this Mac.";
-				INFOPLIST_KEY_NSMainNibFile = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Detour records a short local voice sample so it can recognize your voice.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Detour uses local speech recognition to detect the wake word you choose.";
+				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

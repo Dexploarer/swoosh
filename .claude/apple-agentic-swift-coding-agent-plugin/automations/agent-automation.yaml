@@ -1,0 +1,17 @@
+name: apple-agentic-swift-automation
+version: 1
+session_start:
+  - scripts/apple-agent-doctor.sh
+pre_commit:
+  - scripts/validate-agentic-apple.sh
+  - scripts/privacy-audit.sh
+post_feature:
+  - scripts/xcodebuild-test.sh
+release:
+  - scripts/apple-agent-doctor.sh
+  - scripts/privacy-audit.sh
+  - scripts/xcodebuild-test.sh
+notes:
+  - Fast checks belong in hooks.
+  - Full simulator/device matrices belong in CI.
+  - Do not upload build logs containing secrets or private user data.

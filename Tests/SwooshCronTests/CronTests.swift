@@ -488,15 +488,16 @@ struct CronProcessRunnerTests {
     func timeoutFiresAndDoesNotBlock() async throws {
         let policy = CronProcessPolicy(timeoutSeconds: 1)
         let runner = CronProcessRunner(policy: policy)
-        // Run two children concurrently — if `run` blocked the cooperative
-        // pool the way it used to, this would serialize and take ~2s. With
-        // the continuation-based fix they overlap.
+        // Run four children concurrently; a blocking wait path serializes this
+        // to ~4s, while the continuation path overlaps the timeouts.
         let start = Date()
         async let a: Void = expectTimeout(runner: runner)
         async let b: Void = expectTimeout(runner: runner)
-        _ = try await (a, b)
+        async let c: Void = expectTimeout(runner: runner)
+        async let d: Void = expectTimeout(runner: runner)
+        _ = try await (a, b, c, d)
         let elapsed = Date().timeIntervalSince(start)
-        #expect(elapsed < 1.8, "expected concurrent timeouts (<1.8s), got \(elapsed)s")
+        #expect(elapsed < 3.5, "expected concurrent timeouts (<3.5s), got \(elapsed)s")
     }
 
     private func expectTimeout(runner: CronProcessRunner) async throws {

@@ -19,6 +19,7 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case calendarRead
     case remindersRead
     case contactsRead
+    case messagesRead
     case browserTabsRead
     case browserHistoryRead
     case appleEvents
@@ -50,6 +51,16 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case musicLibraryRead
     case photosRead
     case recentDocumentsRead
+
+    // ── Credential / auth inheritance ──────────────────────────────
+    case keychainCredentialsRead
+    case keychainCredentialsImport
+    case browserCookiesRead
+    case browserCookiesImport
+
+    // ── Identity / delegation ────────────────────────────────────
+    case accountDelegationRead
+    case accountDelegationWrite
 
     // ── Tool / runtime ────────────────────────────────────────────
     case toolRead

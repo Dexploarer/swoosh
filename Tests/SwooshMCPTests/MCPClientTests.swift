@@ -561,6 +561,44 @@ struct MCPConnectorTests {
         #expect(readFile?.inputSchemaJSON?.contains("path") == true)
         await client.disconnect()
     }
+
+    @Test("connectAndDiscover supports HTTP MCP fixtures")
+    func connectAndDiscoverHTTP() async throws {
+        let endpoint = URL(string: "http://127.0.0.1:8789/mcp")!
+        let sender: HTTPMCPTransport.Configuration.Sender = { request in
+            let body = String(data: request.httpBody ?? Data(), encoding: .utf8) ?? ""
+            let id = frameID(body) ?? 0
+            let payload: String
+            switch frameMethod(body) {
+            case "initialize":
+                payload = okInitializeReply(id: id, serverName: "http-fixture")
+            case "tools/list":
+                payload = toolsListReply(id: id)
+            default:
+                payload = ""
+            }
+            let response = HTTPURLResponse(
+                url: endpoint,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["Content-Type": "application/json"]
+            )!
+            return (Data(payload.utf8), response)
+        }
+        let registry = MCPServerRegistry()
+        try await registry.addServer(MCPServerProfile(
+            id: "agentmail",
+            name: "AgentMail",
+            transport: .http(MCPHTTPConfiguration(baseURL: endpoint.absoluteString, localOnly: true)),
+            enabled: true
+        ))
+        let connector = MCPConnector(requestTimeout: 2, httpSender: sender)
+        let result = try await connector.connectAndDiscover(serverID: "agentmail", registry: registry)
+        #expect(result.toolCount == 2)
+        #expect(result.toolNames.contains("read_file"))
+        let registered = await registry.listTools(serverID: "agentmail")
+        #expect(registered.count == 2)
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

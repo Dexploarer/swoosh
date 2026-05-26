@@ -70,7 +70,8 @@ public struct PromptBuilder: Sendable {
         approvedMemories: [ApprovedMemory],
         setupReport: String?,
         permissionSummary: String?,
-        skillCatalog: [SkillCatalogEntry] = []
+        skillCatalog: [SkillCatalogEntry] = [],
+        personalization: PersonalizationPromptContext? = nil
     ) -> SystemPrompt {
         var sections: [String] = [Self.identitySection]
         var usedMemoryIDs: [String] = []
@@ -87,6 +88,9 @@ public struct PromptBuilder: Sendable {
         }
         if let skillSection = Self.skillsSection(skillCatalog) {
             sections.append(skillSection)
+        }
+        if let personalizationSection = Self.personalizationSection(personalization) {
+            sections.append(personalizationSection)
         }
         sections.append(Self.exclusionsSection)
 
@@ -131,6 +135,43 @@ public struct PromptBuilder: Sendable {
             block += "- **\(skill.title)** (\(skill.id)) — \(skill.description)\n"
         }
         return block
+    }
+
+    private static func personalizationSection(_ context: PersonalizationPromptContext?) -> String? {
+        guard let context else { return nil }
+        let routes = context.eventRoutes.isEmpty
+            ? "No event routes were configured."
+            : context.eventRoutes.map { "- \($0)" }.joined(separator: "\n")
+        return """
+        ## Personalization Calibration
+        The following setup calibration was approved by the user. Use it to decide account voice, message routing, reflection, and machine-event handling.
+
+        <detour_personalization user="\(escapeAttribute(context.userName))" agent="\(escapeAttribute(context.agentName))">
+        <event_routes>
+        \(routes)
+        </event_routes>
+        <should_respond_template>
+        \(context.shouldRespondTemplate)
+        </should_respond_template>
+        <message_handler_template>
+        \(context.messageHandlerTemplate)
+        </message_handler_template>
+        <reflection_template>
+        \(context.reflectionTemplate)
+        </reflection_template>
+        <machine_event_template>
+        \(context.machineEventTemplate)
+        </machine_event_template>
+        </detour_personalization>
+        """
+    }
+
+    private static func escapeAttribute(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 
     /// Auditability statement — explicit list of data sources the

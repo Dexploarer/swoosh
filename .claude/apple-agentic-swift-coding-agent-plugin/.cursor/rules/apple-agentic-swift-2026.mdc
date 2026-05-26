@@ -1,0 +1,19 @@
+---
+description: Apple Agentic Swift 2026 rules for SwiftUI, Foundation Models, App Intents, Fruta-style architecture, hooks, slash commands, automation, privacy, testing, and App Review.
+globs: "**/*.{swift,md,plist,entitlements,xcconfig,xcprivacy,json,yml,yaml,sh,py}"
+alwaysApply: true
+---
+
+# Apple Agentic Swift 2026
+
+Read `AGENTS.md`. Enforce the rules in `rules/`.
+
+Key constraints:
+
+- Local-first AI with Foundation Models where available.
+- Typed guided generation and bounded tools.
+- App Intents/AppEntity for system integration.
+- Fruta-inspired shared SwiftUI codebase for app + widget + App Clip + intents.
+- Swift 6-ready concurrency and data-race safety.
+- Privacy manifest/App Review updates for data-flow changes.
+- Use hooks and automations from `.agent/`, `.claude/`, `scripts/`, and `automations/`.

@@ -92,14 +92,6 @@ public struct WasmPluginExecutor: PluginExecutor {
 
         let timeoutSeconds = max(1, manifest.sandbox.timeoutSeconds)
         let pluginID = manifest.id
-        let timeoutTask = Task<Bool, Never> {
-            do {
-                try await Task.sleep(nanoseconds: UInt64(timeoutSeconds) * 1_000_000_000)
-                return !Task.isCancelled
-            } catch {
-                return false
-            }
-        }
         let sandbox = manifest.sandbox
         let workTask = Task.detached(priority: .userInitiated) { () -> Result<JSONValue, Error> in
             do {
@@ -124,7 +116,14 @@ public struct WasmPluginExecutor: PluginExecutor {
         // Race the work against the timeout.
         let raceResult: WasmRaceResult = await withTaskGroup(of: WasmRaceResult.self) { group in
             group.addTask { .work(await workTask.value) }
-            group.addTask { .timeout(await timeoutTask.value) }
+            group.addTask {
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(timeoutSeconds) * 1_000_000_000)
+                    return .timeout(!Task.isCancelled)
+                } catch {
+                    return .timeout(false)
+                }
+            }
             // First settled wins.
             let first = await group.next() ?? .timeout(false)
             group.cancelAll()
@@ -133,7 +132,6 @@ public struct WasmPluginExecutor: PluginExecutor {
 
         switch raceResult {
         case .work(let result):
-            timeoutTask.cancel()
             switch result {
             case .success(let value): return value
             case .failure(let error): throw error
@@ -225,11 +223,12 @@ public struct WasmPluginExecutor: PluginExecutor {
         let wasi = try WASIBridgeToHost(
             args: [pluginID, toolName, argsJSON],
             environment: [:],
-            preopens: [:],
+            preopens: [WASIBridgeToHost.Preopen](),
             stdin: FileDescriptor(rawValue: stdinPipe.fileHandleForReading.fileDescriptor),
             stdout: FileDescriptor(rawValue: stdoutPipe.fileHandleForWriting.fileDescriptor),
             stderr: FileDescriptor(rawValue: stderrPipe.fileHandleForWriting.fileDescriptor)
         )
+        defer { try? wasi.close() }
 
         let counter = PluginWasmCallCounter(limit: sandbox.maxWasmFunctionCalls)
         let engine = Engine(interceptor: counter)

@@ -43,7 +43,7 @@ final class LocalVoiceEngineTests: XCTestCase {
 
     func test_engine_stream_emitsAtLeastOneChunk() async throws {
         let engine = LocalVoiceEngine(model: LocalVoiceCatalog.kokoro)
-        let stream = await engine.synthesizeStream(text: "Stream check.")
+        let stream = engine.synthesizeStream(text: "Stream check.")
         var chunkCount = 0
         var totalBytes = 0
         for try await chunk in stream {

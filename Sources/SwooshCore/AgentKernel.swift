@@ -253,6 +253,7 @@ public actor AgentKernel {
     private let modelProvider: any ModelProvider
     private let promptBuilder: PromptBuilder
     private let skillCatalogProvider: SkillCatalogProviding?
+    private let personalizationLoader: (any PersonalizationContextLoading)?
 
     public init(
         memoryLoader: any MemoryContextLoading,
@@ -262,7 +263,8 @@ public actor AgentKernel {
         auditLogger: any ResponseAuditing,
         modelProvider: any ModelProvider,
         promptBuilder: PromptBuilder = PromptBuilder(),
-        skillCatalogProvider: SkillCatalogProviding? = nil
+        skillCatalogProvider: SkillCatalogProviding? = nil,
+        personalizationLoader: (any PersonalizationContextLoading)? = nil
     ) {
         self.memoryLoader = memoryLoader
         self.reportLoader = reportLoader
@@ -272,6 +274,7 @@ public actor AgentKernel {
         self.modelProvider = modelProvider
         self.promptBuilder = promptBuilder
         self.skillCatalogProvider = skillCatalogProvider
+        self.personalizationLoader = personalizationLoader
     }
 
     public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
@@ -287,6 +290,7 @@ public actor AgentKernel {
 
         // 2. Build system prompt (privacy boundary)
         let skillCatalog = await skillCatalogProvider?() ?? []
+        let personalization = try await personalizationLoader?.loadPersonalizationContext()
         let mappedMemories = memories.map {
             ApprovedMemory(id: $0.id, text: $0.text, category: $0.category)
         }
@@ -297,7 +301,8 @@ public actor AgentKernel {
             approvedMemories: mappedMemories,
             setupReport: report,
             permissionSummary: permSummary,
-            skillCatalog: mappedSkills
+            skillCatalog: mappedSkills,
+            personalization: personalization
         )
         let systemPrompt = promptResult.prompt
         let memoryIDs = promptResult.memoryIDs

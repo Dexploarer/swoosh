@@ -26,6 +26,7 @@ struct WireTypeRoundTripInfraTests {
             command: "/usr/local/bin/pay-mcp",
             arguments: ["--mode=mcp"],
             workingDirectory: "/tmp",
+            environmentSecretRefs: ["PAY_API_KEY": "pay.api_key"],
             baseURL: nil,
             trustLevel: "userApproved",
             enabled: true
@@ -35,6 +36,8 @@ struct WireTypeRoundTripInfraTests {
             name: "Pay HTTP",
             transport: "http",
             baseURL: "https://pay.example.com/mcp",
+            authorizationSecretRef: "pay.api_key",
+            localOnly: false,
             trustLevel: "userApproved",
             enabled: false
         )

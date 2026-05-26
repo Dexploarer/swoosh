@@ -18,6 +18,7 @@ public enum ChatAdapterKind: String, Codable, Sendable, CaseIterable, Hashable {
     case photonIMessage
     case resendEmail
     case zernioSocial
+    case agentMail = "agentmail"
     case liveblocks
     case webex
     case baileys
@@ -158,7 +159,7 @@ public actor ChatAdapterToggleStore {
             return true
         case .slack, .teams, .googleChat, .discord, .telegram, .github, .linear, .whatsApp, .messenger,
              .beeperMatrix, .photonIMessage, .resendEmail, .zernioSocial, .liveblocks, .webex, .baileys,
-             .sendblue, .blooio, .zalo, .mattermost:
+             .agentMail, .sendblue, .blooio, .zalo, .mattermost:
             return false
         }
     }
@@ -345,6 +346,17 @@ public struct ChatAdapterCatalog: Sendable {
             features: ChatAdapterFeatures(supportsStreaming: true, supportsDMs: true),
             requiresManualConfiguration: true,
             configurationNotes: ["Unified social DM adapter covering Instagram, Facebook, Telegram, WhatsApp, X/Twitter, Bluesky, and Reddit."]
+        ),
+        ChatAdapterDefinition(
+            kind: .agentMail,
+            displayName: "AgentMail",
+            packageName: "mcp.agentmail.to",
+            distribution: .vendorOfficial,
+            features: ChatAdapterFeatures(supportsStreaming: false, supportsDMs: true),
+            requiredCredentials: [
+                ChatAdapterCredentialRequirement(envVar: "AGENTMAIL_API_KEY", description: "AgentMail API key"),
+            ],
+            configurationNotes: ["Hosted MCP connector for agent-owned email."]
         ),
         ChatAdapterDefinition(
             kind: .liveblocks,

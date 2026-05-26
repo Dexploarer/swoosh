@@ -61,6 +61,7 @@ extension SwooshDaemon {
 
     static func addMCPServerResponse(
         registry: MCPServerRegistry,
+        connector: MCPConnector,
         request: MCPServerCreateRequest
     ) async throws -> MCPServerMutationResponse {
         let trimmedID = request.id.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -90,13 +91,17 @@ extension SwooshDaemon {
         if wantsEnabled {
             do {
                 try await registry.enableServer(trimmedID)
+                _ = try await connector.connectAndDiscover(serverID: trimmedID, registry: registry)
             } catch {
-                throw APIError.badRequest("MCP server registered but could not enable: \(error.localizedDescription)")
+                throw APIError.badRequest("MCP server registered but could not connect: \(error.localizedDescription)")
             }
         }
         let stored = await registry.getServer(trimmedID) ?? profile
         let summary = await mcpServerRuntimeSummary(stored, registry: registry)
-        let message = wantsEnabled ? "MCP server registered and enabled." : "MCP server registered."
+        let toolNames = summary.tools.map(\.name).prefix(6).joined(separator: ", ")
+        let message = wantsEnabled
+            ? "MCP server connected. Discovered \(summary.toolCount) tool(s)\(toolNames.isEmpty ? "." : ": \(toolNames).")"
+            : "MCP server registered."
         return MCPServerMutationResponse(server: summary, message: message)
     }
 
@@ -117,6 +122,7 @@ extension SwooshDaemon {
 
     static func connectMCPServerResponse(
         registry: MCPServerRegistry,
+        connector: MCPConnector,
         id: String
     ) async throws -> MCPServerMutationResponse {
         guard let _ = await registry.getServer(id) else {
@@ -124,14 +130,19 @@ extension SwooshDaemon {
         }
         do {
             try await registry.enableServer(id)
+            _ = try await connector.connectAndDiscover(serverID: id, registry: registry)
         } catch {
-            throw APIError.badRequest("could not enable MCP server: \(error.localizedDescription)")
+            throw APIError.badRequest("could not connect MCP server: \(error.localizedDescription)")
         }
         guard let profile = await registry.getServer(id) else {
             throw APIError.notFound("MCP server not found after enable: \(id)")
         }
         let summary = await mcpServerRuntimeSummary(profile, registry: registry)
-        return MCPServerMutationResponse(server: summary, message: "MCP server enabled.")
+        let toolNames = summary.tools.map(\.name).prefix(6).joined(separator: ", ")
+        return MCPServerMutationResponse(
+            server: summary,
+            message: "MCP server connected. Discovered \(summary.toolCount) tool(s)\(toolNames.isEmpty ? "." : ": \(toolNames).")"
+        )
     }
 
     static func disconnectMCPServerResponse(
@@ -186,13 +197,18 @@ extension SwooshDaemon {
             return .stdio(MCPStdioConfiguration(
                 command: command,
                 arguments: request.arguments ?? [],
-                workingDirectory: request.workingDirectory
+                workingDirectory: request.workingDirectory,
+                environmentSecretRefs: request.environmentSecretRefs ?? [:]
             ))
         case "http":
             guard let baseURL = request.baseURL, !baseURL.isEmpty else {
                 throw APIError.badRequest("http transport requires baseURL")
             }
-            return .http(MCPHTTPConfiguration(baseURL: baseURL))
+            return .http(MCPHTTPConfiguration(
+                baseURL: baseURL,
+                authorizationSecretRef: request.authorizationSecretRef,
+                localOnly: request.localOnly ?? true
+            ))
         default:
             throw APIError.badRequest("unknown transport: \(request.transport)")
         }

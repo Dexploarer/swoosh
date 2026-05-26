@@ -93,6 +93,27 @@ struct FirewallGrantTests {
         }
     }
 
+    @Test("Credential inheritance permissions deny then grant")
+    func credentialInheritancePermissionsRoundTrip() async throws {
+        let permissions: [SwooshPermission] = [
+            .keychainCredentialsRead,
+            .keychainCredentialsImport,
+            .browserCookiesRead,
+            .browserCookiesImport,
+            .messagesRead,
+            .accountDelegationRead,
+            .accountDelegationWrite,
+        ]
+        for permission in permissions {
+            let fw = SwooshFirewallActor()
+            await #expect(throws: ToolError.self) {
+                try await fw.require(permission)
+            }
+            await fw.grant(permission)
+            try await fw.require(permission)
+        }
+    }
+
     @Test("grantAll removes those permissions from denied set")
     func grantAllClearsDenied() async throws {
         let fw = SwooshFirewallActor()

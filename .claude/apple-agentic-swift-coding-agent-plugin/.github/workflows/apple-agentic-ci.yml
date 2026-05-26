@@ -1,0 +1,19 @@
+name: Apple Agentic Swift CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Agent doctor
+        run: scripts/apple-agent-doctor.sh
+      - name: Privacy audit
+        run: scripts/privacy-audit.sh
+      - name: Validate agentic Apple project
+        run: scripts/validate-agentic-apple.sh
+      - name: Build and test
+        run: scripts/xcodebuild-test.sh

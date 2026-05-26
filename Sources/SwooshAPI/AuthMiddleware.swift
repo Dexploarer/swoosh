@@ -16,9 +16,11 @@ import HTTPTypes
 
 public struct BearerAuthMiddleware<Context: RequestContext>: RouterMiddleware {
     public let token: String
+    private let additionalTokens: @Sendable () -> [String]
 
-    public init(token: String) {
+    public init(token: String, additionalTokens: @escaping @Sendable () -> [String] = { [] }) {
         self.token = token
+        self.additionalTokens = additionalTokens
     }
 
     public func handle(
@@ -26,7 +28,10 @@ public struct BearerAuthMiddleware<Context: RequestContext>: RouterMiddleware {
         context: Context,
         next: (Request, Context) async throws -> Response
     ) async throws -> Response {
-        guard swooshBearerTokenMatches(authorizationHeader: request.headers[.authorization], token: token) else {
+        guard swooshBearerTokenMatches(
+            authorizationHeader: request.headers[.authorization],
+            tokens: [token] + additionalTokens()
+        ) else {
             throw HTTPError(.unauthorized, message: "missing or invalid bearer token")
         }
         return try await next(request, context)
@@ -34,10 +39,15 @@ public struct BearerAuthMiddleware<Context: RequestContext>: RouterMiddleware {
 }
 
 public func swooshBearerTokenMatches(authorizationHeader: String?, token: String) -> Bool {
+    swooshBearerTokenMatches(authorizationHeader: authorizationHeader, tokens: [token])
+}
+
+public func swooshBearerTokenMatches(authorizationHeader: String?, tokens: [String]) -> Bool {
     guard let authorizationHeader, authorizationHeader.hasPrefix("Bearer ") else {
         return false
     }
-    return constantTimeEquals(String(authorizationHeader.dropFirst("Bearer ".count)), token)
+    let bearer = String(authorizationHeader.dropFirst("Bearer ".count))
+    return tokens.contains { !$0.isEmpty && constantTimeEquals(bearer, $0) }
 }
 
 public struct DenyAllMiddleware<Context: RequestContext>: RouterMiddleware {

@@ -95,6 +95,10 @@ struct GrantedPermissionsTests {
         #expect(grants.contains(.fileWrite))
         #expect(grants.contains(.shellRun))
         #expect(grants.contains(.imageGenerate))
+        #expect(!grants.contains(.keychainCredentialsRead))
+        #expect(!grants.contains(.browserCookiesRead))
+        #expect(!grants.contains(.messagesRead))
+        #expect(!grants.contains(.accountDelegationRead))
         #expect(!grants.contains(.videoGenerate))
         #expect(!grants.contains(.evmMainnetWrite))
     }
@@ -105,8 +109,13 @@ struct GrantedPermissionsTests {
         let automation = PermissionProfile.from(preset: .automation).grantedSwooshPermissions
         #expect(automation.isSuperset(of: dev))
         #expect(automation.contains(.calendarWrite))
+        #expect(automation.contains(.accountDelegationRead))
+        #expect(!automation.contains(.accountDelegationWrite))
+        #expect(!automation.contains(.messagesRead))
         #expect(automation.contains(.videoGenerate))
         #expect(automation.contains(.threeDGenerate))
+        #expect(!automation.contains(.keychainCredentialsImport))
+        #expect(!automation.contains(.browserCookiesImport))
         #expect(!automation.contains(.evmMainnetWrite))
     }
 
@@ -126,6 +135,13 @@ struct GrantedPermissionsTests {
         #expect(!grants.contains(.solanaMainnetWrite))
         #expect(grants.contains(.shellRun))
         #expect(grants.contains(.fileWrite))
+        #expect(grants.contains(.keychainCredentialsRead))
+        #expect(grants.contains(.keychainCredentialsImport))
+        #expect(grants.contains(.browserCookiesRead))
+        #expect(grants.contains(.browserCookiesImport))
+        #expect(grants.contains(.messagesRead))
+        #expect(grants.contains(.accountDelegationRead))
+        #expect(grants.contains(.accountDelegationWrite))
     }
 
     @Test("autonomous grants every SwooshPermission case")

@@ -10,6 +10,9 @@ import Testing
 import Foundation
 @testable import SwooshAPI
 import SwooshClient
+import SwooshFirewall
+import SwooshToolsets
+import SwooshTools
 
 @Suite("Tool exec route")
 struct ToolExecRouteTests {
@@ -52,6 +55,71 @@ struct ToolExecRouteTests {
         #expect(await receivedReq.value?.sessionID == "s")
     }
 
+    @Test("Swoosh API exposes and runs connector.status through the real ToolRegistry path")
+    func connectorStatusExposedAndExecutable() async throws {
+        let firewall = SwooshFirewallActor(granted: [.toolRead])
+        let audit = SwooshAuditLog()
+        let approvals = InMemoryApprovalRequester(autoApprove: true)
+        let dependencies = ToolDependencies(
+            firewall: firewall,
+            audit: audit,
+            approvals: approvals,
+            fileAccess: APITestFileAccess(),
+            processRunner: APITestProcessRunner()
+        )
+        let registry = ToolRegistry(firewall: firewall, audit: audit, approvals: approvals)
+        await registry.register(TypeErasedTool(ConnectorStatusTool(dependencies: dependencies)))
+        let sources = SwooshAPIRuntimeSources(
+            tools: {
+                await connectorAPITestCatalog(registry: registry)
+            },
+            executeTool: { name, request in
+                let input = try connectorAPITestDecodeArgs(request.argsJSON)
+                let output = try await registry.call(
+                    name: ToolName(name),
+                    input: input,
+                    context: ToolContext(sessionID: request.sessionID ?? "api-test", isModelInvocation: false)
+                )
+                let data = try JSONEncoder().encode(output)
+                return ToolExecuteResponse(
+                    toolName: name,
+                    success: true,
+                    outputJSON: String(data: data, encoding: .utf8),
+                    error: nil,
+                    durationMs: 1
+                )
+            }
+        )
+        let app = SwooshAPIServer(token: "secret", runtimeSources: sources).build()
+        try await app.test(.router) { client in
+            try await client.execute(
+                uri: "/api/tools",
+                method: .get,
+                headers: [.authorization: "Bearer secret"]
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try toolMCPTestDecoder().decode(ToolCatalogResponse.self, from: Data(buffer: response.body))
+                #expect(decoded.tools.contains { $0.name == "connector.status" && $0.toolset == "connectors" })
+            }
+
+            let body = try JSONEncoder().encode(
+                ToolExecuteRequest(argsJSON: "{\"connectorID\":\"web\"}", sessionID: "connector-api-test")
+            )
+            try await client.execute(
+                uri: "/api/tools/connector.status/execute",
+                method: .post,
+                headers: [.authorization: "Bearer secret", .contentType: "application/json"],
+                body: .init(bytes: body)
+            ) { response in
+                #expect(response.status == .ok)
+                let decoded = try toolMCPTestDecoder().decode(ToolExecuteResponse.self, from: Data(buffer: response.body))
+                #expect(decoded.success)
+                #expect(decoded.outputJSON?.contains("\"id\":\"web\"") == true)
+                #expect(decoded.outputJSON?.contains("\"usable\":true") == true)
+            }
+        }
+    }
+
     @Test("POST /api/tools/:name/execute surfaces errors as success=false")
     func executeToolError() async throws {
         let sources = SwooshAPIRuntimeSources(
@@ -82,6 +150,83 @@ struct ToolExecRouteTests {
     }
 }
 
+private func connectorAPITestCatalog(registry: ToolRegistry) async -> ToolCatalogResponse {
+    let descriptors = await registry.listAvailable(context: ToolContext(sessionID: "api-test", isModelInvocation: false))
+    let tools = descriptors.map { descriptor in
+        ToolCatalogToolSummary(
+            id: descriptor.id,
+            name: descriptor.name,
+            displayName: descriptor.displayName,
+            description: descriptor.description,
+            permission: descriptor.permission.rawValue,
+            risk: descriptor.risk.rawValue,
+            approval: connectorAPITestApprovalLabel(descriptor.approval),
+            toolset: descriptor.toolset.rawValue,
+            platforms: descriptor.platforms.map(\.rawValue).sorted()
+        )
+    }
+    let toolsets = Dictionary(grouping: descriptors, by: \.toolset.rawValue).map { id, grouped in
+        ToolsetSummary(
+            id: id,
+            toolCount: grouped.count,
+            readOnlyCount: grouped.filter { $0.risk == .readOnly }.count,
+            writeCount: grouped.filter { $0.risk != .readOnly }.count,
+            humanOnlyCount: grouped.filter { $0.approval == .humanOnly }.count
+        )
+    }
+    return ToolCatalogResponse(tools: tools, toolsets: toolsets)
+}
+
+private func connectorAPITestDecodeArgs(_ raw: String) throws -> JSONValue {
+    guard !raw.isEmpty, let data = raw.data(using: .utf8) else {
+        return .object([:])
+    }
+    return try JSONDecoder().decode(JSONValue.self, from: data)
+}
+
+private func connectorAPITestApprovalLabel(_ policy: ApprovalPolicy) -> String {
+    switch policy {
+    case .never: return "never"
+    case .askFirstTime: return "askFirstTime"
+    case .askEveryTime: return "askEveryTime"
+    case .askForRiskAtLeast(let risk): return "askForRiskAtLeast:\(risk.rawValue)"
+    case .humanOnly: return "humanOnly"
+    case .disabled: return "disabled"
+    }
+}
+
+private struct APITestFileAccess: FileAccessing {
+    func resolveBookmark(id: String) async throws -> URL {
+        throw ToolError.executionFailed("file access unavailable in API test")
+    }
+
+    func listDirectory(root: URL, relativePath: String?, includeHidden: Bool, maxDepth: Int) async throws -> [FileEntry] {
+        throw ToolError.executionFailed("file access unavailable in API test")
+    }
+
+    func readFile(root: URL, relativePath: String, maxBytes: Int?) async throws -> (content: String, truncated: Bool, redaction: RedactionReport?) {
+        throw ToolError.executionFailed("file access unavailable in API test")
+    }
+
+    func writeFile(root: URL, relativePath: String, content: String, createBackup: Bool) async throws -> (bytesWritten: Int64, backupPath: String?) {
+        throw ToolError.executionFailed("file access unavailable in API test")
+    }
+
+    func deleteFile(root: URL, relativePath: String) async throws {
+        throw ToolError.executionFailed("file access unavailable in API test")
+    }
+
+    func searchFiles(root: URL, query: String, filePattern: String?, maxResults: Int?) async throws -> [FileSearchMatch] {
+        throw ToolError.executionFailed("file access unavailable in API test")
+    }
+}
+
+private struct APITestProcessRunner: ProcessRunning {
+    func run(executable: String, arguments: [String], workingDirectory: URL?, environment: [String: String]?) async throws -> ProcessResult {
+        ProcessResult(exitCode: 127, stdout: "", stderr: "process runner unavailable in API test")
+    }
+}
+
 @Suite("MCP CRUD routes")
 struct MCPCRUDRoutesTests {
 
@@ -100,7 +245,11 @@ struct MCPCRUDRoutesTests {
         let app = SwooshAPIServer(token: "secret", runtimeSources: sources).build()
         try await app.test(.router) { client in
             let body = try JSONEncoder().encode(MCPServerCreateRequest(
-                id: "abc", name: "Abc", transport: "stdio", command: "/bin/echo"
+                id: "abc",
+                name: "Abc",
+                transport: "stdio",
+                command: "/bin/echo",
+                environmentSecretRefs: ["TOKEN": "abc.token"]
             ))
             try await client.execute(
                 uri: "/api/mcp/servers", method: .post,
@@ -113,6 +262,7 @@ struct MCPCRUDRoutesTests {
             }
         }
         #expect(await received.value?.id == "abc")
+        #expect(await received.value?.environmentSecretRefs == ["TOKEN": "abc.token"])
         #expect(await received.value?.command == "/bin/echo")
     }
 

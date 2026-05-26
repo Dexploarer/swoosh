@@ -47,6 +47,19 @@ struct DetouriOSOnboardingView: View {
                 }
                 .padding(.horizontal, 22)
                 .padding(.vertical, 24)
+
+                if store.canGoBack {
+                    VStack {
+                        HStack {
+                            backButton
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, proxy.safeAreaInsets.top + 12)
+                    .padding(.leading, 18)
+                    .padding(.trailing, 18)
+                }
             }
         }
         .task(id: store.promptRequestIdentity) {
@@ -63,7 +76,7 @@ struct DetouriOSOnboardingView: View {
         }
         .task(id: store.pairedMac?.host) {
             if store.pairedMac != nil {
-                await store.refreshPairedMacReachability()
+                await store.reconnectPairedMac()
             }
         }
         .onChange(of: liveSpeech.transcript) { _, transcript in
@@ -155,6 +168,8 @@ struct DetouriOSOnboardingView: View {
                 }
             case .choosingDevices:
                 deviceSelectionControls
+            case .reviewingInheritedSetup:
+                inheritedSetupControls
             case .complete:
                 completionControls
             }
@@ -184,6 +199,23 @@ struct DetouriOSOnboardingView: View {
                 }
             }
         }
+    }
+
+    private var backButton: some View {
+        Button {
+            goBackFromUI()
+        } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(DetourPalette.offWhite)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .background(DetourPalette.graphite.opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DetourPalette.silver.opacity(0.24), lineWidth: 1))
+        .shadow(color: .black.opacity(0.24), radius: 14, x: 0, y: 8)
+        .accessibilityIdentifier("detour.back")
+        .accessibilityLabel("Back")
     }
 
     private var voiceEnrollmentControls: some View {
@@ -276,9 +308,20 @@ struct DetouriOSOnboardingView: View {
             if store.pairedMac != nil {
                 DetourGlassButton(title: "Check Mac", systemName: "antenna.radiowaves.left.and.right", isProminent: false) {
                     Task {
-                        await store.refreshPairedMacReachability()
+                        await store.reconnectPairedMac()
                     }
                 }
+            }
+        }
+    }
+
+    private var inheritedSetupControls: some View {
+        VStack(spacing: 14) {
+            if let pairingStatus = store.pairingStatusText {
+                DetourStatusPill(text: pairingStatus, systemName: "macbook.and.iphone")
+            }
+            DetourGlassButton(title: "Use this setup", systemName: "checkmark", isProminent: true) {
+                store.finishInheritedSetupReview()
             }
         }
     }
@@ -402,7 +445,7 @@ struct DetouriOSOnboardingView: View {
 
     private var stepAllowsLiveSpeech: Bool {
         switch store.step {
-        case .askingAgentName, .enrollingVoice, .complete:
+        case .askingAgentName, .enrollingVoice, .reviewingInheritedSetup, .complete:
             false
         case .askingName, .renamingAgent, .choosingVoice, .settingWakeWord,
              .askingVoiceRecognition, .askingDeviceSetup, .choosingDevices:
@@ -429,7 +472,7 @@ struct DetouriOSOnboardingView: View {
             store.wakeWordDraft = spokenValue(value, dropping: ["wake word is", "the wake word is", "listen for"])
         case .choosingDevices:
             applyRemoteDrafts(from: value)
-        case .choosingVoice, .askingVoiceRecognition, .enrollingVoice, .askingDeviceSetup, .complete:
+        case .choosingVoice, .askingVoiceRecognition, .enrollingVoice, .askingDeviceSetup, .reviewingInheritedSetup, .complete:
             break
         }
     }
@@ -440,6 +483,10 @@ struct DetouriOSOnboardingView: View {
         guard !value.isEmpty else { return }
         guard consumeFinalVoiceInput(value) else { return }
         let command = value.lowercased()
+        if isBackCommand(command), store.canGoBack {
+            goBackFromUI()
+            return
+        }
 
         switch store.step {
         case .askingName:
@@ -500,9 +547,21 @@ struct DetouriOSOnboardingView: View {
                 liveSpeech.cancel()
                 store.completeDeviceSetup()
             }
+        case .reviewingInheritedSetup:
+            if isAffirmative(command) || commandContains(command, ["continue", "use", "finish", "done"]) {
+                liveSpeech.cancel()
+                store.finishInheritedSetupReview()
+            }
         case .complete:
             break
         }
+    }
+
+    private func goBackFromUI() {
+        liveSpeech.cancel()
+        recorder.stopRecording()
+        speech.stop()
+        store.goBack()
     }
 
     private func consumeFinalVoiceInput(_ value: String) -> Bool {
@@ -660,11 +719,21 @@ struct DetouriOSOnboardingView: View {
         commandContains(command, ["no", "nope", "later", "not now", "skip"])
     }
 
+    private func isBackCommand(_ command: String) -> Bool {
+        command == "back"
+            || command == "go back"
+            || command == "previous"
+            || command == "go previous"
+            || command == "change that"
+            || command == "redo that"
+    }
+
     private var stepNeedsInput: Bool {
         switch store.step {
         case .askingName, .askingAgentName, .renamingAgent, .settingWakeWord:
             true
-        case .choosingVoice, .askingVoiceRecognition, .enrollingVoice, .askingDeviceSetup, .choosingDevices, .complete:
+        case .choosingVoice, .askingVoiceRecognition, .enrollingVoice,
+             .askingDeviceSetup, .choosingDevices, .reviewingInheritedSetup, .complete:
             false
         }
     }

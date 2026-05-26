@@ -119,14 +119,22 @@ enum CLIPairing {
     }
 
     /// Deep link that the iOS app's `onOpenURL` pairing handler expects.
-    /// Exposed so tests can verify the wire shape without re-rendering the QR pixels.
-    static func pairingPayload(host: String, token: String) -> String? {
+    static func pairingPayload(
+        host: String,
+        pairingNonce: String,
+        callback: String? = nil,
+        setupURL: String? = nil,
+        confirmationCode: String? = nil
+    ) -> String? {
         var components = URLComponents()
         components.scheme = "swoosh"
         components.host = "pair"
         components.queryItems = [
             URLQueryItem(name: "host", value: host),
-            URLQueryItem(name: "token", value: token)
+            URLQueryItem(name: "pairing", value: pairingNonce),
+            URLQueryItem(name: "callback", value: callback),
+            URLQueryItem(name: "setup_url", value: setupURL),
+            URLQueryItem(name: "code", value: confirmationCode)
         ]
         return components.url?.absoluteString
     }

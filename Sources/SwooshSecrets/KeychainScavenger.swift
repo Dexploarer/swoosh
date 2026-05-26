@@ -1,12 +1,6 @@
 // SwooshSecrets/KeychainScavenger.swift — 0.9S Third-party keychain credential discovery
 //
-// Reads credentials stored by other apps in the macOS Keychain WITHOUT
-// triggering UI prompts. Uses LAContext.interactionNotAllowed + the
-// kSecUseAuthenticationUIFail technique from CodexBar's KeychainNoUIQuery.
-//
-// This only works for items where the user has already granted access
-// (e.g. via Keychain Access.app "Always Allow") or where the item has
-// no ACL restrictions.
+// Reads compatible provider credentials stored by other apps in the macOS Keychain.
 
 import Foundation
 #if canImport(Security)
@@ -29,28 +23,53 @@ public enum KeychainScavenger {
     static let sources: [KeychainSource] = []
 
     #if canImport(Security)
-    public static func scan() -> [DiscoveredCredential] {
-        var results: [DiscoveredCredential] = []
+    public static func scan(allowUserInteraction: Bool = false) -> [DiscoveredCredential] {
+        var found: [KnownProvider: DiscoveredCredential] = [:]
 
         for source in sources {
-            switch preflight(service: source.service, account: source.account) {
-            case .allowed:
-                if let value = readValue(service: source.service, account: source.account) {
-                    // For OAuth JSON blobs, try to extract the token
+            if allowUserInteraction {
+                if let value = readValue(
+                    service: source.service,
+                    account: source.account,
+                    allowUserInteraction: true
+                ) {
                     let token = extractToken(from: value, provider: source.provider)
-                    results.append(DiscoveredCredential(
+                    found[source.provider] = DiscoveredCredential(
                         provider: source.provider,
                         source: .keychainThirdParty,
                         kind: source.kind,
                         value: token
-                    ))
+                    )
                 }
-            case .interactionRequired, .notFound, .failure:
-                continue
+            } else {
+                switch preflight(service: source.service, account: source.account) {
+                case .allowed:
+                    if let value = readValue(
+                        service: source.service,
+                        account: source.account,
+                        allowUserInteraction: false
+                    ) {
+                        let token = extractToken(from: value, provider: source.provider)
+                        found[source.provider] = DiscoveredCredential(
+                            provider: source.provider,
+                            source: .keychainThirdParty,
+                            kind: source.kind,
+                            value: token
+                        )
+                    }
+                case .interactionRequired, .notFound, .failure:
+                    continue
+                }
             }
         }
 
-        return results
+        for credential in scanGenericProviderItems(
+            allowUserInteraction: allowUserInteraction
+        ) where found[credential.provider] == nil {
+            found[credential.provider] = credential
+        }
+
+        return Array(found.values).sorted { $0.provider.rawValue < $1.provider.rawValue }
     }
 
     // ── Preflight check (no UI) ──
@@ -90,7 +109,7 @@ public enum KeychainScavenger {
     }
 
     /// Read the actual secret value from keychain (only call after preflight succeeds).
-    static func readValue(service: String, account: String?) -> String? {
+    static func readValue(service: String, account: String?, allowUserInteraction: Bool) -> String? {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -98,7 +117,7 @@ public enum KeychainScavenger {
             kSecReturnData as String: true,
         ]
 
-        applyNoUIPolicy(to: &query)
+        applyInteractionPolicy(to: &query, allowUserInteraction: allowUserInteraction)
 
         if let account = account {
             query[kSecAttrAccount as String] = account
@@ -115,6 +134,117 @@ public enum KeychainScavenger {
         return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    static func scanGenericProviderItems(allowUserInteraction: Bool) -> [DiscoveredCredential] {
+        var query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+            kSecReturnAttributes as String: true,
+            kSecReturnData as String: true,
+        ]
+        applyInteractionPolicy(to: &query, allowUserInteraction: allowUserInteraction)
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess else { return [] }
+
+        let items: [[String: Any]]
+        if let array = result as? [[String: Any]] {
+            items = array
+        } else if let dictionary = result as? [String: Any] {
+            items = [dictionary]
+        } else {
+            return []
+        }
+
+        var found: [KnownProvider: DiscoveredCredential] = [:]
+        for item in items {
+            guard let credential = credential(from: item),
+                  found[credential.provider] == nil else {
+                continue
+            }
+            found[credential.provider] = credential
+        }
+        return Array(found.values).sorted { $0.provider.rawValue < $1.provider.rawValue }
+    }
+
+    static func credential(from item: [String: Any]) -> DiscoveredCredential? {
+        let metadata = [
+            stringAttribute(kSecAttrService, item),
+            stringAttribute(kSecAttrAccount, item),
+            stringAttribute(kSecAttrLabel, item),
+            stringAttribute(kSecAttrDescription, item),
+            stringAttribute(kSecAttrComment, item),
+        ]
+        .compactMap { $0 }
+        .joined(separator: " ")
+        .lowercased()
+        guard let provider = provider(from: metadata),
+              let data = item[kSecValueData as String] as? Data,
+              let decoded = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+        let raw = decoded.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
+            return nil
+        }
+        let token = extractToken(from: raw, provider: provider)
+        guard looksLikeAPIKey(token, provider: provider) else { return nil }
+        return DiscoveredCredential(
+            provider: provider,
+            source: .keychainThirdParty,
+            kind: .apiKey,
+            value: token
+        )
+    }
+
+    static func provider(from metadata: String) -> KnownProvider? {
+        let metadata = metadata.lowercased()
+        if containsAny(["anthropic", "claude"], in: metadata) {
+            return .anthropic
+        }
+        if containsAny(["gemini", "google ai", "generative ai"], in: metadata) {
+            return .gemini
+        }
+        if containsAny(["codex"], in: metadata) {
+            return .codex
+        }
+        if containsAny(["openrouter", "open router"], in: metadata) {
+            return .openRouter
+        }
+        if containsAny(["eliza-cloud", "eliza cloud", "elizacloud"], in: metadata) {
+            return .elizaCloud
+        }
+        if containsAny(["openai", "open ai", "open_ai"], in: metadata) {
+            return .openAI
+        }
+        return nil
+    }
+
+    static func looksLikeAPIKey(_ value: String, provider: KnownProvider) -> Bool {
+        switch provider {
+        case .openAI:
+            return value.hasPrefix("sk-")
+        case .openRouter:
+            return value.hasPrefix("sk-or-") || value.hasPrefix("sk-")
+        case .elizaCloud:
+            return value.hasPrefix("sk-") || value.count >= 24
+        case .anthropic:
+            return value.hasPrefix("sk-ant-") || value.hasPrefix("sk-")
+        case .gemini:
+            return value.hasPrefix("AIza") || value.count >= 32
+        case .codex:
+            return value.count >= 24
+        }
+    }
+
+    private static func containsAny(_ needles: [String], in haystack: String) -> Bool {
+        needles.contains { haystack.contains($0) }
+    }
+
+    private static func stringAttribute(_ key: CFString, _ item: [String: Any]) -> String? {
+        item[key as String] as? String
+    }
+
     /// Apply the no-UI-prompt policy.
     /// Uses LAContext.interactionNotAllowed plus the runtime-resolved
     /// kSecUseAuthenticationUIFail constant (avoids deprecation warnings).
@@ -123,6 +253,11 @@ public enum KeychainScavenger {
         context.interactionNotAllowed = true
         query[kSecUseAuthenticationContext as String] = context
         query[kSecUseAuthenticationUI as String] = resolvedUIFailPolicy as CFString
+    }
+
+    private static func applyInteractionPolicy(to query: inout [String: Any], allowUserInteraction: Bool) {
+        guard !allowUserInteraction else { return }
+        applyNoUIPolicy(to: &query)
     }
 
     /// Resolve kSecUseAuthenticationUIFail at runtime to avoid deprecation.
@@ -161,7 +296,7 @@ public enum KeychainScavenger {
 
     #else
     // Non-macOS: no keychain scanning
-    public static func scan() -> [DiscoveredCredential] { [] }
+    public static func scan(allowUserInteraction: Bool = false) -> [DiscoveredCredential] { [] }
     #endif
 }
 

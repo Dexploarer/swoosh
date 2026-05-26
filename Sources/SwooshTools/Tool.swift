@@ -44,6 +44,7 @@ public enum ToolsetID: String, Codable, Sendable, CaseIterable {
     case skills
     case goals
     case manifesting
+    case connectors
     case plugins
     case mediaGen
 }

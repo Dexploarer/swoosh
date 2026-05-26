@@ -84,7 +84,7 @@ let package = Package(
         // WasmKit — embeddable WebAssembly runtime for the wasm-kind plugin
         // executor. Includes the `WAT` package so the bundled .wat demo can
         // be compiled at runtime without shipping a precompiled .wasm.
-        .package(url: "https://github.com/swiftwasm/WasmKit.git", from: "0.2.0"),
+        .package(url: "https://github.com/swiftwasm/WasmKit.git", revision: "73cc3314d70a1ea6829f3b90fe126de98dd01d1c"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -199,7 +199,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Scout — personalization scanner
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshScout", dependencies: []),
+        .target(name: "SwooshScout", dependencies: [], exclude: ["CLAUDE.md"]),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Models & inference
@@ -246,6 +246,7 @@ let package = Package(
             "SwooshCron",
             "SwooshMCP",
             "SwooshClient",
+            "SwooshChatSDK",
             "SwooshImageGen",
             "SwooshMusic",
             .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
@@ -257,8 +258,8 @@ let package = Package(
         .target(name: "SwooshFirewall", dependencies: [
             "SwooshTools",
             .product(name: "SQLite", package: "SQLite.swift"),
-        ]),
-        .target(name: "SwooshFlow",     dependencies: ["SwooshTools", "SwooshFirewall"]),
+        ], exclude: ["CLAUDE.md"]),
+        .target(name: "SwooshFlow",     dependencies: ["SwooshTools", "SwooshFirewall"], exclude: ["CLAUDE.md"]),
         .target(name: "SwooshSkills",       dependencies: ["SwooshTools"]),
         .target(name: "SwooshGoals",        dependencies: ["SwooshTools"]),
         .target(name: "SwooshManifesting",  dependencies: ["SwooshTools"]),

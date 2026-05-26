@@ -24,15 +24,16 @@ final class CapabilityRouterTests: XCTestCase {
         "swoosh.capabilities.threeD",
     ]
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         router = CapabilityRouter()
         for key in keys { UserDefaults.standard.removeObject(forKey: key) }
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         for key in keys { UserDefaults.standard.removeObject(forKey: key) }
-        super.tearDown()
+        router = nil
+        try await super.tearDown()
     }
 
     // MARK: - Defaults

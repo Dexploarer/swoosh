@@ -58,22 +58,31 @@ struct CLIJSONTests {
 
 @Suite("CLI helpers — pairing")
 struct CLIPairingTests {
-    @Test("pairingPayload renders iOS deep link with host/token")
+    @Test("pairingPayload renders iOS deep link with host and pairing nonce")
     func payloadShape() throws {
-        let payload = try #require(CLIPairing.pairingPayload(host: "http://1.2.3.4:8787", token: "abc123"))
+        let payload = try #require(CLIPairing.pairingPayload(
+            host: "http://1.2.3.4:8787",
+            pairingNonce: "nonce123",
+            callback: "http://1.2.3.4:8788/paired?pairing=nonce123",
+            setupURL: "http://1.2.3.4:8788/setup?pairing=nonce123",
+            confirmationCode: "123456"
+        ))
         let components = try #require(URLComponents(string: payload))
         #expect(components.scheme == "swoosh")
         #expect(components.host == "pair")
         #expect(components.queryItems?.first(where: { $0.name == "host" })?.value == "http://1.2.3.4:8787")
-        #expect(components.queryItems?.first(where: { $0.name == "token" })?.value == "abc123")
+        #expect(components.queryItems?.first(where: { $0.name == "pairing" })?.value == "nonce123")
+        #expect(components.queryItems?.first(where: { $0.name == "callback" })?.value == "http://1.2.3.4:8788/paired?pairing=nonce123")
+        #expect(components.queryItems?.first(where: { $0.name == "setup_url" })?.value == "http://1.2.3.4:8788/setup?pairing=nonce123")
+        #expect(components.queryItems?.first(where: { $0.name == "code" })?.value == "123456")
     }
 
     @Test("pairingPayload preserves reserved URL characters")
     func payloadRoundTrip() throws {
-        let payload = try #require(CLIPairing.pairingPayload(host: "http://host.local:8787", token: "abc+123/="))
+        let payload = try #require(CLIPairing.pairingPayload(host: "http://host.local:8787", pairingNonce: "abc+123/="))
         let components = try #require(URLComponents(string: payload))
         #expect(components.queryItems?.first(where: { $0.name == "host" })?.value == "http://host.local:8787")
-        #expect(components.queryItems?.first(where: { $0.name == "token" })?.value == "abc+123/=")
+        #expect(components.queryItems?.first(where: { $0.name == "pairing" })?.value == "abc+123/=")
     }
 
     @Test("localIPAddress either returns a usable IPv4 or nil")

@@ -91,13 +91,17 @@ struct DetourRemoteInstance: Codable, Equatable, Hashable {
 struct DetourPairingInfo: Equatable {
     let host: String
     let token: String
+    let confirmationCode: String
     let payload: String
     let deepLinkPayload: String
     let requiredIOSAppVersion: String
     let qrImage: NSImage
 
     static func == (left: DetourPairingInfo, right: DetourPairingInfo) -> Bool {
-        left.host == right.host && left.token == right.token && left.payload == right.payload
+        left.host == right.host
+            && left.token == right.token
+            && left.confirmationCode == right.confirmationCode
+            && left.payload == right.payload
     }
 }
 
@@ -105,13 +109,31 @@ enum DetourPairingSupport {
     static let iOSBundleIdentifier = "ai.swoosh.app.ios"
     static let requiredIOSAppVersion = "0.5"
 
-    static func pairingInfo(port: Int = 8787) throws -> DetourPairingInfo {
-        let token = try ensureBearerToken()
+    static func pairingInfo(port: Int = 8787, setupBundle: DetourSetupTransferBundle) throws -> DetourPairingInfo {
+        _ = try ensureBearerToken()
         let ipAddress = localIPAddress() ?? "127.0.0.1"
         let host = "http://\(ipAddress):\(port)"
-        let deepLink = try deepLinkPairingPayload(host: host, token: token)
+        let pairingNonce = try mintToken()
+        let confirmationCode = try mintConfirmationCode()
+        let expiresAt = Date().addingTimeInterval(10 * 60)
+        let callbackURL = "http://\(ipAddress):8788/paired?pairing=\(pairingNonce)"
+        let setupURL = "http://\(ipAddress):8788/setup?pairing=\(pairingNonce)&code=\(confirmationCode)"
+        let deepLink = try deepLinkPairingPayload(
+            host: host,
+            pairingNonce: pairingNonce,
+            callbackURL: callbackURL,
+            setupURL: setupURL,
+            confirmationCode: confirmationCode
+        )
         let payload = try DetourPairingWebServer.shared
-            .pairingPageURL(ipAddress: ipAddress, daemonHost: host, token: token)
+            .pairingPageURL(
+                ipAddress: ipAddress,
+                daemonHost: host,
+                pairingNonce: pairingNonce,
+                confirmationCode: confirmationCode,
+                expiresAt: expiresAt,
+                setupBundle: setupBundle
+            )
             .absoluteString
         guard let image = qrImage(from: payload) else {
             throw DetourPairingError.qrGenerationFailed
@@ -119,7 +141,8 @@ enum DetourPairingSupport {
 
         return DetourPairingInfo(
             host: host,
-            token: token,
+            token: "",
+            confirmationCode: confirmationCode,
             payload: payload,
             deepLinkPayload: deepLink,
             requiredIOSAppVersion: requiredIOSAppVersion,
@@ -161,13 +184,75 @@ enum DetourPairingSupport {
         return bytes.map { String(format: "%02x", $0) }.joined()
     }
 
-    private static func deepLinkPairingPayload(host: String, token: String) throws -> String {
+    static func mintPairedDeviceToken() throws -> String {
+        try mintToken()
+    }
+
+    static func persistPairedAPIToken(
+        _ token: String,
+        label: String,
+        expiresAt: Date
+    ) throws {
+        let tokenFile = pairedAPITokenFile()
+        try FileManager.default.createDirectory(
+            at: tokenFile.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        let records: [DetourPairedAPITokenRecord]
+        if let data = try? Data(contentsOf: tokenFile),
+           let decoded = try? JSONDecoder.detourTokenDecoder.decode([DetourPairedAPITokenRecord].self, from: data) {
+            records = decoded
+        } else {
+            records = []
+        }
+        let now = Date()
+        var byToken = Dictionary(uniqueKeysWithValues: records
+            .filter { $0.expiresAt.map { $0 > now } ?? false }
+            .map { ($0.token, $0) })
+        byToken[token] = DetourPairedAPITokenRecord(
+            id: UUID().uuidString,
+            token: token,
+            label: label,
+            createdAt: now,
+            expiresAt: expiresAt
+        )
+        let data = try JSONEncoder.detourTokenEncoder.encode(byToken.values.sorted { $0.createdAt < $1.createdAt })
+        try data.write(to: tokenFile, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tokenFile.path)
+    }
+
+    private static func pairedAPITokenFile() -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".swoosh", isDirectory: true)
+            .appendingPathComponent("paired_api_tokens.json", isDirectory: false)
+    }
+
+    private static func mintConfirmationCode() throws -> String {
+        var bytes = [UInt8](repeating: 0, count: 4)
+        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        guard status == errSecSuccess else {
+            throw DetourPairingError.tokenGenerationFailed(status)
+        }
+        let value = bytes.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) } % 1_000_000
+        return String(format: "%06d", value)
+    }
+
+    private static func deepLinkPairingPayload(
+        host: String,
+        pairingNonce: String,
+        callbackURL: String,
+        setupURL: String,
+        confirmationCode: String
+    ) throws -> String {
         var components = URLComponents()
         components.scheme = "swoosh"
         components.host = "pair"
         components.queryItems = [
             URLQueryItem(name: "host", value: host),
-            URLQueryItem(name: "token", value: token),
+            URLQueryItem(name: "pairing", value: pairingNonce),
+            URLQueryItem(name: "callback", value: callbackURL),
+            URLQueryItem(name: "setup_url", value: setupURL),
+            URLQueryItem(name: "code", value: confirmationCode),
             URLQueryItem(name: "app", value: iOSBundleIdentifier),
             URLQueryItem(name: "min_ios_version", value: requiredIOSAppVersion)
         ]
@@ -246,6 +331,31 @@ enum DetourPairingSupport {
 
     private static func isInterestingInterface(_ name: String) -> Bool {
         ["en", "eth", "wl", "wlan"].contains { name.hasPrefix($0) }
+    }
+}
+
+private struct DetourPairedAPITokenRecord: Codable {
+    var id: String
+    var token: String
+    var label: String
+    var createdAt: Date
+    var expiresAt: Date?
+}
+
+private extension JSONEncoder {
+    static var detourTokenEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return encoder
+    }
+}
+
+private extension JSONDecoder {
+    static var detourTokenDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 }
 

@@ -12,6 +12,7 @@ enum DetouriOSOnboardingStep: String, Codable, Equatable, Sendable {
     case enrollingVoice
     case askingDeviceSetup
     case choosingDevices
+    case reviewingInheritedSetup
     case complete
 }
 
@@ -110,9 +111,19 @@ struct DetouriOSPairedMac: Codable, Equatable {
     var host: String
     var pairedAt: Date
     var lastReachability: DetouriOSReachability
+    var callbackURL: String?
+    var setupURL: String?
 
     var hostURL: URL? {
         URL(string: host)
+    }
+
+    var callback: URL? {
+        callbackURL.flatMap(URL.init(string:))
+    }
+
+    var setup: URL? {
+        setupURL.flatMap(URL.init(string:))
     }
 }
 
@@ -127,6 +138,7 @@ struct DetouriOSProfile: Codable, Equatable {
     var selectedDeviceKinds: [DetouriOSDeviceKind]
     var remoteInstances: [DetouriOSRemoteInstance]
     var pairedMac: DetouriOSPairedMac?
+    var inheritedSetupBundle: DetourSetupTransferBundle?
     var updatedAt: Date
 
     init(
@@ -140,6 +152,7 @@ struct DetouriOSProfile: Codable, Equatable {
         selectedDeviceKinds: [DetouriOSDeviceKind],
         remoteInstances: [DetouriOSRemoteInstance],
         pairedMac: DetouriOSPairedMac?,
+        inheritedSetupBundle: DetourSetupTransferBundle? = nil,
         updatedAt: Date = .now
     ) {
         self.schemaVersion = schemaVersion
@@ -152,6 +165,7 @@ struct DetouriOSProfile: Codable, Equatable {
         self.selectedDeviceKinds = selectedDeviceKinds
         self.remoteInstances = remoteInstances
         self.pairedMac = pairedMac
+        self.inheritedSetupBundle = inheritedSetupBundle
         self.updatedAt = updatedAt
     }
 }

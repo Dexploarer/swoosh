@@ -16,5 +16,7 @@ struct DetourOnboardingNativeView: NSViewRepresentable {
         )
     }
 
-    func updateNSView(_ nsView: DetourOnboardingContentView, context: Context) {}
+    func updateNSView(_ nsView: DetourOnboardingContentView, context: Context) {
+        nsView.refreshFromStore()
+    }
 }

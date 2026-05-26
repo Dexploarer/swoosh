@@ -77,7 +77,10 @@ public struct MCPServerCreateRequest: Codable, Sendable, Equatable {
     public let command: String?           // stdio
     public let arguments: [String]?
     public let workingDirectory: String?
+    public let environmentSecretRefs: [String: String]?
     public let baseURL: String?           // http
+    public let authorizationSecretRef: String?
+    public let localOnly: Bool?
     public let trustLevel: String?
     public let enabled: Bool?
 
@@ -89,7 +92,10 @@ public struct MCPServerCreateRequest: Codable, Sendable, Equatable {
         command: String? = nil,
         arguments: [String]? = nil,
         workingDirectory: String? = nil,
+        environmentSecretRefs: [String: String]? = nil,
         baseURL: String? = nil,
+        authorizationSecretRef: String? = nil,
+        localOnly: Bool? = nil,
         trustLevel: String? = nil,
         enabled: Bool? = nil
     ) {
@@ -100,7 +106,10 @@ public struct MCPServerCreateRequest: Codable, Sendable, Equatable {
         self.command = command
         self.arguments = arguments
         self.workingDirectory = workingDirectory
+        self.environmentSecretRefs = environmentSecretRefs
         self.baseURL = baseURL
+        self.authorizationSecretRef = authorizationSecretRef
+        self.localOnly = localOnly
         self.trustLevel = trustLevel
         self.enabled = enabled
     }

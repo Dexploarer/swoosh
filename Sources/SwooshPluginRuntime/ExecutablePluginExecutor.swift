@@ -220,8 +220,8 @@ public struct ExecutablePluginExecutor: PluginExecutor {
             }
         }
 
-        let timedOut = await timeoutTask.value
         timeoutTask.cancel()
+        let timedOut = await timeoutTask.value
 
         if timedOut {
             throw PluginError.sandboxViolation("plugin \(pluginID) exceeded timeout of \(timeoutSeconds)s")

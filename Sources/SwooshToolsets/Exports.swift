@@ -13,6 +13,7 @@ import SwooshGoals
 import SwooshManifesting
 import SwooshCron
 import SwooshMCP
+import SwooshChatSDK
 import SwooshImageGen
 import SwooshMusic
 
@@ -89,6 +90,7 @@ public enum DefaultToolRegistrar {
         await registerCore(into: registry, dependencies: dependencies)
         await registerMemory(into: registry, dependencies: dependencies)
         await registerPermissions(into: registry, dependencies: dependencies)
+        await registerConnectors(into: registry, dependencies: dependencies)
         await registerScout(into: registry, dependencies: dependencies)
         await registerAudit(into: registry, dependencies: dependencies)
         await registerTerminal(into: registry, dependencies: dependencies)
@@ -162,6 +164,10 @@ public enum DefaultToolRegistrar {
 
     static func registerCron(into registry: ToolRegistry, dependencies: CronToolDependencies) async {
         await registry.register(TypeErasedTool(CronJobTool(dependencies: dependencies)))
+    }
+
+    static func registerConnectors(into registry: ToolRegistry, dependencies: ToolDependencies) async {
+        await registry.register(TypeErasedTool(ConnectorStatusTool(dependencies: dependencies)))
     }
 
     // ── Core ──────────────────────────────────────────────────────

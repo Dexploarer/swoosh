@@ -10,13 +10,28 @@ final class DetourPairingWebServer: @unchecked Sendable {
     private var listener: NWListener?
     private var page: PairingPage?
     private let port: UInt16 = 8788
+    var onDevicePaired: (@Sendable (DetourPairingEvent) -> Void)?
 
     private init() {}
 
-    func pairingPageURL(ipAddress: String, daemonHost: String, token: String) throws -> URL {
+    func pairingPageURL(
+        ipAddress: String,
+        daemonHost: String,
+        pairingNonce: String,
+        confirmationCode: String,
+        expiresAt: Date,
+        setupBundle: DetourSetupTransferBundle
+    ) throws -> URL {
+        let callbackURL = "http://\(ipAddress):\(port)/paired?pairing=\(urlQueryEscape(pairingNonce))"
+        let setupURL = "http://\(ipAddress):\(port)/setup?pairing=\(urlQueryEscape(pairingNonce))&code=\(urlQueryEscape(confirmationCode))"
         page = PairingPage(
             daemonHost: daemonHost,
-            token: token,
+            pairingNonce: pairingNonce,
+            confirmationCode: confirmationCode,
+            expiresAt: expiresAt,
+            setupBundle: setupBundle,
+            callbackURL: callbackURL,
+            setupURL: setupURL,
             minimumIOSVersion: DetourPairingSupport.requiredIOSAppVersion,
             installURL: ProcessInfo.processInfo.environment["DETOUR_IOS_INSTALL_URL"]
         )
@@ -29,7 +44,10 @@ final class DetourPairingWebServer: @unchecked Sendable {
         components.path = "/pair"
         components.queryItems = [
             URLQueryItem(name: "host", value: daemonHost),
-            URLQueryItem(name: "token", value: token),
+            URLQueryItem(name: "pairing", value: pairingNonce),
+            URLQueryItem(name: "callback", value: callbackURL),
+            URLQueryItem(name: "setup_url", value: setupURL),
+            URLQueryItem(name: "code", value: confirmationCode),
             URLQueryItem(name: "app", value: DetourPairingSupport.iOSBundleIdentifier),
             URLQueryItem(name: "min_ios_version", value: DetourPairingSupport.requiredIOSAppVersion)
         ]
@@ -50,6 +68,10 @@ final class DetourPairingWebServer: @unchecked Sendable {
         parameters.allowLocalEndpointReuse = true
         parameters.includePeerToPeer = true
         let listener = try NWListener(using: parameters, on: endpointPort)
+        listener.service = NWListener.Service(
+            name: ProcessInfo.processInfo.hostName,
+            type: "_swoosh._tcp"
+        )
         listener.newConnectionHandler = { [weak self] connection in
             self?.handle(connection)
         }
@@ -73,182 +95,92 @@ final class DetourPairingWebServer: @unchecked Sendable {
 
     private func httpResponse(for data: Data?) -> Data {
         let request = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        let path = request
+        let requestTarget = request
             .split(separator: "\r\n", maxSplits: 1)
             .first?
             .split(separator: " ")
             .dropFirst()
             .first
             .map(String.init) ?? "/"
+        let requestURL = URLComponents(string: "http://detour.local\(requestTarget)")
+        let path = requestURL?.path ?? requestTarget
+        let queryItems = requestURL?.queryItems ?? []
 
-        let body: String
-        let status: String
-        if path.hasPrefix("/pair"), let page {
-            status = "200 OK"
-            body = page.html
-        } else if path.hasPrefix("/install"), let page {
+        let reply: HTTPReply
+        if path.hasPrefix("/setup"), let page, page.isAuthorized(queryItems), page.hasConfirmation(queryItems) {
+            if let setupData = try? page.setupData() {
+                reply = HTTPReply(status: "200 OK", body: setupData, contentType: "application/json; charset=utf-8")
+            } else {
+                reply = HTTPReply(
+                    status: "409 Conflict",
+                    body: Data(#"{"ok":false,"error":"confirm pairing on the Mac first"}"#.utf8),
+                    contentType: "application/json; charset=utf-8"
+                )
+            }
+        } else if path.hasPrefix("/paired"), let page, page.isAuthorized(queryItems), page.hasConfirmation(queryItems) {
+            let event = pairingEvent(from: queryItems)
+            do {
+                let label = event.platform == "unknown" ? event.deviceName : "\(event.deviceName) (\(event.platform))"
+                try page.confirm(deviceName: label)
+                onDevicePaired?(event)
+                reply = HTTPReply(status: "200 OK", body: Data(#"{"ok":true}"#.utf8), contentType: "application/json; charset=utf-8")
+            } catch {
+                reply = HTTPReply(
+                    status: "500 Internal Server Error",
+                    body: Data(#"{"ok":false,"error":"could not issue paired device token"}"#.utf8),
+                    contentType: "application/json; charset=utf-8"
+                )
+            }
+        } else if path == "/pair", let page, page.isAuthorized(queryItems) {
+            reply = HTTPReply(status: "200 OK", body: Data(page.html.utf8), contentType: "text/html; charset=utf-8")
+        } else if path.hasPrefix("/install"), let page, page.isAuthorized(queryItems) {
             let result = DetourIOSInstaller.installOnFirstPairedIPhone()
-            status = result.succeeded ? "200 OK" : "500 Internal Server Error"
-            body = page.installResultHTML(result)
+            reply = HTTPReply(
+                status: result.succeeded ? "200 OK" : "500 Internal Server Error",
+                body: Data(page.installResultHTML(result).utf8),
+                contentType: "text/html; charset=utf-8"
+            )
         } else if path.hasPrefix("/health") {
-            status = "200 OK"
-            body = "ok"
+            reply = HTTPReply(status: "200 OK", body: Data("ok".utf8), contentType: "text/plain; charset=utf-8")
         } else {
-            status = "404 Not Found"
-            body = "not found"
+            reply = HTTPReply(status: "404 Not Found", body: Data("not found".utf8), contentType: "text/plain; charset=utf-8")
         }
 
-        let bodyData = Data(body.utf8)
-        let contentType = body.contains("<!doctype html>") ? "text/html; charset=utf-8" : "text/plain; charset=utf-8"
         let head = [
-            "HTTP/1.1 \(status)",
-            "Content-Type: \(contentType)",
-            "Content-Length: \(bodyData.count)",
+            "HTTP/1.1 \(reply.status)",
+            "Content-Type: \(reply.contentType)",
+            "Content-Length: \(reply.body.count)",
             "Connection: close",
             "",
             ""
         ].joined(separator: "\r\n")
         var response = Data(head.utf8)
-        response.append(bodyData)
+        response.append(reply.body)
         return response
     }
+
+    private func pairingEvent(from queryItems: [URLQueryItem]) -> DetourPairingEvent {
+        let setup = queryItems.first(where: { $0.name == "setup" })?.value
+            .flatMap { try? DetourSetupTransferBundle.decodeURLPayload($0) }
+        return DetourPairingEvent(
+            deviceName: queryItems.first(where: { $0.name == "device" })?.value ?? "Apple device",
+            platform: queryItems.first(where: { $0.name == "platform" })?.value ?? "unknown",
+            setupBundle: setup,
+            pairedAt: .now
+        )
+    }
+
 }
 
-private struct PairingPage {
-    let daemonHost: String
-    let token: String
-    let minimumIOSVersion: String
-    let installURL: String?
-
-    var html: String {
-        let externalInstallButton = sanitizedInstallURL().map {
-            #"<a class="button secondary" href="\#(htmlEscape($0))">External Install</a>"#
-        } ?? ""
-
-        return """
-        <!doctype html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Detour</title>
-        <style>
-        :root { color-scheme: dark; }
-        body {
-          margin: 0;
-          min-height: 100vh;
-          display: grid;
-          place-items: center;
-          background: #050505;
-          color: #f4f4f3;
-          font: 17px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-        }
-        main { width: min(88vw, 360px); text-align: center; }
-        h1 { margin: 0 0 12px; font-size: 32px; letter-spacing: 0; }
-        p { margin: 0 0 22px; color: #c6c6c3; line-height: 1.38; }
-        .button {
-          display: block;
-          margin: 12px 0;
-          padding: 15px 18px;
-          border-radius: 8px;
-          background: #b5522d;
-          color: white;
-          text-decoration: none;
-          font-weight: 700;
-        }
-        .secondary { background: #f1f1ef; color: #0a0a0a; }
-        </style>
-        </head>
-        <body>
-        <main>
-        <h1>Detour</h1>
-        <p>Install Detour from this Mac, then open pairing.</p>
-        <a class="button" href="/install">Install on iPhone</a>
-        \(externalInstallButton)
-        </main>
-        </body>
-        </html>
-        """
-    }
-
-    func installResultHTML(_ result: DetourIOSInstallResult) -> String {
-        let deepLink = pairingDeepLink()
-        let action = result.succeeded
-            ? #"<a class="button" href="\#(htmlEscape(deepLink))">Open Detour</a>"#
-            : #"<a class="button" href="/install">Try Again</a>"#
-
-        return """
-        <!doctype html>
-        <html>
-        <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Detour</title>
-        <style>
-        :root { color-scheme: dark; }
-        body {
-          margin: 0;
-          min-height: 100vh;
-          display: grid;
-          place-items: center;
-          background: #050505;
-          color: #f4f4f3;
-          font: 17px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-        }
-        main { width: min(88vw, 360px); text-align: center; }
-        h1 { margin: 0 0 12px; font-size: 32px; letter-spacing: 0; }
-        p { margin: 0 0 22px; color: #c6c6c3; line-height: 1.38; }
-        .button {
-          display: block;
-          margin: 12px 0;
-          padding: 15px 18px;
-          border-radius: 8px;
-          background: #b5522d;
-          color: white;
-          text-decoration: none;
-          font-weight: 700;
-        }
-        </style>
-        </head>
-        <body>
-        <main>
-        <h1>\(htmlEscape(result.title))</h1>
-        <p>\(htmlEscape(result.detail))</p>
-        \(action)
-        </main>
-        </body>
-        </html>
-        """
-    }
-
-    private func pairingDeepLink() -> String {
-        var components = URLComponents()
-        components.scheme = "swoosh"
-        components.host = "pair"
-        components.queryItems = [
-            URLQueryItem(name: "host", value: daemonHost),
-            URLQueryItem(name: "token", value: token),
-            URLQueryItem(name: "app", value: DetourPairingSupport.iOSBundleIdentifier),
-            URLQueryItem(name: "min_ios_version", value: minimumIOSVersion)
-        ]
-        return components.url?.absoluteString ?? ""
-    }
-
-    private func sanitizedInstallURL() -> String? {
-        guard let value = installURL?.trimmingCharacters(in: .whitespacesAndNewlines),
-              let url = URL(string: value),
-              let scheme = url.scheme?.lowercased(),
-              ["https", "itms-apps", "itms-services"].contains(scheme) else {
-            return nil
-        }
-        return value
-    }
+struct DetourPairingEvent: Equatable, Sendable {
+    var deviceName: String
+    var platform: String
+    var setupBundle: DetourSetupTransferBundle?
+    var pairedAt: Date
 }
 
-private func htmlEscape(_ value: String) -> String {
-    value
-        .replacingOccurrences(of: "&", with: "&amp;")
-        .replacingOccurrences(of: "\"", with: "&quot;")
-        .replacingOccurrences(of: "<", with: "&lt;")
-        .replacingOccurrences(of: ">", with: "&gt;")
+private struct HTTPReply {
+    var status: String
+    var body: Data
+    var contentType: String
 }

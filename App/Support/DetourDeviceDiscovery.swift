@@ -1,6 +1,7 @@
 // DetourDeviceDiscovery.swift — local Apple-device discovery for onboarding (0.5A)
 
 import Foundation
+@preconcurrency import Network
 
 struct DetourDiscoveredDevice: Equatable, Hashable, Identifiable, Sendable {
     let kind: DetourDeviceKind
@@ -14,9 +15,33 @@ struct DetourDiscoveredDevice: Equatable, Hashable, Identifiable, Sendable {
 
 actor DetourDeviceDiscovery {
     func discover() async -> [DetourDiscoveredDevice] {
+        async let bonjour = Self.scanBonjour()
         async let usb = Self.scanSystemProfiler(dataType: "SPUSBDataType", source: "usb")
         async let bluetooth = Self.scanSystemProfiler(dataType: "SPBluetoothDataType", source: "bluetooth")
-        return Self.unique((await usb) + (await bluetooth))
+        return Self.unique((await bonjour) + (await usb) + (await bluetooth))
+    }
+
+    private static func scanBonjour(timeout: TimeInterval = 2) async -> [DetourDiscoveredDevice] {
+        await withCheckedContinuation { continuation in
+            let queue = DispatchQueue(label: "ai.swoosh.detour.discovery.bonjour")
+            let browser = NWBrowser(
+                for: .bonjour(type: "_swoosh._tcp", domain: nil),
+                using: .tcp
+            )
+            let box = BonjourResults()
+            browser.browseResultsChangedHandler = { results, _ in
+                for result in results {
+                    if case .service(let name, _, _, _) = result.endpoint {
+                        box.insert(DetourDiscoveredDevice(kind: .remoteDetour, name: name, source: "bonjour"))
+                    }
+                }
+            }
+            browser.start(queue: queue)
+            queue.asyncAfter(deadline: .now() + timeout) {
+                browser.cancel()
+                continuation.resume(returning: box.values())
+            }
+        }
     }
 
     private static func scanSystemProfiler(dataType: String, source: String) async -> [DetourDiscoveredDevice] {
@@ -157,5 +182,20 @@ actor DetourDeviceDiscovery {
                 }
                 return left.kind.displayName.localizedStandardCompare(right.kind.displayName) == .orderedAscending
             }
+    }
+}
+
+private final class BonjourResults: @unchecked Sendable {
+    private let lock = NSLock()
+    private var devices: [DetourDiscoveredDevice] = []
+
+    func insert(_ device: DetourDiscoveredDevice) {
+        lock.lock(); defer { lock.unlock() }
+        devices.append(device)
+    }
+
+    func values() -> [DetourDiscoveredDevice] {
+        lock.lock(); defer { lock.unlock() }
+        return devices
     }
 }

@@ -4,7 +4,12 @@ import Foundation
 
 struct DetouriOSPairingPayload: Equatable {
     let hostURL: URL
-    let token: String
+    let token: String?
+    let pairingNonce: String?
+    let confirmationCode: String?
+    let callbackURL: URL?
+    let setupURL: URL?
+    let setupBundle: DetourSetupTransferBundle?
     let minimumAppVersion: String?
 }
 
@@ -30,11 +35,19 @@ enum DetouriOSPairingSupport {
             throw DetouriOSPairingError.missingHost
         }
 
-        guard let token = items.first(where: { $0.name == "token" })?.value,
-              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw DetouriOSPairingError.missingToken
+        let token = items.first(where: { $0.name == "token" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let pairingNonce = items.first(where: { $0.name == "pairing" || $0.name == "nonce" })?.value?
+            .trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        guard token != nil || pairingNonce != nil else {
+            throw DetouriOSPairingError.missingPairingAuthorization
         }
-
+        let callbackURL = items.first(where: { $0.name == "callback" || $0.name == "callback_url" })?.value
+            .flatMap(URL.init(string:))
+        let setupURL = items.first(where: { $0.name == "setup_url" })?.value
+            .flatMap(URL.init(string:))
+        let setupBundle = items.first(where: { $0.name == "setup" })?.value
+            .flatMap { try? DetourSetupTransferBundle.decodeURLPayload($0) }
         let minimumAppVersion = items.first(where: { $0.name == "min_ios_version" || $0.name == "required_ios_version" })?.value
         if let minimumAppVersion,
            !minimumAppVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -45,7 +58,16 @@ enum DetouriOSPairingSupport {
             )
         }
 
-        return DetouriOSPairingPayload(hostURL: hostURL, token: token, minimumAppVersion: minimumAppVersion)
+        return DetouriOSPairingPayload(
+            hostURL: hostURL,
+            token: token,
+            pairingNonce: pairingNonce,
+            confirmationCode: items.first(where: { $0.name == "code" || $0.name == "confirmation" })?.value,
+            callbackURL: callbackURL,
+            setupURL: setupURL,
+            setupBundle: setupBundle,
+            minimumAppVersion: minimumAppVersion
+        )
     }
 
     private static var currentAppVersion: String {
@@ -81,7 +103,7 @@ enum DetouriOSPairingError: LocalizedError {
     case unsupportedScheme
     case unsupportedAction
     case missingHost
-    case missingToken
+    case missingPairingAuthorization
     case appVersionTooOld(required: String, current: String)
 
     var errorDescription: String? {
@@ -94,10 +116,16 @@ enum DetouriOSPairingError: LocalizedError {
             "That Detour link is not a pairing action."
         case .missingHost:
             "The pairing link is missing the Mac daemon address."
-        case .missingToken:
-            "The pairing link is missing the daemon token."
+        case .missingPairingAuthorization:
+            "The pairing link is missing its pairing authorization."
         case .appVersionTooOld(let required, let current):
             "Update Detour to \(required). This iPhone has \(current)."
         }
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }

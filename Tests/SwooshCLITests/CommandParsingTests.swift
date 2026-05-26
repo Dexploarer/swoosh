@@ -192,6 +192,21 @@ struct ProviderParsingTests {
         #expect(auth.pkce == true)
     }
 
+    @Test("swoosh provider inherit parses auth inheritance flags")
+    func providerInherit() throws {
+        let command = try SwooshCommand.parseAsRoot([
+            "provider", "inherit", "--allow-keychain", "--prompt-keychain", "--allow-browser-cookies",
+            "--discover-only", "--provider", "openai", "--quiet",
+        ])
+        let inherit = try #require(command as? ProviderInheritCommand)
+        #expect(inherit.allowKeychain == true)
+        #expect(inherit.promptKeychain == true)
+        #expect(inherit.allowBrowserCookies == true)
+        #expect(inherit.discoverOnly == true)
+        #expect(inherit.provider == ["openai"])
+        #expect(inherit.quiet == true)
+    }
+
     @Test("swoosh provider test [name] parses")
     func providerTest() throws {
         let any = try SwooshCommand.parseAsRoot(["provider", "test"])

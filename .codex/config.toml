@@ -1,2 +1,7 @@
+personality = "friendly"
 sandbox_mode = "danger-full-access"
 approval_policy = "never"
+
+[mcp_servers.xcodebuildmcp]
+command = "npx"
+args = ["-y", "xcodebuildmcp@latest"]

@@ -152,6 +152,32 @@ final class CredentialScavengerTests: XCTestCase {
         XCTAssertEqual(chromes.first?.service, "Chrome Safe Storage")
     }
 
+    func testKeychainProviderMetadataMatching() {
+        XCTAssertEqual(KeychainScavenger.provider(from: "OpenAI API Key"), .openAI)
+        XCTAssertEqual(KeychainScavenger.provider(from: "openrouter token"), .openRouter)
+        XCTAssertEqual(KeychainScavenger.provider(from: "eliza cloud auth"), .elizaCloud)
+        XCTAssertNil(KeychainScavenger.provider(from: "unrelated password"))
+    }
+
+    func testKeychainAPIKeyFiltering() {
+        XCTAssertTrue(KeychainScavenger.looksLikeAPIKey("sk-test", provider: .openAI))
+        XCTAssertTrue(KeychainScavenger.looksLikeAPIKey("sk-or-test", provider: .openRouter))
+        XCTAssertFalse(KeychainScavenger.looksLikeAPIKey("browser-session-cookie", provider: .openAI))
+    }
+
+    func testCredentialScavengerAccessDefaultsDoNotAllowKeychainOrCookies() {
+        let access = CredentialScavengerAccess.defaultLocal
+        XCTAssertTrue(access.environment)
+        XCTAssertTrue(access.configFiles)
+        XCTAssertFalse(access.keychainCredentials)
+        XCTAssertFalse(access.promptForKeychainAccess)
+        XCTAssertFalse(access.browserCookies)
+
+        let cookieAccess = CredentialScavenger.browserCookieAccess(access: access)
+        XCTAssertFalse(cookieAccess.allowed)
+        XCTAssertTrue(cookieAccess.accessibleBrowsers.isEmpty)
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // MARK: - DiscoveredCredential
     // ═══════════════════════════════════════════════════════════════

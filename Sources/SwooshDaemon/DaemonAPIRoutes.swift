@@ -38,6 +38,7 @@ extension SwooshDaemon {
         pluginHost: PluginHost,
         pluginRegistry: PluginRegistry,
         mcpRegistry: MCPServerRegistry,
+        mcpConnector: MCPConnector,
         skillStore: FileSkillStore,
         goalStore: FileGoalStore,
         manifestStore: FileManifestationStore,
@@ -281,13 +282,21 @@ extension SwooshDaemon {
                     )
                 },
                 addMCPServer: { request in
-                    try await SwooshDaemon.addMCPServerResponse(registry: mcpRegistry, request: request)
+                    try await SwooshDaemon.addMCPServerResponse(
+                        registry: mcpRegistry,
+                        connector: mcpConnector,
+                        request: request
+                    )
                 },
                 removeMCPServer: { id in
                     try await SwooshDaemon.removeMCPServerResponse(registry: mcpRegistry, id: id)
                 },
                 connectMCPServer: { id in
-                    try await SwooshDaemon.connectMCPServerResponse(registry: mcpRegistry, id: id)
+                    try await SwooshDaemon.connectMCPServerResponse(
+                        registry: mcpRegistry,
+                        connector: mcpConnector,
+                        id: id
+                    )
                 },
                 disconnectMCPServer: { id in
                     try await SwooshDaemon.disconnectMCPServerResponse(registry: mcpRegistry, id: id)

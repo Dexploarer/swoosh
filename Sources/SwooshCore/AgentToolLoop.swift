@@ -117,6 +117,7 @@ public actor AgentToolLoop {
     let promptBuilder: PromptBuilder
     let policy: ToolCallPolicy
     let skillCatalogProvider: SkillCatalogProviding?
+    let personalizationLoader: (any PersonalizationContextLoading)?
 
     /// The most recent response's tool traces (for /why).
     var lastToolTraces: [ToolCallTrace] = []
@@ -134,7 +135,8 @@ public actor AgentToolLoop {
         toolPromptBuilder: ToolPromptBuilder = ToolPromptBuilder(),
         promptBuilder: PromptBuilder = PromptBuilder(),
         policy: ToolCallPolicy = .defaultAgent,
-        skillCatalogProvider: SkillCatalogProviding? = nil
+        skillCatalogProvider: SkillCatalogProviding? = nil,
+        personalizationLoader: (any PersonalizationContextLoading)? = nil
     ) {
         self.memoryLoader = memoryLoader
         self.reportLoader = reportLoader
@@ -148,6 +150,7 @@ public actor AgentToolLoop {
         self.promptBuilder = promptBuilder
         self.policy = policy
         self.skillCatalogProvider = skillCatalogProvider
+        self.personalizationLoader = personalizationLoader
     }
 
     public func loadTranscript(sessionID: String) async throws -> [ChatMessage] {
@@ -164,6 +167,7 @@ public actor AgentToolLoop {
 
         // 2. Build system prompt (privacy boundary)
         let skillCatalog = await skillCatalogProvider?() ?? []
+        let personalization = try await personalizationLoader?.loadPersonalizationContext()
         let mappedMemories = memories.map {
             ApprovedMemory(id: $0.id, text: $0.text, category: $0.category)
         }
@@ -174,7 +178,8 @@ public actor AgentToolLoop {
             approvedMemories: mappedMemories,
             setupReport: report,
             permissionSummary: permSummary,
-            skillCatalog: mappedSkills
+            skillCatalog: mappedSkills,
+            personalization: personalization
         )
         let basePrompt = systemPromptResult.prompt
         let memoryIDs = systemPromptResult.memoryIDs

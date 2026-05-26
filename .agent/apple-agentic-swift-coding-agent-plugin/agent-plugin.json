@@ -1,0 +1,43 @@
+{
+  "name": "apple-agentic-swift-2026",
+  "version": "1.0.0",
+  "created": "2026-05-25",
+  "description": "Portable coding-agent plugin/rules pack for building agentic Swift apps on Apple platforms.",
+  "entrypoints": {
+    "generic": "AGENTS.md",
+    "claude": "CLAUDE.md",
+    "claude_hooks": ".claude/settings.json",
+    "claude_slash_commands": ".claude/commands/",
+    "cursor": ".cursor/rules/apple-agentic-swift-2026.mdc",
+    "copilot": ".github/copilot-instructions.md",
+    "codex": ".codex/AGENTS.md",
+    "windsurf": ".windsurfrules"
+  },
+  "included": [
+    "rules",
+    "hooks",
+    "slash_commands",
+    "automations",
+    "scripts",
+    "templates",
+    "checklists",
+    "docs"
+  ],
+  "apple_focus": [
+    "Swift",
+    "SwiftUI",
+    "Foundation Models",
+    "App Intents",
+    "Apple Intelligence",
+    "SwiftData",
+    "WidgetKit",
+    "ActivityKit",
+    "App Clips",
+    "Core Spotlight",
+    "privacy",
+    "App Store review",
+    "Xcode automation"
+  ],
+  "fruta_reference": "https://developer.apple.com/documentation/appclip/fruta-building-a-feature-rich-app-with-swiftui",
+  "notes": "Verify exact SDK symbols against installed Xcode. Hook schemas can change; .claude/settings.json is a working reference for Claude Code-style hooks."
+}

@@ -13,6 +13,9 @@ public enum EnvironmentScavenger {
         (.openAI,     ["OPENAI_API_KEY", "OPENAI_KEY"]),
         (.openRouter, ["OPENROUTER_API_KEY", "OPENROUTER_KEY"]),
         (.elizaCloud, ["ELIZA_CLOUD_API_KEY", "ELIZACLOUD_API_KEY"]),
+        (.anthropic,  ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]),
+        (.gemini,     ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"]),
+        (.codex,      ["CODEX_AUTH_TOKEN", "OPENAI_CODEX_TOKEN"]),
     ]
 
     public static func scan(

@@ -25,6 +25,7 @@ struct ProviderCommand: AsyncParsableCommand {
         subcommands: [
             ProviderListCommand.self,
             ProviderAuthCommand.self,
+            ProviderInheritCommand.self,
             ProviderTestCommand.self,
             ProviderDiscoverCommand.self,
         ],
@@ -51,7 +52,7 @@ struct ProviderListCommand: AsyncParsableCommand {
         ]
 
         for (name, _, model, ref) in providers {
-            let hasKey = (try? await secrets.exists(ref)) ?? false
+            let hasKey = await secrets.exists(ref)
             let icon = hasKey ? "\u{001B}[32m✓\u{001B}[0m" : "\u{001B}[33m○\u{001B}[0m"
             let status = hasKey ? "configured" : "not configured"
             print("  \(icon) \(name.padding(toLength: 16, withPad: " ", startingAt: 0)) \(status.padding(toLength: 18, withPad: " ", startingAt: 0)) model: \(model)")
@@ -77,13 +78,94 @@ struct ProviderListCommand: AsyncParsableCommand {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MARK: - provider inherit
+// ═══════════════════════════════════════════════════════════════════
+
+struct ProviderInheritCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "inherit",
+        abstract: "Import existing local provider auth into the Swoosh Keychain."
+    )
+
+    @Flag(name: .long, help: "Allow reading compatible Apple Keychain credentials.")
+    var allowKeychain = false
+
+    @Flag(name: .long, help: "Allow macOS to prompt for protected Keychain items.")
+    var promptKeychain = false
+
+    @Flag(name: .long, help: "Allow browser-cookie auth discovery.")
+    var allowBrowserCookies = false
+
+    @Flag(name: .long, help: "Discover matching provider auth without importing it.")
+    var discoverOnly = false
+
+    @Option(name: .long, help: "Limit import to a provider ID. Repeat for multiple providers.")
+    var provider: [String] = []
+
+    @Flag(name: .long, help: "Keep output compact.")
+    var quiet = false
+
+    func run() async throws {
+        let access = CredentialScavengerAccess(
+            keychainCredentials: allowKeychain,
+            promptForKeychainAccess: promptKeychain,
+            browserCookies: allowBrowserCookies
+        )
+        let secrets = KeychainSecretStore()
+        let requestedProviders = try requestedProviderSet()
+        let discovered = CredentialScavenger.discoverAll(access: access).filter { credential in
+            requestedProviders?.contains(credential.provider) ?? true
+        }
+        var imported: [KnownProvider] = []
+        if !discoverOnly {
+            for credential in discovered {
+                let ref = credential.swooshRef
+                let alreadyExists = await secrets.exists(ref)
+                guard !alreadyExists else { continue }
+                try await secrets.set(credential.value, ref: ref)
+                imported.append(credential.provider)
+            }
+        }
+        let cookieAccess = CredentialScavenger.browserCookieAccess(access: access)
+
+        guard quiet else {
+            print("\n─── Provider Auth Inheritance ─────────────────\n")
+            print("  Discovered providers: \(discovered.map { $0.provider.displayName }.joined(separator: ", ").ifEmpty("none"))")
+            print("  Imported providers: \(imported.map { $0.displayName }.joined(separator: ", ").ifEmpty("none"))")
+            if cookieAccess.allowed {
+                print("  Browser cookie access: \(cookieAccess.accessibleBrowsers.joined(separator: ", ").ifEmpty("no accessible browser stores"))")
+            }
+            print("")
+            return
+        }
+
+        let discoveredIDs = discovered.map { $0.provider.rawValue }.joined(separator: ",").ifEmpty("none")
+        let importedIDs = imported.map { $0.rawValue }.joined(separator: ",").ifEmpty("none")
+        let browsers = cookieAccess.accessibleBrowsers.joined(separator: ",").ifEmpty("none")
+        print("discovered=\(discoveredIDs) imported=\(importedIDs) browsers=\(browsers)")
+    }
+
+    private func requestedProviderSet() throws -> Set<KnownProvider>? {
+        guard !provider.isEmpty else { return nil }
+        var providers = Set<KnownProvider>()
+        for value in provider {
+            guard let knownProvider = KnownProvider(rawValue: value) else {
+                throw ValidationError("Unknown provider '\(value)'. Use \(KnownProvider.allCases.map(\.rawValue).joined(separator: ", ")).")
+            }
+            providers.insert(knownProvider)
+        }
+        return providers
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // MARK: - provider auth
 // ═══════════════════════════════════════════════════════════════════
 
 struct ProviderAuthCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "auth", abstract: "Store API key for a provider.")
 
-    @Argument(help: "Provider name: openai, openrouter, eliza-cloud")
+    @Argument(help: "Provider name: openai, openrouter, eliza-cloud, anthropic, gemini, codex")
     var provider: String
 
     @Option(name: .long, help: "API key (stored in Keychain, never logged)")
@@ -138,6 +220,12 @@ struct ProviderAuthCommand: AsyncParsableCommand {
     }
 }
 
+private extension String {
+    func ifEmpty(_ replacement: String) -> String {
+        isEmpty ? replacement : self
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - provider test
 // ═══════════════════════════════════════════════════════════════════
@@ -169,7 +257,7 @@ func runProviderTests(provider: String?) async throws {
     }()
 
     for (name, ref) in providersToTest {
-        let hasKey = (try? await secrets.exists(ref)) ?? false
+        let hasKey = await secrets.exists(ref)
         if !hasKey {
             print("  \u{001B}[33m○\u{001B}[0m \(name): no API key configured")
             continue

@@ -221,6 +221,7 @@ struct SwooshDaemon {
                 config.modelProvider = modelProvider
                 config.toolRegistry = toolRuntime.registry
                 config.toolPolicy = toolPolicy
+                config.personalizationLoader = FilePersonalizationContextLoader(swooshDirectory: swooshDir)
                 config.skillCatalogProvider = {
                     let all = (try? await skillStore.listAll()) ?? []
                     return all
@@ -518,6 +519,9 @@ struct SwooshDaemon {
             port: port,
             hostname: host,
             token: token,
+            additionalTokens: {
+                SwooshDaemon.loadPairedAPITokens(from: swooshDir)
+            },
             kernel: swoosh.kernel,
             toolLoop: swoosh.toolLoop,
             snapshot: SwooshAPISnapshot(
@@ -528,7 +532,7 @@ struct SwooshDaemon {
             runtimeSources: SwooshDaemon.makeRuntimeSources(
                 configStore: configStore, secrets: secrets, providerInfo: providerInfo,
                 toolRuntime: toolRuntime, codexAuth: codexAuth, pluginHost: pluginHost,
-                pluginRegistry: pluginRegistry, mcpRegistry: mcpRegistry, skillStore: skillStore,
+                pluginRegistry: pluginRegistry, mcpRegistry: mcpRegistry, mcpConnector: mcpConnector, skillStore: skillStore,
                 goalStore: goalStore, manifestStore: manifestStore, cronStore: cronStore,
                 cronScheduler: cronScheduler, cronExecutor: cronExecutor, manifester: manifester, agentBackend: agentBackend,
                 swooshDir: swooshDir
@@ -545,4 +549,25 @@ struct SwooshDaemon {
         try await app.run()
     }
 
+    private static func loadPairedAPITokens(from swooshDir: URL) -> [String] {
+        let tokenFile = swooshDir.appendingPathComponent("paired_api_tokens.json", isDirectory: false)
+        guard let data = try? Data(contentsOf: tokenFile) else { return [] }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let records = try? decoder.decode([PairedAPITokenRecord].self, from: data) else { return [] }
+        let now = Date()
+        return records.compactMap { record in
+            guard let expiresAt = record.expiresAt, expiresAt > now else { return nil }
+            return record.token.isEmpty ? nil : record.token
+        }
+    }
+
+}
+
+private struct PairedAPITokenRecord: Codable {
+    var id: String
+    var token: String
+    var label: String
+    var createdAt: Date
+    var expiresAt: Date?
 }

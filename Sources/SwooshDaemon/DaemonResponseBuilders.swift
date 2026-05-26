@@ -35,9 +35,9 @@ extension SwooshDaemon {
         activeProvider: (name: String, model: String)?,
         preferredProviderID: String? = nil
     ) async -> (providers: [ProviderSummary], activeProviderID: String?, preferredProviderID: String?) {
-        let openAIConfigured = (try? await secrets.exists(SecretRef("openai", "api_key"))) ?? false
-        let openRouterConfigured = (try? await secrets.exists(SecretRef("openrouter", "api_key"))) ?? false
-        let elizaCloudConfigured = (try? await secrets.exists(SecretRef("eliza-cloud", "api_key"))) ?? false
+        let openAIConfigured = await secrets.exists(SecretRef("openai", "api_key"))
+        let openRouterConfigured = await secrets.exists(SecretRef("openrouter", "api_key"))
+        let elizaCloudConfigured = await secrets.exists(SecretRef("eliza-cloud", "api_key"))
         let codexConfigured = await CodexBridgeProvider().isAuthenticated()
         let localServers = await LocalProviderDiscovery().discover()
         let localModel = localServers.first?.models.first

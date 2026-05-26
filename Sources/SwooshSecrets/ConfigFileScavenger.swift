@@ -31,6 +31,21 @@ public enum ConfigFileScavenger {
             ".config/eliza-cloud/credentials.json",
             ".config/eliza/credentials.json",
         ], extractor: { jsonKey($0, keys: ["api_key", "apiKey", "token"]) }),
+
+        ConfigSource(provider: .anthropic, paths: [
+            ".claude/credentials.json",
+            ".config/anthropic/credentials.json",
+        ], extractor: { jsonKey($0, keys: ["api_key", "apiKey", "token"]) }),
+
+        ConfigSource(provider: .gemini, paths: [
+            ".gemini/credentials.json",
+            ".config/gemini/credentials.json",
+        ], extractor: { jsonKey($0, keys: ["api_key", "apiKey", "token"]) }),
+
+        ConfigSource(provider: .codex, paths: [
+            ".codex/auth.json",
+            ".codex/credentials.json",
+        ], extractor: { jsonKey($0, keys: ["access_token", "refresh_token", "id_token", "api_key", "apiKey", "token"]) }),
     ]}
 
     public static func scan() -> [DiscoveredCredential] {
