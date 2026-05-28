@@ -103,8 +103,22 @@ public enum ModelDefaults {
     public static let openRouterFastModelID = "openai/gpt-5-mini"
     public static let openRouterUtilityModelID = "openai/gpt-5-mini"
 
+    public static let anthropicProviderID = "anthropic"
+    public static let anthropicModelID = "claude-opus-4-7"
+    public static let anthropicCodingModelID = "claude-sonnet-4-6"
+    public static let anthropicFastModelID = "claude-haiku-4-5-20251001"
+
     public static let detourCloudProviderID = "detour-cloud"
     public static let detourCloudModelID = "auto"
+
+    // Dev proxy: a localhost OpenAI-compatible endpoint that rotates free
+    // tiers so development/testing doesn't burn paid quota. Opt-in (select
+    // it as the active provider); the key lives in Keychain under
+    // dev-proxy.api_key. `auto` lets the proxy's router pick a free model.
+    public static let devProxyProviderID = "dev-proxy"
+    public static let devProxyBaseURL = "http://localhost:3001/v1"
+    public static let devProxyModelID = "auto"
+    public static let devProxyCodingModelID = "qwen/qwen3-coder:free"
 
     public static let localOpenAIProviderID = "local-openai"
     public static let localOpenAIModelID = "gemma4:e4b"
@@ -1026,6 +1040,7 @@ public enum UnifiedModelCatalog {
         case ModelDefaults.openAIProviderID: return "OpenAI"
         case ModelDefaults.openRouterProviderID: return "OpenRouter"
         case ModelDefaults.detourCloudProviderID: return "Detour Cloud"
+        case ModelDefaults.devProxyProviderID: return "Dev Proxy (free tiers)"
         case ModelDefaults.localOpenAIProviderID: return "Ollama / Local OpenAI"
         case ModelDefaults.localMLXProviderID: return "MLX Local"
         case ModelDefaults.localLiteRTProviderID: return "LiteRT Local"
@@ -1038,8 +1053,10 @@ public enum UnifiedModelCatalog {
         switch providerID {
         case ModelDefaults.codexProviderID: return ModelDefaults.codexModelID
         case ModelDefaults.openAIProviderID: return ModelDefaults.openAIModelID
+        case ModelDefaults.anthropicProviderID: return ModelDefaults.anthropicModelID
         case ModelDefaults.openRouterProviderID: return ModelDefaults.openRouterModelID
         case ModelDefaults.detourCloudProviderID: return ModelDefaults.detourCloudModelID
+        case ModelDefaults.devProxyProviderID: return ModelDefaults.devProxyModelID
         case ModelDefaults.localOpenAIProviderID: return ModelDefaults.localOpenAIModelID
         case ModelDefaults.localMLXProviderID: return ModelDefaults.localMLXModelID
         case ModelDefaults.localLiteRTProviderID: return ModelDefaults.localLiteRTModelID

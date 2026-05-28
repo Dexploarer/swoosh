@@ -55,12 +55,28 @@ public struct ProviderFactory {
     ) async {
         await registry.register(CodexBridgeProvider(), profile: .codex)
         await registry.register(OpenAIResponsesProvider(secrets: secrets), profile: .openAI)
+        await registry.register(AnthropicProvider(secrets: secrets), profile: .anthropic)
         await registry.register(OpenRouterProvider(secrets: secrets), profile: .openRouter)
         await registry.register(DetourCloudProvider(secrets: secrets), profile: .detourCloud)
         #if canImport(SwooshMLX)
         await registry.register(MLXLocalProvider(), profile: .mlxLocal)
         #endif
         await registry.register(LocalOpenAICompatibleProvider(), profile: .localOpenAI)
+
+        // Dev proxy — a localhost OpenAI-compatible endpoint with a Bearer
+        // key (rotates free tiers). Reuses LocalOpenAICompatibleProvider
+        // under its own providerID. Key resolved from Keychain at build
+        // time; the provider only sends it when present.
+        let devProxyKey = try? await secrets.get(SecretRef("dev-proxy", "api_key"))
+        await registry.register(
+            LocalOpenAICompatibleProvider(
+                baseURL: ModelDefaults.devProxyBaseURL,
+                providerID: ProviderID(ModelDefaults.devProxyProviderID),
+                displayName: "Dev Proxy (free tiers)",
+                apiKey: devProxyKey
+            ),
+            profile: .devProxy
+        )
     }
 
     // MARK: - Route table
@@ -74,6 +90,26 @@ public struct ProviderFactory {
             + embeddingRoutes
             + workflowPlanningRoutes(localRouteModel: localRouteModel)
             + toolCallRepairRoutes(localRouteModel: localRouteModel)
+            + devProxyRoutes()
+    }
+
+    /// One dev-proxy route per text role so that selecting the dev proxy
+    /// (which gives it the +1000 preferred boost) routes every text query
+    /// through localhost:3001. Embeddings are intentionally excluded —
+    /// they stay on the local/OpenAI embedding routes.
+    private static func devProxyRoutes() -> [RouteEntry] {
+        let textRoles: [SwooshProviders.ModelRole] = [
+            .primaryChat, .coding, .fastLocal, .memoryExtraction,
+            .summarization, .workflowPlanning, .toolCallRepair,
+        ]
+        return textRoles.map { role in
+            RouteEntry(
+                role: role,
+                providerID: ModelDefaults.devProxyProviderID,
+                model: role == .coding ? ModelDefaults.devProxyCodingModelID : ModelDefaults.devProxyModelID,
+                priority: 64
+            )
+        }
     }
 
     private static func primaryChatRoutes(localRouteModel: String) -> [RouteEntry] {
@@ -82,6 +118,8 @@ public struct ProviderFactory {
                        model: ModelDefaults.codexModelID, priority: 120),
             RouteEntry(role: .primaryChat, providerID: ModelDefaults.openAIProviderID,
                        model: ModelDefaults.openAIModelID, priority: 100),
+            RouteEntry(role: .primaryChat, providerID: ModelDefaults.anthropicProviderID,
+                       model: ModelDefaults.anthropicModelID, priority: 95),
             RouteEntry(role: .primaryChat, providerID: ModelDefaults.openRouterProviderID,
                        model: ModelDefaults.openRouterModelID, priority: 90),
             RouteEntry(role: .primaryChat, providerID: ModelDefaults.detourCloudProviderID,
@@ -99,6 +137,8 @@ public struct ProviderFactory {
                        model: ModelDefaults.codexModelID, priority: 110),
             RouteEntry(role: .coding, providerID: ModelDefaults.openAIProviderID,
                        model: ModelDefaults.openAICodingModelID, priority: 100),
+            RouteEntry(role: .coding, providerID: ModelDefaults.anthropicProviderID,
+                       model: ModelDefaults.anthropicCodingModelID, priority: 95),
             RouteEntry(role: .coding, providerID: ModelDefaults.openRouterProviderID,
                        model: ModelDefaults.openRouterCodingModelID, priority: 90),
             RouteEntry(role: .coding, providerID: ModelDefaults.localOpenAIProviderID,
@@ -203,8 +243,10 @@ public struct ProviderFactory {
         let order = [
             ModelDefaults.codexProviderID,
             ModelDefaults.openAIProviderID,
+            ModelDefaults.anthropicProviderID,
             ModelDefaults.openRouterProviderID,
             ModelDefaults.detourCloudProviderID,
+            ModelDefaults.devProxyProviderID,
             ModelDefaults.localMLXProviderID,
             ModelDefaults.localOpenAIProviderID
         ]
@@ -252,8 +294,10 @@ public struct ProviderFactory {
         switch id {
         case ModelDefaults.codexProviderID: return await detectCodex()
         case ModelDefaults.openAIProviderID: return await detectOpenAI(secrets: secrets)
+        case ModelDefaults.anthropicProviderID: return await detectAnthropic(secrets: secrets)
         case ModelDefaults.openRouterProviderID: return await detectOpenRouter(secrets: secrets)
         case ModelDefaults.detourCloudProviderID: return await detectDetourCloud(secrets: secrets)
+        case ModelDefaults.devProxyProviderID: return await detectDevProxy(secrets: secrets)
         case ModelDefaults.localMLXProviderID: return detectMLXLocal()
         case ModelDefaults.localOpenAIProviderID: return await detectLocalOpenAI()
         default: return nil
@@ -273,6 +317,15 @@ public struct ProviderFactory {
         return ("OpenAI", ModelDefaults.openAIModelID)
     }
 
+    private static func detectAnthropic(
+        secrets: any SecretStoring
+    ) async -> (name: String, model: String)? {
+        guard (try? await secrets.get(SecretRef("anthropic", "api_key"))) != nil else {
+            return nil
+        }
+        return ("Anthropic (Claude)", ModelDefaults.anthropicModelID)
+    }
+
     private static func detectOpenRouter(
         secrets: any SecretStoring
     ) async -> (name: String, model: String)? {
@@ -289,6 +342,15 @@ public struct ProviderFactory {
             return nil
         }
         return ("Detour Cloud", ModelDefaults.detourCloudModelID)
+    }
+
+    private static func detectDevProxy(
+        secrets: any SecretStoring
+    ) async -> (name: String, model: String)? {
+        guard (try? await secrets.get(SecretRef("dev-proxy", "api_key"))) != nil else {
+            return nil
+        }
+        return ("Dev Proxy (free tiers)", ModelDefaults.devProxyModelID)
     }
 
     private static func detectMLXLocal() -> (name: String, model: String)? {
@@ -330,8 +392,10 @@ public struct ProviderFactory {
         switch name {
         case "ChatGPT (Codex)": return ModelDefaults.codexProviderID
         case "OpenAI": return ModelDefaults.openAIProviderID
+        case "Anthropic (Claude)": return ModelDefaults.anthropicProviderID
         case "OpenRouter": return ModelDefaults.openRouterProviderID
         case "Detour Cloud", "Eliza Cloud": return ModelDefaults.detourCloudProviderID
+        case "Dev Proxy (free tiers)": return ModelDefaults.devProxyProviderID
         case "MLX Local": return ModelDefaults.localMLXProviderID
         case "Apple Foundation": return ModelDefaults.localFoundationProviderID
         default: return ModelDefaults.localOpenAIProviderID

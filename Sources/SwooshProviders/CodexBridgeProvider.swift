@@ -128,6 +128,16 @@ public actor CodexBridgeProvider: ModelProviding {
             timeout: timeoutSeconds
         )
 
+        // Codex reports plan/usage-limit exhaustion on stdout/stderr while
+        // still exiting 0 and writing no -o file — so the exit-code and
+        // empty-output checks below would both mis-describe it. Detect the
+        // marker explicitly and surface it as a quota error (its own text
+        // carries the reset time verbatim).
+        let combined = result.stdout + "\n" + result.stderr
+        if let quotaLine = Self.usageLimitLine(in: combined) {
+            throw ProviderError.quotaExceeded(providerID, message: quotaLine, resetsAt: nil)
+        }
+
         if result.exitCode != 0 {
             let summary = result.stderr.isEmpty ? result.stdout : result.stderr
             let snippet = String(summary.prefix(400))
@@ -162,6 +172,23 @@ public actor CodexBridgeProvider: ModelProviding {
     }
 
     // ── Helpers ───────────────────────────────────────────────────
+
+    /// Return the first line mentioning a usage/plan limit, cleaned of
+    /// codex's "ERROR:" prefix, or nil if none. Codex emits the line
+    /// (with its own "try again at …" reset time) on stdout/stderr.
+    nonisolated static func usageLimitLine(in output: String) -> String? {
+        for raw in output.split(separator: "\n") {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            let lower = line.lowercased()
+            guard lower.contains("usage limit") || lower.contains("hit your usage")
+                || lower.contains("purchase more credits") else { continue }
+            if let range = line.range(of: "ERROR:") {
+                return String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+            }
+            return line
+        }
+        return nil
+    }
 
     private nonisolated func renderPrompt(messages: [ChatMessage],
                                           instructions: String?) -> String {

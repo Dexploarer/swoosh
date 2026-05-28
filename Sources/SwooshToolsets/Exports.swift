@@ -96,6 +96,7 @@ public enum DefaultToolRegistrar {
         await registerFiles(into: registry, dependencies: dependencies)
         await registerGit(into: registry, dependencies: dependencies)
         await registerSwiftDev(into: registry, dependencies: dependencies)
+        await registerWeb(into: registry, dependencies: dependencies)
         await registerWorkflow(into: registry, dependencies: dependencies)
         await registerEVM(into: registry, dependencies: dependencies)
         await registerSolana(into: registry, dependencies: dependencies)
@@ -171,6 +172,10 @@ public enum DefaultToolRegistrar {
     }
 
     // ── Core ──────────────────────────────────────────────────────
+    static func registerWeb(into registry: ToolRegistry, dependencies: ToolDependencies) async {
+        await registry.register(TypeErasedTool(WebSearchTool(dependencies: dependencies)))
+    }
+
     static func registerCore(into registry: ToolRegistry, dependencies: ToolDependencies) async {
         await registry.register(TypeErasedTool(CoreStatusTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(ExplainContextTool(dependencies: dependencies)))

@@ -1,7 +1,12 @@
-// SwooshProviders/LocalOpenAICompatibleProvider.swift — 0.9P Local Provider
+// SwooshProviders/LocalOpenAICompatibleProvider.swift — 0.9Q Local Provider
 //
 // Ollama, LM Studio, vLLM, llama.cpp servers — anything OpenAI-compatible at localhost.
-// No auth by default. Localhost-only network policy.
+// Localhost-only network policy. Optional Bearer auth: most local servers
+// need no key, but localhost OpenAI proxies (LiteLLM, the freellmapi
+// dev-proxy) do — pass `apiKey` to send `Authorization: Bearer`. The
+// `providerID`/`displayName` are overridable so a second instance (e.g.
+// the dev-proxy on :3001) can register under its own identity without a
+// whole new provider type.
 
 import Foundation
 import SwooshTools
@@ -11,8 +16,8 @@ import SwooshTools
 // ═══════════════════════════════════════════════════════════════════
 
 public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingProviding {
-    public nonisolated let providerID: ProviderID = "local-openai"
-    public nonisolated let displayName: String = "Local OpenAI-Compatible"
+    public nonisolated let providerID: ProviderID
+    public nonisolated let displayName: String
     public nonisolated let capabilities = ProviderCapabilities(
         streaming: true, toolCalling: true, structuredOutput: false,
         embeddings: true, vision: false
@@ -20,10 +25,23 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingPr
 
     private let http: any HTTPClient
     private let baseURL: String
+    private let apiKey: String?
 
     public init(http: any HTTPClient = URLSessionHTTPClient(purpose: "provider:local-openai-compat"),
-                baseURL: String = "http://127.0.0.1:11434/v1") {
+                baseURL: String = "http://127.0.0.1:11434/v1",
+                providerID: ProviderID = "local-openai",
+                displayName: String = "Local OpenAI-Compatible",
+                apiKey: String? = nil) {
         self.http = http; self.baseURL = baseURL
+        self.providerID = providerID; self.displayName = displayName
+        self.apiKey = apiKey
+    }
+
+    /// Attach `Authorization: Bearer` when an API key was supplied.
+    private func applyAuth(_ req: inout URLRequest) {
+        if let apiKey, !apiKey.isEmpty {
+            req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
     }
 
     // ── Network policy ────────────────────────────────────────────
@@ -95,6 +113,7 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingPr
         guard let url = URL(string: "\(baseURL)/models") else { return [] }
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
+        applyAuth(&req)
         let response = try await http.send(req)
 
         guard let json = try JSONSerialization.jsonObject(with: response.data) as? [String: Any],
@@ -122,6 +141,7 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingPr
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyAuth(&req)
 
         var body: [String: Any] = [
             "model": modelReq.model,
@@ -154,6 +174,7 @@ public actor LocalOpenAICompatibleProvider: StreamingModelProviding, EmbeddingPr
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyAuth(&req)
         req.httpBody = try JSONSerialization.data(withJSONObject: [
             "model": embeddingReq.model,
             "input": embeddingReq.input,

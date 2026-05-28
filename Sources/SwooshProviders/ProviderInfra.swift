@@ -59,6 +59,12 @@ public enum ProviderError: Error, Sendable {
     case requestFailed(ProviderID, String)
     case responseParseFailed(ProviderID, String)
     case rateLimited(ProviderID, retryAfterSeconds: Int?)
+    /// The credential's plan/usage quota is exhausted (distinct from a
+    /// transient rate-limit). `message` is human-readable; `resetsAt` is
+    /// the recovery time when the upstream reports one. Surfaced verbatim
+    /// to the user so "you hit your plan cap, resets May 31" replaces an
+    /// opaque 500.
+    case quotaExceeded(ProviderID, message: String, resetsAt: Date?)
     case modelNotAvailable(ProviderID, String)
     case unsupportedEndpoint(ProviderID, String)
     case allRoutesFailed([ProviderAttemptError])

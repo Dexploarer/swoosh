@@ -190,7 +190,7 @@ extension SwooshDaemon {
     ) async throws -> ProviderMutationResponse {
         // Detour Cloud is intentionally not iOS-accessible — it's an
         // experimental provider configured server-side via the CLI.
-        guard ["openai", "openrouter"].contains(request.providerID) else {
+        guard ["openai", "anthropic", "openrouter"].contains(request.providerID) else {
             throw APIError.badRequest("provider does not accept API keys from the iOS app")
         }
         let key = request.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -216,8 +216,10 @@ extension SwooshDaemon {
         let known = [
             ModelDefaults.codexProviderID,
             ModelDefaults.openAIProviderID,
+            ModelDefaults.anthropicProviderID,
             ModelDefaults.openRouterProviderID,
             ModelDefaults.detourCloudProviderID,
+            ModelDefaults.devProxyProviderID,
             ModelDefaults.localOpenAIProviderID,
             ModelDefaults.localMLXProviderID,
             ModelDefaults.localFoundationProviderID,

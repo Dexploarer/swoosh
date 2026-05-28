@@ -26,7 +26,7 @@ extension ProviderID: CustomStringConvertible, ExpressibleByStringLiteral {
 // ═══════════════════════════════════════════════════════════════════
 
 public enum ProviderKind: String, Codable, Sendable {
-    case openAI, openRouter, detourCloud
+    case openAI, openRouter, detourCloud, anthropic
     case localOpenAICompatible, mlx, codexCLI
 }
 
@@ -290,6 +290,12 @@ public struct ProviderProfile: Codable, Sendable, Identifiable {
         defaultModel: ModelDefaults.openRouterModelID, enabled: false, priority: 90
     )
 
+    public static let anthropic = ProviderProfile(
+        id: ProviderID(ModelDefaults.anthropicProviderID), kind: .anthropic, displayName: "Anthropic (Claude)",
+        baseURL: "https://api.anthropic.com", auth: .apiKey(namespace: "anthropic", key: "api_key"),
+        defaultModel: ModelDefaults.anthropicModelID, enabled: false, priority: 95
+    )
+
     public static let detourCloud = ProviderProfile(
         id: ProviderID(ModelDefaults.detourCloudProviderID), kind: .detourCloud, displayName: "Detour Cloud",
         baseURL: "https://elizacloud.ai/api/v1", auth: .apiKey(namespace: "detour-cloud", key: "api_key"),
@@ -301,6 +307,12 @@ public struct ProviderProfile: Codable, Sendable, Identifiable {
         id: ProviderID(ModelDefaults.localOpenAIProviderID), kind: .localOpenAICompatible, displayName: "Local OpenAI-Compatible",
         baseURL: "http://127.0.0.1:11434/v1", auth: .none,
         defaultModel: ModelDefaults.localOpenAIModelID, enabled: false, priority: 60
+    )
+
+    public static let devProxy = ProviderProfile(
+        id: ProviderID(ModelDefaults.devProxyProviderID), kind: .localOpenAICompatible, displayName: "Dev Proxy (free tiers)",
+        baseURL: ModelDefaults.devProxyBaseURL, auth: .apiKey(namespace: "dev-proxy", key: "api_key"),
+        defaultModel: ModelDefaults.devProxyModelID, enabled: false, priority: 64
     )
 
     public static let mlxLocal = ProviderProfile(

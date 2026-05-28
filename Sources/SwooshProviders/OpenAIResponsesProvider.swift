@@ -33,7 +33,12 @@ public actor OpenAIResponsesProvider: ToolCallingModelProviding, EmbeddingProvid
     public func complete(_ request: ModelRequest) async throws -> ModelResponse {
         let apiKey = try await loadAPIKey()
         let httpReq = try buildRequest(apiKey: apiKey, modelReq: request, stream: false)
-        let response = try await http.send(httpReq)
+        let response: HTTPResponse
+        do {
+            response = try await http.send(httpReq)
+        } catch let HTTPError.requestFailed(status, body) {
+            throw ProviderError.classifyHTTPFailure(providerID: providerID, status: status, body: body)
+        }
         return try parseResponse(response.data, model: request.model)
     }
 
