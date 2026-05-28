@@ -15,7 +15,28 @@
 
 import Foundation
 import AVFoundation
-import Speech
+@preconcurrency import Speech
+import os
+
+// Thread-safe float box for passing audio level from the realtime
+// audio thread to the MainActor without isolation violations.
+private final class AudioLevelBox: @unchecked Sendable {
+    private var _value: Float = 0
+    private var _lock = os_unfair_lock()
+
+    func store(_ v: Float) {
+        os_unfair_lock_lock(&_lock)
+        _value = v
+        os_unfair_lock_unlock(&_lock)
+    }
+
+    func load() -> Float {
+        os_unfair_lock_lock(&_lock)
+        let v = _value
+        os_unfair_lock_unlock(&_lock)
+        return v
+    }
+}
 
 @MainActor
 @Observable
@@ -39,6 +60,10 @@ public final class SpeechCapture {
     private let engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    @ObservationIgnored
+    private var _audioLevelBox: AudioLevelBox?
+    @ObservationIgnored
+    private var _levelPollTask: Task<Void, Never>?
 
     public init(locale: Locale = .current) {
         self.recognizer = SFSpeechRecognizer(locale: locale)
@@ -86,10 +111,46 @@ public final class SpeechCapture {
         // Configure audio engine input tap.
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+
+        // Guard: zero-channel format means no mic is available or
+        // permission wasn't granted — accessing it crashes AVAudioEngine.
+        guard format.channelCount > 0, format.sampleRate > 0 else {
+            lastError = .engineStartFailed(
+                "No audio input available (channelCount=\(format.channelCount), "
+                + "sampleRate=\(format.sampleRate)). Check microphone permission "
+                + "in System Settings → Privacy & Security → Microphone."
+            )
+            return
+        }
+
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
-            request.append(buffer)
-            self?.updateAudioLevel(from: buffer)
+
+        // The tap closure runs on the audio engine's realtime thread —
+        // it MUST NOT touch any @MainActor-isolated state. Because this
+        // closure is declared inside a @MainActor class, Swift 6.3
+        // inherits MainActor isolation onto its body — and the runtime
+        // `dispatch_assert_queue` check fires the moment the realtime
+        // thread invokes it, crashing the app (EXC_BREAKPOINT in
+        // `_swift_task_checkIsolatedSwift`). The `@Sendable` annotation
+        // on the typed closure binding defeats that inheritance, and the
+        // explicit `[request, levelBox]` capture list keeps the captures
+        // Sendable (both already are).
+        let levelBox = AudioLevelBox()
+        self._audioLevelBox = levelBox
+
+        let tapBlock: @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void = {
+            [request, levelBox] buffer, _ in
+            Self.processTapBuffer(buffer, request: request, levelBox: levelBox)
+        }
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format, block: tapBlock)
+
+        // Poll audio level from MainActor at ~30Hz
+        _levelPollTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 33_000_000) // ~30fps
+                guard let self else { break }
+                self.audioLevel = self._audioLevelBox?.load() ?? 0
+            }
         }
 
         engine.prepare()
@@ -132,7 +193,36 @@ public final class SpeechCapture {
 
     // ── Internals ────────────────────────────────────────────────────
 
+    /// Realtime-thread audio handler. `nonisolated static` defeats the
+    /// MainActor inference that the enclosing class would otherwise apply
+    /// — the AVFAudio tap thread can call this directly without tripping
+    /// the `dispatch_assert_queue` runtime check.
+    nonisolated private static func processTapBuffer(
+        _ buffer: AVAudioPCMBuffer,
+        request: SFSpeechAudioBufferRecognitionRequest,
+        levelBox: AudioLevelBox
+    ) {
+        request.append(buffer)
+        var level: Float = 0
+        if let channelData = buffer.floatChannelData?[0] {
+            let frames = Int(buffer.frameLength)
+            if frames > 0 {
+                var sum: Float = 0
+                for i in 0..<frames {
+                    let s = channelData[i]
+                    sum += s * s
+                }
+                let rms = sqrt(sum / Float(frames))
+                level = min(max(rms * 4, 0), 1)
+            }
+        }
+        levelBox.store(level)
+    }
+
     private func cleanup() {
+        _levelPollTask?.cancel()
+        _levelPollTask = nil
+        _audioLevelBox = nil
         if engine.isRunning {
             engine.stop()
         }
@@ -143,23 +233,7 @@ public final class SpeechCapture {
         audioLevel = 0
     }
 
-    private func updateAudioLevel(from buffer: AVAudioPCMBuffer) {
-        guard let channelData = buffer.floatChannelData?[0] else { return }
-        let frames = Int(buffer.frameLength)
-        guard frames > 0 else { return }
-        // RMS amplitude → [0,1].
-        var sum: Float = 0
-        for i in 0..<frames {
-            let s = channelData[i]
-            sum += s * s
-        }
-        let rms = sqrt(sum / Float(frames))
-        // Clamp + perceptual scale.
-        let level = min(max(rms * 4, 0), 1)
-        Task { @MainActor in
-            self.audioLevel = level
-        }
-    }
+
 }
 
 // ═══════════════════════════════════════════════════════════════════

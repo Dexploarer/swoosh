@@ -1,8 +1,10 @@
 // swift-tools-version: 6.3
+import CompilerPluginSupport
 import PackageDescription
 
 let package = Package(
     name: "Swoosh",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v26),
         .iOS(.v26)
@@ -28,7 +30,6 @@ let package = Package(
         .library(name: "SwooshUI",        targets: ["SwooshUI"]),
         .library(name: "SwooshApprovals", targets: ["SwooshApprovals"]),
         .library(name: "SwooshWidgets",  targets: ["SwooshWidgets"]),
-        .library(name: "SwooshActantBackend", targets: ["SwooshActantBackend"]),
         .library(name: "SwooshGenerativeUI", targets: ["SwooshGenerativeUI"]),
         .library(name: "SwooshClient",       targets: ["SwooshClient"]),
         .library(name: "SwooshWallet",       targets: ["SwooshWallet"]),
@@ -51,6 +52,8 @@ let package = Package(
         .library(name: "SwooshCapabilities", targets: ["SwooshCapabilities"]),
         .library(name: "SwooshNetworkPolicy", targets: ["SwooshNetworkPolicy"]),
         .library(name: "SwooshCLI",          targets: ["SwooshCLI"]),
+        .library(name: "CodexBar", targets: ["CodexBar"]),
+        .library(name: "CodexBarCore", targets: ["CodexBarCore"]),
     ],
     dependencies: [
         // CLI
@@ -66,6 +69,9 @@ let package = Package(
         // HTTP server
         .package(url: "https://github.com/hummingbird-project/hummingbird", from: "2.0.0"),
         // Blockchain primitives and DEX integrations
+        // swift-numerics — explicit top-level pin so _NumericsShims C module
+        // search paths propagate correctly on Swift 6.3 (transitive via mlx-swift)
+        .package(url: "https://github.com/apple/swift-numerics", from: "1.0.0"),
         // BigInt — arbitrary-precision integers for EVM/Solana quantities
         .package(url: "https://github.com/attaswift/BigInt.git", from: "5.3.0"),
         // secp256k1 - EVM key signing for wallet primitives
@@ -74,8 +80,6 @@ let package = Package(
         .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", from: "1.8.0"),
         // Hyperliquid — perp/spot DEX (macOS .v12+, secp256k1 + CryptoSwift)
         .package(path: "Vendor/hyperliquid-swift-sdk"),
-        // ActantDB — event-sourced agent backend (sibling repo, local path)
-        .package(path: "../actantDB/sdks/swift"),
         // WhisperKit — Apple Silicon-optimised speech-to-text via Core ML
         .package(url: "https://github.com/argmaxinc/WhisperKit", from: "1.0.0"),
         // FluidAudio — frontier CoreML audio models in Swift (Kokoro TTS
@@ -88,6 +92,15 @@ let package = Package(
         // executor. Includes the `WAT` package so the bundled .wat demo can
         // be compiled at runtime without shipping a precompiled .wasm.
         .package(url: "https://github.com/swiftwasm/WasmKit.git", from: "0.2.0"),
+        // ── CodexBar dependencies ─────────────────────────────────────
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.1"),
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.4.0"),
+        .package(url: "https://github.com/zats/Vortex", revision: "ef5392088d4aeb255c4eee83157dbdafcd31bf07"),
+        .package(url: "https://github.com/steipete/SweetCookieKit", from: "0.4.1"),
+        .package(url: "https://github.com/apple/swift-crypto.git", from: "3.0.0"),
+        .package(url: "https://github.com/apple/swift-log", from: "1.12.0"),
+        // swift-syntax — use swiftlang fork to match mlx-swift-lm's transitive dep
+        .package(url: "https://github.com/swiftlang/swift-syntax", from: "600.0.1"),
     ],
     targets: [
         // ══════════════════════════════════════════════════════════════
@@ -110,14 +123,11 @@ let package = Package(
                 "SwooshChatSDK",
                 "SwooshSecrets",
                 "SwooshDoctor",
-                "SwooshActantBackend",
                 "SwooshFirewall",
                 "SwooshFlow",
                 "SwooshApprovals",
                 "SwooshFiles",
                 "SwooshProcess",
-                .product(name: "ActantAgent", package: "swift"),
-                .product(name: "ActantDB",    package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
@@ -129,6 +139,7 @@ let package = Package(
             name: "SwooshDaemon",
             dependencies: [
                 "SwooshKit",
+                "SwooshStorage",
                 "SwooshConfig",
                 "SwooshAPI",
                 "SwooshScout",
@@ -149,18 +160,24 @@ let package = Package(
                 "SwooshApprovals",
                 "SwooshFiles",
                 "SwooshProcess",
+                // SwooshMLX: canImport(SwooshMLX) in source files resolves
+                // against this target even without a dep edge, so we must
+                // list it to propagate the Cmlx C module search path.
+                // Metal .metallib is bundled only by Xcode builds; SwiftPM
+                // daemon runs fall back to CPU-only or skip MLX at runtime.
                 "SwooshMLX",
                 "SwooshFoundation",
-                "SwooshActantBackend",
                 "SwooshPlugins",
                 "SwooshPluginRuntime",
                 "SwooshDemoPlugins",
                 "SwooshWallet",
                 "SwooshImageGen",
                 "SwooshMusic",
-                .product(name: "ActantAgent", package: "swift"),
                 .product(name: "BigInt", package: "BigInt"),
                 .product(name: "secp256k1", package: "secp256k1.swift"),
+                // Explicit RealModule dep forces SwiftPM to propagate the
+                // _NumericsShims C module include path (Swift 6.3 regression).
+                .product(name: "RealModule", package: "swift-numerics"),
             ]
         ),
         .target(
@@ -176,10 +193,8 @@ let package = Package(
             dependencies: [
                 "SwooshCore",
                 "SwooshTools",
-                "SwooshActantBackend",
                 "SwooshClient",
-                .product(name: "ActantAgent", package: "swift"),
-                .product(name: "ActantDB",    package: "swift"),
+                "SwooshStorage",
             ]
         ),
 
@@ -202,7 +217,7 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         // MARK: - Scout — personalization scanner
         // ══════════════════════════════════════════════════════════════
-        .target(name: "SwooshScout", dependencies: []),
+        .target(name: "SwooshScout", dependencies: [], exclude: ["CLAUDE.md"]),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Models & inference
@@ -252,6 +267,16 @@ let package = Package(
             "SwooshImageGen",
             "SwooshMusic",
             .product(name: "HyperliquidSwift", package: "hyperliquid-swift-sdk"),
+        ], exclude: [
+            // NitroGen ships a Python helper + keymap JSON + README that
+            // are runtime assets installed elsewhere — they aren't Swift
+            // sources and don't belong as SwiftPM resources of the Swift
+            // target. Excluding silences the SwiftPM unhandled-file
+            // warnings without dropping NitroGen's two Swift files
+            // (NitroGenTools.swift + NitroGenToolDependencies.swift).
+            "NitroGen/nitrogen_mac",
+            "NitroGen/keymaps",
+            "NitroGen/README.md",
         ]),
 
         // ══════════════════════════════════════════════════════════════
@@ -259,13 +284,19 @@ let package = Package(
         // ══════════════════════════════════════════════════════════════
         .target(name: "SwooshFirewall", dependencies: [
             "SwooshTools",
+        ], exclude: ["CLAUDE.md"]),
+        .target(name: "SwooshStorage", dependencies: [
+            "SwooshTools",
+            "SwooshCore",
+            "SwooshApprovals",
             .product(name: "SQLite", package: "SQLite.swift"),
         ]),
-        .target(name: "SwooshFlow",     dependencies: ["SwooshTools", "SwooshFirewall"]),
+        .target(name: "SwooshFlow",     dependencies: ["SwooshTools", "SwooshFirewall"], exclude: ["CLAUDE.md"]),
         .target(name: "SwooshSkills",       dependencies: ["SwooshTools"]),
         .target(name: "SwooshGoals",        dependencies: ["SwooshTools"]),
         .target(name: "SwooshManifesting",  dependencies: ["SwooshTools"]),
         .target(name: "SwooshCron", dependencies: ["SwooshTools"]),
+        .target(name: "SwooshCloudGaming", dependencies: ["SwooshTools"]),
         .target(name: "SwooshChatSDK", dependencies: ["SwooshClient"]),
         .target(
             name: "SwooshApprovals",
@@ -489,26 +520,18 @@ let package = Package(
 
         .target(
             name: "SwooshUI",
-            dependencies: ["SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools", "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders", "SwooshGenerativeUI", "SwooshModels", "SwooshSkills"]
+            dependencies: [
+                "SwooshCore", "SwooshClient", "SwooshConfig", "SwooshTools",
+                "SwooshFirewall", "SwooshFlow", "SwooshSecrets", "SwooshProviders",
+                "SwooshGenerativeUI", "SwooshModels", "SwooshSkills", "SwooshCloudGaming",
+            ],
+            resources: [.copy("Resources/GamingIcons")]
         ),
         .target(
             name: "SwooshWidgets",
             dependencies: ["SwooshSecrets", "SwooshProviders"]
         ),
 
-        // ══════════════════════════════════════════════════════════════
-        // MARK: - ActantDB backend adapter
-        // ══════════════════════════════════════════════════════════════
-        .target(
-            name: "SwooshActantBackend",
-            dependencies: [
-                "SwooshCore",
-                "SwooshTools",
-                "SwooshApprovals",
-                .product(name: "ActantDB",    package: "swift"),
-                .product(name: "ActantAgent", package: "swift"),
-            ]
-        ),
 
         // ══════════════════════════════════════════════════════════════
         // MARK: - Generative UI (agent-emitted, native renderer)
@@ -516,6 +539,51 @@ let package = Package(
         .target(
             name: "SwooshGenerativeUI",
             dependencies: []
+        ),
+
+        // ══════════════════════════════════════════════════════════════
+        // MARK: - CodexBar — AI usage monitor (steipete/CodexBar)
+        // ══════════════════════════════════════════════════════════════
+        .macro(
+            name: "CodexBarMacros",
+            dependencies: [
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+            ]
+        ),
+        .target(
+            name: "CodexBarMacroSupport",
+            dependencies: ["CodexBarMacros"]
+        ),
+        .target(
+            name: "CodexBarCore",
+            dependencies: [
+                "CodexBarMacroSupport",
+                .product(name: "Crypto", package: "swift-crypto"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "SweetCookieKit", package: "SweetCookieKit"),
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+            ]
+        ),
+        .target(
+            name: "CodexBar",
+            dependencies: [
+                .product(name: "Sparkle", package: "Sparkle", condition: .when(platforms: [.macOS])),
+                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts", condition: .when(platforms: [.macOS])),
+                .product(name: "Vortex", package: "Vortex"),
+                "CodexBarMacroSupport",
+                "CodexBarCore",
+            ],
+            resources: [
+                .process("Resources"),
+            ],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+                .define("ENABLE_SPARKLE", .when(platforms: [.macOS])),
+            ]
         ),
 
         // ══════════════════════════════════════════════════════════════
@@ -594,16 +662,6 @@ let package = Package(
             dependencies: ["SwooshWidgets"]
         ),
         .testTarget(
-            name: "SwooshActantBackendTests",
-            dependencies: [
-                "SwooshActantBackend",
-                "SwooshCore",
-                "SwooshTools",
-                "SwooshApprovals",
-                .product(name: "ActantDB", package: "swift"),
-            ]
-        ),
-        .testTarget(
             name: "SwooshGenerativeUITests",
             dependencies: ["SwooshGenerativeUI"]
         ),
@@ -665,6 +723,10 @@ let package = Package(
             dependencies: ["SwooshFirewall", "SwooshTools"]
         ),
         .testTarget(
+            name: "SwooshStorageTests",
+            dependencies: ["SwooshStorage", "SwooshTools", "SwooshCore", "SwooshApprovals"]
+        ),
+        .testTarget(
             name: "SwooshModelsTests",
             dependencies: ["SwooshModels"]
         ),
@@ -706,13 +768,16 @@ let package = Package(
                 "SwooshCLI",
                 "SwooshClient",
                 "SwooshConfig",
-                .product(name: "ActantDB",       package: "swift"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
         .testTarget(
             name: "SwooshVisionTests",
             dependencies: ["SwooshVision"]
+        ),
+        .testTarget(
+            name: "SwooshCloudGamingTests",
+            dependencies: ["SwooshCloudGaming"]
         ),
     ]
 )

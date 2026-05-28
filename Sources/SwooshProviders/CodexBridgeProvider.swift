@@ -69,10 +69,12 @@ public actor CodexBridgeProvider: ModelProviding {
             stdin: nil,
             timeout: 5
         )) ?? ProcessResult(exitCode: -1, stdout: "", stderr: "")
-        // codex login status prints "Logged in as ..." on success;
+        // codex login status prints "Logged in using ..." on success;
         // "Not logged in" on failure. Match the explicit string rather
-        // than relying on exit code (which is 0 in both cases).
-        return result.stdout.contains("Logged in")
+        // than relying on exit code (which is 0 in both cases). When
+        // invoked as a child Process (no controlling TTY), codex writes
+        // the status to stderr — so check both streams.
+        return result.stdout.contains("Logged in") || result.stderr.contains("Logged in")
     }
 
     public func complete(_ request: ModelRequest) async throws -> ModelResponse {
@@ -104,7 +106,11 @@ public actor CodexBridgeProvider: ModelProviding {
             "-s", "read-only",
             "--color", "never",
             "-c", "approval_policy=\"never\"",
-            "-c", "model_reasoning_effort=\"minimal\"",
+            // OpenAI rejects "minimal" reasoning effort when codex has any
+            // tools enabled (web_search, fs, etc.) — 400 invalid_request_error.
+            // "low" is the next-tier-up that allows tools; still fast enough
+            // for chat turns and doesn't depend on the user's codex config.
+            "-c", "model_reasoning_effort=\"low\"",
             "-C", workingDirectory.path,
             "-o", tmpOut.path,
             "-"   // read prompt from stdin
