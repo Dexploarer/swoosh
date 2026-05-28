@@ -43,4 +43,15 @@ cleanup() {
 trap cleanup EXIT INT TERM HUP
 
 cd "$(git rev-parse --show-toplevel)"
+
+# Hermetic storage for the whole test process. SwooshKit.build() opens the
+# real on-disk SQLite backend at ~/.swoosh/swoosh.db by default; under the
+# parallel test runner, cases across suites/targets that call
+# `Swoosh.configure` + `ask`/persist then race each other for the file lock
+# ("database is locked (code: 5)"). Forcing memory storage means no test
+# touches the user's real DB — fixes the lock AND the test-isolation bug of
+# mutating real user state. Tests that exercise the SQLite path construct
+# SwooshDatabase with their own temp paths, so they're unaffected.
+export SWOOSH_STORAGE="${SWOOSH_STORAGE:-memory}"
+
 swift test "$@"

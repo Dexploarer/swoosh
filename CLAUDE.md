@@ -112,3 +112,32 @@ Write it as "**LOC (Full Name Here)**" on first mention.
 - When adding a new toolset family, also add its case to `ToolsetID` and a `register<Name>` hook in `SwooshToolsets/Exports.swift` (the registrar).
 - Apps live in three places: `App/` (menu-bar macOS target wired through XcodeGen), `Apps/SwooshMac` (SwiftPM-built standalone Mac shell) and `Apps/SwooshiOS` (the real iOS companion app — `SwooshiOSApp` + `RootView`/`ChatView`/`SettingsView`/`ClientSession`, wired through the XcodeGen `SwooshiOS` target), `Apps/SwooshDashboard` (currently empty scaffold). The iOS app deliberately imports only `SwooshClient` — never `SwooshKit` — so the daemon's `Process`-using deps don't break the build.
 - API-server changes: `SwooshAPI` exposes `SwooshAPIServer(port:hostname:token:kernel:)`. The `token` parameter is the bearer required by `BearerAuthMiddleware`; passing `nil` mounts `DenyAllMiddleware` over the entire `/api/*` tree. The `kernel` parameter is wired into `POST /api/agent/chat`. `swooshd` builds the kernel via `Swoosh.configure { _ in }` after exporting `ACTANT_BASE_URL` and passes it in. New endpoint contract lives in `Sources/SwooshClient/WireTypes.swift`.
+
+## Plumbing discipline
+
+Before and after any routing, endpoint, API, page, controller, handler, middleware, feature wiring, import boundary, state store, adapter, repository, service, dependency injection, or module/package-boundary change, invoke the `plumber` subagent (`.claude/agents/plumber.md`).
+
+Do not declare the task complete until `plumber` returns **Flow Gate Result: PASS**.
+
+- If `plumber` returns **FAIL**, repair the blocking topology violations first, then re-run it.
+- If `plumber` returns **UNKNOWN**, state exactly what could not be verified and get explicit user acceptance before treating the task as complete.
+
+The repo standard lane is:
+
+```
+surface -> boundary adapter -> application use case -> domain/policy -> port/interface -> implementation adapter
+```
+
+Avoid rat-tail topology:
+
+- route / page / controller direct persistence (or provider/SDK/filesystem) access
+- feature-to-feature internal imports (use a public entrypoint or port/event)
+- `lib` / `utils` / `shared` / `common` / `helpers` / `services` junk drawers
+- global stores acting as hidden routing or business-logic layers
+- duplicated workflow ownership (one canonical owner per workflow)
+- application code importing concrete adapters
+- domain code importing framework, UI, routing, or persistence code
+
+Stack-specific enforcement (Swift / SwiftPM): module boundaries are already enforced at compile time by `Package.swift` target dependency edges — a target cannot `import` a module it does not depend on, and circular target deps are rejected at resolve time. So `swift build` is the module-level illegal-import gate and the module-cycle gate. Treat `Package.swift` as the authoritative module graph, and `project.yml` (XcodeGen) as the authoritative app/extension target graph.
+
+The flow-check gate is **`Scripts/check-flow.sh`** — a fast grep guard for the edges SwiftPM can't express: (1) the iOS app importing a `Process`/server/daemon module (the `ios-app-imports-swooshclient-only` invariant), (2) domain/data layers (`SwooshCore`/`SwooshTools`/`SwooshModels`) importing a UI framework, (3) `SwooshCore` importing a concrete adapter/server/UI module. It exits non-zero on violation and is green as of baseline. `plumber` runs it POST-FLIGHT for graph evidence; the layer/ownership map it reads is **`.claude/topology.md`**. When the lane legitimately changes, update the rule in `Scripts/check-flow.sh` + `.claude/topology.md` rather than weakening it.
