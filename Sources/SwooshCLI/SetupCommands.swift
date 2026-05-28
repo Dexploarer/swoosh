@@ -50,11 +50,8 @@ struct SetupQuickCommand: AsyncParsableCommand {
     @Option(name: .customLong("daemon-port"), help: "Daemon port to write and verify.")
     var daemonPort = 8787
 
-    @Option(name: .customLong("daemon-start-timeout"), help: "Seconds to wait for swooshd readiness after launch.")
+    @Option(name: .customLong("daemon-start-timeout"), help: "Seconds to wait for the app-hosted runtime to become ready.")
     var daemonStartTimeout: Double = 60
-
-    @Flag(name: .customLong("skip-daemon-start"), help: "Do not launch swooshd during setup.")
-    var skipDaemonStart = false
 
     func run() async throws {
         printBanner()
@@ -114,7 +111,6 @@ struct SetupQuickCommand: AsyncParsableCommand {
             mode: "quick",
             daemonHost: daemonHost,
             daemonPort: daemonPort,
-            startDaemon: !skipDaemonStart,
             daemonStartTimeout: daemonStartTimeout
         )
         let result = try await runCommissioning(ctx)
@@ -141,11 +137,8 @@ struct SetupFullCommand: AsyncParsableCommand {
     @Option(name: .customLong("daemon-port"), help: "Daemon port to write and verify.")
     var daemonPort = 8787
 
-    @Option(name: .customLong("daemon-start-timeout"), help: "Seconds to wait for swooshd readiness after launch.")
+    @Option(name: .customLong("daemon-start-timeout"), help: "Seconds to wait for the app-hosted runtime to become ready.")
     var daemonStartTimeout: Double = 60
-
-    @Flag(name: .customLong("skip-daemon-start"), help: "Do not launch swooshd during setup.")
-    var skipDaemonStart = false
 
     func run() async throws {
         let config = makeSwooshConfigStore(configDirectory: configDirectory)
@@ -164,7 +157,6 @@ struct SetupFullCommand: AsyncParsableCommand {
             mode: "full",
             daemonHost: daemonHost,
             daemonPort: daemonPort,
-            startDaemon: !skipDaemonStart,
             daemonStartTimeout: daemonStartTimeout
         )
         let result = try await runCommissioning(
@@ -199,7 +191,7 @@ struct SetupServerCommand: AsyncParsableCommand {
         let config = SwooshConfigStore()
         try config.ensureDirectories()
         print("Server baseline ready at \(config.configDirectory.path)")
-        print("Run `SWOOSH_HOST=0.0.0.0 swift run swooshd` to expose the bearer-gated daemon on your LAN.")
+        print("Launch the Detour app — it hosts the bearer-gated agent runtime in-process and binds the LAN automatically.")
         print("Run `swoosh provider auth <provider> --api-key <key>` before expecting non-local diagnostic model responses.")
     }
 }

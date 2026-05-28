@@ -79,8 +79,8 @@ private func makeAgentCommands() -> [SlashCommandDefinition] {
         .success("""
 
           ─── Tools ────────────────────────────────────────
-            The live tool registry lives in `swooshd` — query it from
-            outside the shell:
+            The live tool registry lives in the Detour app's runtime — query it
+            from outside the shell:
 
               swoosh tools list                — all tools + risk + policy
               swoosh tools schema <tool-name>  — JSON schema for one tool

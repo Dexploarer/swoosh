@@ -135,30 +135,30 @@ public struct SwooshReadinessDetector: Sendable {
                 id: "daemon.chat",
                 title: "Daemon chat",
                 status: .ready,
-                detail: "swooshd is reachable and chat is enabled"
+                detail: "Agent runtime is reachable and chat is enabled"
             )
         case (.some(true), .some(false)):
             return SwooshReadinessComponent(
                 id: "daemon.chat",
                 title: "Daemon chat",
                 status: .blocked,
-                detail: "swooshd is reachable but no agent kernel is configured",
-                fixCommand: "swift run swooshd"
+                detail: "Agent runtime is reachable but no agent kernel is configured",
+                fixCommand: "Launch the Detour app"
             )
         case (.some(true), .none):
             return SwooshReadinessComponent(
                 id: "daemon.chat",
                 title: "Daemon chat",
                 status: .warning,
-                detail: "swooshd is reachable; chat status was not checked"
+                detail: "Agent runtime is reachable; chat status was not checked"
             )
         case (.some(false), _):
             return SwooshReadinessComponent(
                 id: "daemon.chat",
                 title: "Daemon chat",
                 status: .warning,
-                detail: "swooshd is not reachable",
-                fixCommand: "swift run swooshd"
+                detail: "Agent runtime is not reachable",
+                fixCommand: "Launch the Detour app"
             )
         case (.none, _):
             return SwooshReadinessComponent(
@@ -166,7 +166,7 @@ public struct SwooshReadinessDetector: Sendable {
                 title: "Daemon chat",
                 status: .warning,
                 detail: "Daemon reachability not checked",
-                fixCommand: "swift run swooshd"
+                fixCommand: "Launch the Detour app"
             )
         }
     }

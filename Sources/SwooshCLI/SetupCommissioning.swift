@@ -69,7 +69,9 @@ struct CommissioningContext: Sendable {
     let mode: String
     let daemonHost: String
     let daemonPort: Int
-    let startDaemon: Bool
+    /// How long to wait for the app-hosted runtime to answer the readiness
+    /// probe. Setup no longer launches anything — the runtime is in-process
+    /// in the macOS app — so this is purely a readiness timeout.
     let daemonStartTimeout: Double
 }
 
@@ -129,7 +131,6 @@ func commissionLocalRuntime(_ ctx: CommissioningContext) async throws -> SetupCo
     let mode = ctx.mode
     let daemonHost = ctx.daemonHost
     let daemonPort = ctx.daemonPort
-    let startDaemon = ctx.startDaemon
     let daemonStartTimeout = ctx.daemonStartTimeout
     try config.ensureDirectories()
     let tokenPath = config.apiTokenFile
@@ -154,7 +155,6 @@ func commissionLocalRuntime(_ ctx: CommissioningContext) async throws -> SetupCo
         config: config,
         host: daemonHost,
         port: daemonPort,
-        startDaemon: startDaemon,
         timeout: daemonStartTimeout,
         promptableSkillCount: promptableSkillCount
     )
@@ -213,7 +213,6 @@ private func verifiedReadiness(
     config: SwooshConfigStore,
     host: String,
     port: Int,
-    startDaemon: Bool,
     timeout: Double,
     promptableSkillCount: Int
 ) async -> SwooshReadinessReport {
@@ -221,9 +220,9 @@ private func verifiedReadiness(
     if let live = await liveReadiness(client: client), live.state == .ready {
         return live
     }
-    if startDaemon {
-        try? launchSwooshDaemon(config: config, host: host, port: port)
-    }
+    // Setup does not launch anything: the agent runtime is hosted
+    // in-process by the macOS app. Give it a brief window to answer in
+    // case the app is starting up, then fall back to a static report.
     if let live = await waitForLiveReadiness(client: client, timeout: timeout) {
         return live
     }
@@ -261,52 +260,6 @@ private func waitForLiveReadiness(client: SwooshAPIClient, timeout: Double) asyn
         try? await Task.sleep(nanoseconds: 500_000_000)
     }
     return nil
-}
-
-private func launchSwooshDaemon(config: SwooshConfigStore, host: String, port: Int) throws {
-    try FileManager.default.createDirectory(at: config.logsDir, withIntermediateDirectories: true)
-    let process = Process()
-    let sibling = URL(fileURLWithPath: CommandLine.arguments[0])
-        .deletingLastPathComponent()
-        .appendingPathComponent("swooshd")
-    if FileManager.default.isExecutableFile(atPath: sibling.path) {
-        process.executableURL = sibling
-        process.arguments = []
-    } else if FileManager.default.fileExists(atPath: "Package.swift") {
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["swift", "run", "swooshd"]
-    } else {
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["swooshd"]
-    }
-    process.currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
-    var environment = ProcessInfo.processInfo.environment
-    environment["SWOOSH_CONFIG_DIR"] = config.configDirectory.path
-    environment["SWOOSH_HOST"] = host
-    environment["SWOOSH_PORT"] = String(port)
-    process.environment = environment
-    process.standardOutput = try setupLogFileHandle(config: config, name: "swooshd-setup.log")
-    process.standardError = try setupLogFileHandle(config: config, name: "swooshd-setup.err.log")
-    try process.run()
-}
-
-/// Open the named log file for writing, creating it (atomically with
-/// 0o644) if missing, and seeking to the end so concurrent or repeated
-/// runs append rather than overwrite. Returns a `FileHandle` ready for
-/// Process stdio redirection.
-private func setupLogFileHandle(config: SwooshConfigStore, name: String) throws -> FileHandle {
-    let url = config.logsDir.appendingPathComponent(name)
-    let fm = FileManager.default
-    if !fm.fileExists(atPath: url.path) {
-        guard fm.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o644]) else {
-            throw CocoaError(.fileWriteUnknown)
-        }
-    }
-    let handle = try FileHandle(forWritingTo: url)
-    // Skip to EOF so subsequent setup runs don't overwrite prior logs;
-    // operators commonly tail these between attempts.
-    try handle.seekToEnd()
-    return handle
 }
 
 // MARK: - Pretty-printers used by setup subcommands

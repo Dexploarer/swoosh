@@ -69,7 +69,7 @@ struct ScoutRunCommand: AsyncParsableCommand {
 
         // TODO: wire durable backend — persist scout records and candidates
         // The CLI now runs with in-memory stores; scan results are displayed
-        // but not persisted across runs. Start swooshd for durable storage.
+        // but not persisted across runs. Launch the Detour app for durable storage.
         if !hasCLIBackendEnvironment() {
             print("  ⚠ \(cliBackendUnsetMessage)")
             print("  Pipeline ran but results were not persisted.")
@@ -87,7 +87,7 @@ struct ScoutReportCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "report", abstract: "Show the latest Scout report.")
     func run() async throws {
         // TODO: wire durable backend — retrieve persisted reports
-        print("Scout report requires a durable backend (swooshd).")
+        print("Scout report requires a durable backend (the Detour app).")
         print("Run `swoosh scout run` to perform a fresh scan.")
     }
 }
@@ -110,8 +110,8 @@ struct MemoryListCommand: AsyncParsableCommand {
 
     func run() async throws {
         // TODO: wire durable backend — in-memory stores don't persist across CLI invocations
-        print("Memory listing requires a durable backend (swooshd).")
-        print("Run `swoosh scout run` to scan, then use swooshd for persistent memory management.")
+        print("Memory listing requires a durable backend (the Detour app).")
+        print("Run `swoosh scout run` to scan, then use the Detour app for persistent memory management.")
     }
 
     /// Extracts rejected candidates from a list of candidates.
@@ -126,8 +126,8 @@ struct MemoryShowCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "show", abstract: "Show approved memories.")
     func run() async throws {
         // TODO: wire durable backend
-        print("Memory display requires a durable backend (swooshd).")
-        print("Start swooshd for persistent memory management.")
+        print("Memory display requires a durable backend (the Detour app).")
+        print("Launch the Detour app for persistent memory management.")
     }
 }
 
@@ -140,8 +140,8 @@ struct MemoryApproveCommand: AsyncParsableCommand {
 
     func run() async throws {
         // TODO: wire durable backend
-        print("Memory approval requires a durable backend (swooshd).")
-        print("Start swooshd for persistent memory management.")
+        print("Memory approval requires a durable backend (the Detour app).")
+        print("Launch the Detour app for persistent memory management.")
     }
 }
 
@@ -155,8 +155,8 @@ struct MemoryRejectCommand: AsyncParsableCommand {
     var force = false
     func run() async throws {
         // TODO: wire durable backend
-        print("Memory rejection requires a durable backend (swooshd).")
-        print("Start swooshd for persistent memory management.")
+        print("Memory rejection requires a durable backend (the Detour app).")
+        print("Launch the Detour app for persistent memory management.")
     }
 }
 

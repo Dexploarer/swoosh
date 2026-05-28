@@ -36,11 +36,15 @@ struct CLIBinaryTests {
         }
     }
 
-    @Test("swoosh daemon --help includes pair after extraction")
-    func daemonStillExposesPair() async throws {
+    @Test("swoosh daemon --help exposes pair and no launchd lifecycle commands")
+    func daemonExposesPairOnly() async throws {
         let output = try runBinary(args: ["daemon", "--help"])
-        for keeper in ["install", "start", "stop", "status", "pair"] {
-            #expect(output.contains(keeper))
+        // The runtime is hosted in-process by the app — no standalone swooshd,
+        // no launchd. Only `pair` (iPhone bearer-token flow) remains.
+        #expect(output.contains("pair"))
+        // The removed launchd lifecycle subcommands must not reappear.
+        for removed in ["install", "start", "stop", "status"] {
+            #expect(!output.contains("\(removed)  "), "daemon subcommand should be gone: \(removed)")
         }
     }
 

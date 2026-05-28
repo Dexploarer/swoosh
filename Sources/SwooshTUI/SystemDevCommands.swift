@@ -73,7 +73,7 @@ func makeSystemDevCommands() -> [SlashCommandDefinition] {
             let dbPath = FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".swoosh/actant.db").path
             let exists = FileManager.default.fileExists(atPath: dbPath)
-            let baseURL = ProcessInfo.processInfo.environment["ACTANT_BASE_URL"] ?? "(unset — start swooshd)"
+            let baseURL = ProcessInfo.processInfo.environment["ACTANT_BASE_URL"] ?? "(unset — launch the Detour app)"
             return .success("""
 
               ─── Storage ──────────────────────────────────────

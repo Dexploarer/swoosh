@@ -52,54 +52,7 @@ struct RejectedMemoryFilterTests {
     }
 }
 
-@Suite("DaemonInstallCommand — swooshd path resolution")
-struct DaemonInstallPathResolutionTests {
-    @Test("Override path is honoured when executable exists")
-    func overrideHonoured() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("swoosh-install-test-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let fakeSwooshd = tempDir.appendingPathComponent("swooshd")
-        FileManager.default.createFile(
-            atPath: fakeSwooshd.path,
-            contents: Data("#!/bin/sh\nexit 0\n".utf8),
-            attributes: [.posixPermissions: 0o755]
-        )
-
-        let resolved = DaemonInstallCommand.resolveSwooshdURL(override: fakeSwooshd.path)
-        #expect(resolved?.standardizedFileURL == fakeSwooshd.standardizedFileURL)
-    }
-
-    @Test("Override path is rejected when binary is missing")
-    func overrideRejectedWhenMissing() {
-        let bogus = "/tmp/definitely-not-swooshd-\(UUID().uuidString)"
-        #expect(DaemonInstallCommand.resolveSwooshdURL(override: bogus) == nil)
-    }
-
-    @Test("Empty override falls through to the discovery path")
-    func emptyOverrideFallsThrough() {
-        // Empty override must not short-circuit the search. We don't pin
-        // the actual return value here because that depends on the host
-        // environment; we only require the function not to throw and not
-        // to return the bogus empty path itself.
-        let resolved = DaemonInstallCommand.resolveSwooshdURL(override: "")
-        if let resolved {
-            #expect(!resolved.path.isEmpty)
-        }
-    }
-
-    @Test("Generated LaunchAgent plist embeds the resolved swooshd path")
-    func plistEmbedsResolvedPath() {
-        let plist = DaemonInstallCommand.makeLaunchAgentPlist(
-            swooshdPath: "/opt/swoosh/bin/swooshd",
-            logsDir: "/Users/test/.swoosh/logs"
-        )
-        #expect(plist.contains("<string>/opt/swoosh/bin/swooshd</string>"))
-        #expect(plist.contains("/Users/test/.swoosh/logs/swooshd.log"))
-        #expect(plist.contains("/Users/test/.swoosh/logs/swooshd.err"))
-        // Regression assertion: the old hardcoded path must not leak back.
-        #expect(!plist.contains("/usr/local/bin/swooshd</string>"))
-    }
-}
+// The "DaemonInstallCommand — swooshd path resolution" suite was removed
+// with the launchd lifecycle commands: the agent runtime is hosted
+// in-process by the macOS app, so there is no swooshd binary to resolve
+// or LaunchAgent plist to generate.

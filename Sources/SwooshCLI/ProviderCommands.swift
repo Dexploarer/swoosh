@@ -51,8 +51,8 @@ struct ProviderSelectCommand: AsyncParsableCommand {
         let dir = SwooshConfigStore().configDirectory
         _ = try ProviderConfigStore(directory: dir).setActiveProvider(provider)
         print("\n  \u{001B}[32m✓\u{001B}[0m Active provider set to \(provider).")
-        print("  Applies to new CLI runs now. For a running daemon, restart swooshd")
-        print("  or use the app / `POST /api/providers/select` for a live (no-restart) switch.\n")
+        print("  Applies to new CLI runs now. For the running app, use the app UI")
+        print("  or `POST /api/providers/select` for a live (no-restart) switch.\n")
     }
 }
 

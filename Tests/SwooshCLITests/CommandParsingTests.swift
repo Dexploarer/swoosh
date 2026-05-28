@@ -67,14 +67,12 @@ struct SetupParsingTests {
             "--model-path", "hybrid",
             "--permission-profile", "developer",
             "--daemon-port", "9090",
-            "--skip-daemon-start",
         ])
         let quick = try #require(command as? SetupQuickCommand)
         #expect(quick.nonInteractive == true)
         #expect(quick.requestedModelPath == .hybrid)
         #expect(quick.requestedPermissionProfile?.rawValue == "developer")
         #expect(quick.daemonPort == 9090)
-        #expect(quick.skipDaemonStart == true)
     }
 
     @Test("swoosh setup full parses --config-dir")

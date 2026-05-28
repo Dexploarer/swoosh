@@ -239,7 +239,7 @@ extension SwooshDaemon {
         // the running router so the change takes effect this session, no
         // restart. Absent router (MLX/Foundation/diagnostic boot) → the
         // persisted choice applies on next restart instead.
-        var applied = "saved — restart swooshd to apply"
+        var applied = "saved — restart the Detour app to apply"
         if let router {
             for role in ProviderFactory.textRoles {
                 await router.setRouteOverride(role: role, providerID: ProviderID(request.providerID))

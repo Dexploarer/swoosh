@@ -118,7 +118,6 @@ struct WriteSetupReportTests {
             mode: "quick",
             daemonHost: "127.0.0.1",
             daemonPort: 8787,
-            startDaemon: false,
             daemonStartTimeout: 1
         )
         let reportPath = try writeSetupReport(
