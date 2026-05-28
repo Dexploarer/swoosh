@@ -12,7 +12,10 @@ let package = Package(
     products: [
         // ── Executables ───────────────────────────────────────────────
         .executable(name: "swoosh",  targets: ["SwooshCLIRunner"]),
-        .executable(name: "swooshd", targets: ["SwooshDaemon"]),
+        // `swooshd` is no longer a standalone binary — the macOS app boots
+        // the agent runtime in-process via SwooshDaemon.start(). Exposed as
+        // a library so the app target can link it.
+        .library(name: "SwooshDaemon", targets: ["SwooshDaemon"]),
 
         // ── Public SDK ────────────────────────────────────────────────
         .library(name: "SwooshKit", targets: ["SwooshKit"]),
@@ -135,7 +138,7 @@ let package = Package(
             name: "SwooshCLIRunner",
             dependencies: ["SwooshCLI"]
         ),
-        .executableTarget(
+        .target(
             name: "SwooshDaemon",
             dependencies: [
                 "SwooshKit",

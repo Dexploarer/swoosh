@@ -54,26 +54,23 @@ import SwooshPluginRuntime
 import SwooshDemoPlugins
 import SwooshStorage
 
-@main
-struct SwooshDaemon {
-    static func main() async throws {
+public enum SwooshDaemon {
+    /// Boot the agent runtime + HTTP server in-process and return a handle
+    /// that keeps them alive. The macOS app calls this on launch instead of
+    /// spawning a separate `swooshd` binary; teardown is the host process
+    /// exiting. `host`/`port` override SWOOSH_HOST/SWOOSH_PORT — the app
+    /// passes `0.0.0.0` so a paired iPhone on the LAN can reach it.
+    public static func start(
+        host hostOverride: String? = nil,
+        port portOverride: Int? = nil
+    ) async throws -> DaemonHandle {
         let version = "0.9S"
-
-        let cliArgs = Array(CommandLine.arguments.dropFirst())
-        if cliArgs.contains("--help") || cliArgs.contains("-h") {
-            printDaemonHelp(version: version)
-            return
-        }
-        if cliArgs.contains("--version") {
-            print("swooshd \(version)")
-            return
-        }
 
         printBanner(version: version)
 
         let env = ProcessInfo.processInfo.environment
-        let port = Int(env["SWOOSH_PORT"] ?? "8787") ?? 8787
-        let host = env["SWOOSH_HOST"] ?? "127.0.0.1"
+        let port = portOverride ?? Int(env["SWOOSH_PORT"] ?? "8787") ?? 8787
+        let host = hostOverride ?? env["SWOOSH_HOST"] ?? "127.0.0.1"
 
         // ── ~/.swoosh state directory ─────────────────────────────────
         let swooshDir = stateDirectory(env: env)
@@ -88,8 +85,10 @@ struct SwooshDaemon {
             withIntermediateDirectories: true
         )
 
-        let signalHandler = SignalHandler()
-        signalHandler.install()
+        // No SIGTERM/SIGINT handler in-process — the host app owns its
+        // lifecycle, and exit(0) from a C signal handler would bypass
+        // SwiftUI teardown. The standalone binary's SignalHandler is gone
+        // along with the binary.
 
         // ── Bearer token ─────────────────────────────────────────────
         // Order: explicit env > persisted file > freshly generated. The
@@ -100,7 +99,7 @@ struct SwooshDaemon {
             token = try DaemonTokenResolver.resolve(swooshDir: swooshDir, env: env)
         } catch {
             log("FATAL: failed to resolve API token: \(error)")
-            exit(1)
+            throw DaemonError.tokenResolutionFailed(error)
         }
         if host != "127.0.0.1" {
             log("WARNING: binding to \(host) — daemon is reachable from other devices on this network.")
@@ -230,7 +229,7 @@ struct SwooshDaemon {
             }
         } catch {
             log("FATAL: failed to build agent kernel: \(error)")
-            exit(1)
+            throw DaemonError.kernelBuildFailed(error)
         }
         log("Agent kernel ready with tool loop")
 
@@ -554,12 +553,13 @@ struct SwooshDaemon {
         )
         let app = server.build()
 
-        defer {
-            Task {
-                await runtime.stop()
-            }
-        }
-        try await app.run()
+        // Run the Hummingbird server as an unstructured task so start()
+        // returns to the host (the SwiftUI app) instead of blocking. The
+        // server + the schedulers held by `runtime` live until the host
+        // process exits — there is no in-session restart, so process exit
+        // is the teardown path (no graceful-shutdown plumbing needed).
+        let serverTask = Task { try await app.run() }
+        return DaemonHandle(runtime: runtime, serverTask: serverTask, host: host, port: port)
     }
 
 }
