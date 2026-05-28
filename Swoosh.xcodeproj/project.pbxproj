@@ -35,6 +35,7 @@
 		6948EA80A56C65B6D58405AD /* ClonedVoicesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3D0D14AD80C9732F16152B /* ClonedVoicesSection.swift */; };
 		6AFA1A78264F56022F034DA1 /* WalletCreateAccountSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89C53DA1DAF383C83EB7FF08 /* WalletCreateAccountSheet.swift */; };
 		6F397A9A6C2A0768496FC730 /* SwooshKit in Frameworks */ = {isa = PBXBuildFile; productRef = C81EAEFD269612149B9F94BF /* SwooshKit */; };
+		6F96255E17FEE3B226089DC4 /* CodexBarCore in Frameworks */ = {isa = PBXBuildFile; productRef = 34BB35A7784C684D05EE06A2 /* CodexBarCore */; };
 		765193CEF39C0517B31AB30E /* SwooshGenerativeUI in Frameworks */ = {isa = PBXBuildFile; productRef = F04EABFE88B766FD0AD21A37 /* SwooshGenerativeUI */; };
 		79C02F6D43ED99D7E9CD4EF8 /* SwooshWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B097B464DA3C0AE8A37082E /* SwooshWidgetBundle.swift */; };
 		7D2D5CECE5F03AE081B3FDBC /* SwooshCapabilities in Frameworks */ = {isa = PBXBuildFile; productRef = C8DD494210CF9283BE5DB80A /* SwooshCapabilities */; };
@@ -51,7 +52,7 @@
 		8F9C928AE4827949F555D24A /* IOSVoicePill.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4384D670ED4D39C31C51A6 /* IOSVoicePill.swift */; };
 		930891E34DF50C8A767B6C6E /* SwooshModels in Frameworks */ = {isa = PBXBuildFile; productRef = 75B0CA904E7690F0705D9A0B /* SwooshModels */; };
 		9CA0C70F3E6E19ADFE852634 /* SwooshVoiceProviders in Frameworks */ = {isa = PBXBuildFile; productRef = 64E6792A9ADCB5AEA31F3613 /* SwooshVoiceProviders */; };
-		A05EB87348461D705D0D8B47 /* CodexBarCore in Frameworks */ = {isa = PBXBuildFile; productRef = 34BB35A7784C684D05EE06A2 /* CodexBarCore */; };
+		A05EB87348461D705D0D8B47 /* CodexBar in Frameworks */ = {isa = PBXBuildFile; productRef = 892ABB0CB38113FC33409678 /* CodexBar */; };
 		A0E8296933BE65C8C6BE61BC /* SwooshSecrets in Frameworks */ = {isa = PBXBuildFile; productRef = AE88E333D2254FC8546193C1 /* SwooshSecrets */; };
 		A23FBD47D46859CD0B32676B /* ChannelsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F1ABF3C0A11470D895C296 /* ChannelsScreen.swift */; };
 		A8ABD4E366842B1816B38E3F /* SwooshMusic in Frameworks */ = {isa = PBXBuildFile; productRef = CDAE07E9569AB80547D4CA2E /* SwooshMusic */; };
@@ -59,7 +60,7 @@
 		AD2A5C92FFFA296AFBDA36FA /* WorkspaceScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9C7AF14DF4880960A920C26 /* WorkspaceScreen.swift */; };
 		AEAD82FC6FD8A0BC4B6DF103 /* SwooshLocalVoice in Frameworks */ = {isa = PBXBuildFile; productRef = D7FF5966E699003F7654C7F5 /* SwooshLocalVoice */; };
 		B6606D768591ED1AEAD88C6E /* SwooshEmbeddings in Frameworks */ = {isa = PBXBuildFile; productRef = 9DAF129D8F01B12920642DCF /* SwooshEmbeddings */; };
-		B7513D6D71337FD01C3563A8 /* CodexBar in Frameworks */ = {isa = PBXBuildFile; productRef = 892ABB0CB38113FC33409678 /* CodexBar */; };
+		B7513D6D71337FD01C3563A8 /* SwooshDaemon in Frameworks */ = {isa = PBXBuildFile; productRef = 52CFA43AF815CAE6322576A6 /* SwooshDaemon */; };
 		B91C7028CACE6060EFD148A4 /* CodexAuthSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E2243D9887FFE2A995FCB4 /* CodexAuthSection.swift */; };
 		C3312726808315191FD14368 /* CapabilityPickerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41A487D16E069E246C1FE33 /* CapabilityPickerScreen.swift */; };
 		D0AC05AB13879430D16D0523 /* DoctorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9D0FA82D4BDE249E11657D /* DoctorScreen.swift */; };
@@ -161,8 +162,9 @@
 				6F397A9A6C2A0768496FC730 /* SwooshKit in Frameworks */,
 				588B3159F35DB867399DCAAB /* SwooshSecrets in Frameworks */,
 				4E199906DE2655159475FDED /* SwooshWidgets in Frameworks */,
-				B7513D6D71337FD01C3563A8 /* CodexBar in Frameworks */,
-				A05EB87348461D705D0D8B47 /* CodexBarCore in Frameworks */,
+				B7513D6D71337FD01C3563A8 /* SwooshDaemon in Frameworks */,
+				A05EB87348461D705D0D8B47 /* CodexBar in Frameworks */,
+				6F96255E17FEE3B226089DC4 /* CodexBarCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -358,6 +360,7 @@
 				C81EAEFD269612149B9F94BF /* SwooshKit */,
 				2894B277640819D641FD9E94 /* SwooshSecrets */,
 				09308C14B898E4305F4304E9 /* SwooshWidgets */,
+				52CFA43AF815CAE6322576A6 /* SwooshDaemon */,
 				892ABB0CB38113FC33409678 /* CodexBar */,
 				34BB35A7784C684D05EE06A2 /* CodexBarCore */,
 			);
@@ -802,6 +805,10 @@
 		4DBE9D6632C9D0599CB3127F /* SwooshTranslation */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwooshTranslation;
+		};
+		52CFA43AF815CAE6322576A6 /* SwooshDaemon */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SwooshDaemon;
 		};
 		5344EDFE236A78B4605BDACE /* SwooshSTT */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -1,5 +1,6 @@
 .build
 .build-codex
+build/
 .env
 .vscode/
 Backend/SwooshDB/target
