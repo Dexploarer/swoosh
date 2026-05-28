@@ -14,6 +14,7 @@ import AppKit
 import SwooshUI
 import SwooshSecrets
 import SwooshWidgets
+import SwooshDaemon
 import CodexBar
 
 @main
@@ -30,6 +31,11 @@ struct SwooshApp: App {
 
     /// Global hotkey. ⇧⌥Space = toggle voice mode.
     @State private var voiceModeHotKey: GlobalHotKey?
+
+    /// In-process agent runtime + HTTP server. The app *is* the daemon now —
+    /// there is no separate `swooshd`. Retained for the app's lifetime;
+    /// quitting the app tears the kernel + server down with the process.
+    @State private var daemonHandle: DaemonHandle?
 
     /// CodexBar opaque host handle — owns the usage store + settings.
     private let codexBarHost: CodexBarHost
@@ -55,6 +61,7 @@ struct SwooshApp: App {
                 guard !didBoot else { return }
                 didBoot = true
                 installGlobalHotKeys()
+                await bootInProcessDaemon()
                 await AgentShellBackends.bootLocalDaemon(shell: shell)
             }
         }
@@ -93,6 +100,51 @@ struct SwooshApp: App {
             AgentShellView(shell: shell, mode: .tray)
         }
         .frame(width: 400, height: 520)
+    }
+
+    // MARK: - In-process daemon
+
+    /// Boot the agent runtime + HTTP server inside this process. Frees a
+    /// stale :8787 first (e.g. a leftover from the legacy LaunchAgent).
+    /// On success the app's existing loopback HTTP client (wired by
+    /// `bootLocalDaemon`) talks to the in-process server. On failure the
+    /// UI degrades to its normal offline state — we still call
+    /// `bootLocalDaemon` so the chat send-handler is wired.
+    @MainActor
+    private func bootInProcessDaemon() async {
+        Self.freePort(8787)
+        do {
+            daemonHandle = try await SwooshDaemon.start(host: "0.0.0.0")
+        } catch {
+            let detail = "\(error)"
+            NSLog("[Swoosh] in-process daemon failed to start: \(detail)")
+            if detail.contains("Address already in use") || detail.contains("EADDRINUSE") {
+                NSLog("[Swoosh] Port 8787 is held by another process — likely the legacy "
+                    + "LaunchAgent. Run: launchctl bootout gui/$(id -u) "
+                    + "~/Library/LaunchAgents/ai.swoosh.daemon.plist  then relaunch.")
+            }
+        }
+    }
+
+    /// Best-effort single-shot: SIGTERM whatever holds `port`, then wait
+    /// briefly. Not a retry loop — a launchd KeepAlive service would just
+    /// respawn, and the start() error path logs the bootout instruction.
+    private static func freePort(_ port: Int) {
+        let lsof = Process()
+        lsof.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        lsof.arguments = ["-ti:\(port)"]
+        let pipe = Pipe()
+        lsof.standardOutput = pipe
+        lsof.standardError = FileHandle.nullDevice
+        guard (try? lsof.run()) != nil else { return }
+        lsof.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let pids = (String(data: data, encoding: .utf8) ?? "")
+            .split(whereSeparator: \.isNewline)
+            .compactMap { pid_t($0.trimmingCharacters(in: .whitespaces)) }
+        guard !pids.isEmpty else { return }
+        for pid in pids { kill(pid, SIGTERM) }
+        Thread.sleep(forTimeInterval: 1.5)
     }
 
     // MARK: - Hotkeys

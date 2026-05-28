@@ -48,6 +48,10 @@ targets:
         product: SwooshSecrets
       - package: Swoosh
         product: SwooshWidgets
+      # The app boots the agent runtime + HTTP server in-process via
+      # SwooshDaemon.start() — there is no standalone swooshd binary.
+      - package: Swoosh
+        product: SwooshDaemon
       - package: Swoosh
         product: CodexBar
       - package: Swoosh
