@@ -205,6 +205,20 @@ struct ProviderParsingTests {
         #expect(command is ProviderDiscoverCommand)
     }
 
+    @Test("swoosh provider select <id> parses the active-provider id")
+    func providerSelect() throws {
+        let command = try SwooshCommand.parseAsRoot(["provider", "select", "dev-proxy"])
+        let select = try #require(command as? ProviderSelectCommand)
+        #expect(select.provider == "dev-proxy")
+    }
+
+    @Test("swoosh provider select with no id is rejected (required arg)")
+    func providerSelectRequiresID() throws {
+        #expect(throws: (any Error).self) {
+            _ = try SwooshCommand.parseAsRoot(["provider", "select"])
+        }
+    }
+
     @Test("swoosh chat-adapters list --json parses")
     func chatAdaptersList() throws {
         let command = try SwooshCommand.parseAsRoot(["chat-adapters", "list", "--json"])

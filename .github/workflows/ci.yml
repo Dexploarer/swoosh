@@ -1,0 +1,56 @@
+# Swoosh CI — build, flow-check, and the full test suite.
+#
+# TOOLCHAIN CAVEAT: this package pins swift-tools-version 6.3 and targets
+# macOS 26 / iOS 26 (see Package.swift). GitHub-hosted macOS runners may not
+# ship an Xcode/Swift new enough yet. If the `test` job fails at toolchain
+# selection, either bump the runner image once GitHub ships Xcode 26, or
+# register a self-hosted runner with the right toolchain and change
+# `runs-on:` to its label. The `flow-check` job needs no Swift toolchain and
+# runs anywhere.
+name: CI
+
+on:
+  push:
+    branches: [feat/next, main]
+  pull_request:
+    branches: [main]
+
+# Newer push to the same ref cancels the older in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Fast topology gate — pure bash + grep over the Swift sources, no
+  # toolchain needed. Mirrors what the `plumber` subagent runs POST-FLIGHT.
+  flow-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Flow / topology guard
+        run: ./Scripts/check-flow.sh
+
+  # Build + full test suite. The test step goes through the project's
+  # required wrapper (Scripts/swift-test-safe.sh), which (a) traps signals
+  # and SIGKILLs orphaned swift-test helpers so they can't hold the SwiftPM
+  # .build lock, and (b) exports SWOOSH_STORAGE=memory so tests are hermetic
+  # (no test touches a real ~/.swoosh/swoosh.db). No provider API keys are
+  # present in CI, so the live smoke tests skip themselves.
+  test:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest installed Xcode
+        run: |
+          latest="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          xcodebuild -version || true
+          swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test (hermetic, orphan-safe wrapper)
+        run: ./Scripts/swift-test-safe.sh
