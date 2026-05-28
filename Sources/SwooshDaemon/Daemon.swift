@@ -116,12 +116,20 @@ struct SwooshDaemon {
         // when no keys are configured so chat keeps returning *some*
         // response while the user finishes provisioning.
         let secrets = KeychainSecretStore()
+        // Data-driven provider definitions (~/.swoosh/providers.json). Absent
+        // → .empty, so nothing changes. `activeProviderID` here is the live
+        // switch's persisted choice and takes precedence over the legacy
+        // config.json preferredProviderID at boot.
+        let providerConfig = ProviderConfigStore(directory: swooshDir).load()
+        let preferredProviderID = providerConfig.activeProviderID ?? runtimeConfig?.preferredProviderID
         let providerInfo = await ProviderFactory.detectActiveProvider(
             secrets: secrets,
-            preferredProviderID: runtimeConfig?.preferredProviderID
+            preferredProviderID: preferredProviderID
         )
         let modelProvider: any SwooshCore.ModelProvider
         let hasMetaModel: Bool
+        // Held across boot so `/api/providers/select` can flip routes live.
+        var providerRouter: ProviderRouter?
 
         // Try MLX first (only available when SwooshMLX is linked — i.e. Xcode builds).
         var resolvedProvider: (any SwooshCore.ModelProvider)? = nil
@@ -147,8 +155,10 @@ struct SwooshDaemon {
         if resolvedProvider == nil, let info = providerInfo {
             let (router, _) = await ProviderFactory.buildRouter(
                 secrets: secrets,
-                preferredProviderID: runtimeConfig?.preferredProviderID
+                config: providerConfig,
+                preferredProviderID: preferredProviderID
             )
+            providerRouter = router
             resolvedProvider = ProviderBridgeAdapter(
                 router: router,
                 role: .primaryChat,
@@ -539,7 +549,7 @@ struct SwooshDaemon {
                 pluginRegistry: pluginRegistry, mcpRegistry: mcpRegistry, skillStore: skillStore,
                 goalStore: goalStore, manifestStore: manifestStore, cronStore: cronStore,
                 cronScheduler: cronScheduler, cronExecutor: cronExecutor, manifester: manifester,
-                swooshDir: swooshDir
+                swooshDir: swooshDir, providerRouter: providerRouter
             )
         )
         let app = server.build()

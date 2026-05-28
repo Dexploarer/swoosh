@@ -28,10 +28,15 @@ public struct ProviderFactory {
 
     public static func buildRouter(
         secrets: any SecretStoring,
+        config: ProviderConfig = .empty,
         preferredProviderID: String? = nil
     ) async -> (ProviderRouter, ProviderRegistry) {
         let registry = ProviderRegistry()
         await registerAllProviders(registry, secrets: secrets)
+        await registerConfigProviders(registry, config: config, secrets: secrets)
+        // Config's activeProviderID is the boot-time fallback when no
+        // explicit preferred is passed; an explicit arg still wins.
+        let effectivePreferred = preferredProviderID ?? config.activeProviderID
         let localRouteModel = await localModelRouteDefault()
         for entry in defaultRoutes(localRouteModel: localRouteModel) {
             await registry.addRoute(ProviderRoute(
@@ -41,10 +46,11 @@ public struct ProviderFactory {
                 priority: priority(
                     for: entry.providerID,
                     defaultPriority: entry.priority,
-                    preferredProviderID: preferredProviderID
+                    preferredProviderID: effectivePreferred
                 )
             ))
         }
+        await applyConfigRoutes(registry, config: config, preferredProviderID: effectivePreferred)
         let router = ProviderRouter(registry: registry)
         return (router, registry)
     }
@@ -258,7 +264,7 @@ public struct ProviderFactory {
         return nil
     }
 
-    private static func priority(
+    static func priority(
         for providerID: String,
         defaultPriority: Int,
         preferredProviderID: String?

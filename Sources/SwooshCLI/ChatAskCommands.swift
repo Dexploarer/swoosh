@@ -12,6 +12,7 @@ import SwooshConfig
 import SwooshTUI
 import SwooshProviders
 import SwooshProviderBridge
+import SwooshModels
 import SwooshSecrets
 import SwooshTools
 import Foundation
@@ -34,11 +35,17 @@ struct ChatCommand: AsyncParsableCommand {
         let toolRegistry = try await makeCLIToolRegistry()
         let toolPolicy = loadCLIToolPolicy()
 
-        if let active = await ProviderFactory.detectActiveProvider(secrets: secrets) {
+        let providerConfig = ProviderConfigStore(directory: config.configDirectory).load()
+        if let active = await ProviderFactory.detectActiveProvider(
+            secrets: secrets, preferredProviderID: providerConfig.activeProviderID
+        ) {
             status.model = active.model
             status.providerStatus = active.name
 
-            let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
+            let (router, _) = await ProviderFactory.buildRouter(
+                secrets: secrets, config: providerConfig,
+                preferredProviderID: providerConfig.activeProviderID
+            )
             let bridge = ProviderBridgeAdapter(
                 router: router,
                 role: .primaryChat,
@@ -104,8 +111,14 @@ struct AskCommand: AsyncParsableCommand {
         let secrets = KeychainSecretStore()
         let modelProvider: SwooshCore.ModelProvider
 
-        if let active = await ProviderFactory.detectActiveProvider(secrets: secrets) {
-            let (router, _) = await ProviderFactory.buildRouter(secrets: secrets)
+        let providerConfig = ProviderConfigStore(directory: SwooshConfigStore().configDirectory).load()
+        if let active = await ProviderFactory.detectActiveProvider(
+            secrets: secrets, preferredProviderID: providerConfig.activeProviderID
+        ) {
+            let (router, _) = await ProviderFactory.buildRouter(
+                secrets: secrets, config: providerConfig,
+                preferredProviderID: providerConfig.activeProviderID
+            )
             modelProvider = ProviderBridgeAdapter(
                 router: router,
                 modelName: active.model,

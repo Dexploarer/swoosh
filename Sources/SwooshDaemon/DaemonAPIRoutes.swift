@@ -22,6 +22,7 @@ import SwooshManifesting
 import SwooshMCP
 import SwooshPlugins
 import SwooshPluginRuntime
+import SwooshProviders
 import SwooshSecrets
 import SwooshSkills
 import SwooshTools
@@ -45,7 +46,8 @@ extension SwooshDaemon {
         cronScheduler: CronScheduler,
         cronExecutor: @escaping CronAgentExecutor,
         manifester: Manifester,
-        swooshDir: URL
+        swooshDir: URL,
+        providerRouter: ProviderRouter? = nil
     ) -> SwooshAPIRuntimeSources {
         return SwooshAPIRuntimeSources(
                 providers: {
@@ -74,7 +76,9 @@ extension SwooshDaemon {
                         request,
                         configStore: configStore,
                         secrets: secrets,
-                        currentProvider: providerInfo
+                        currentProvider: providerInfo,
+                        swooshDir: swooshDir,
+                        router: providerRouter
                     )
                 },
                 skills: {

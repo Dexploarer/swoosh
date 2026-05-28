@@ -211,7 +211,9 @@ extension SwooshDaemon {
         _ request: ProviderSelectionRequest,
         configStore: SwooshConfigStore,
         secrets: KeychainSecretStore,
-        currentProvider: (name: String, model: String)?
+        currentProvider: (name: String, model: String)?,
+        swooshDir: URL,
+        router: ProviderRouter?
     ) async throws -> ProviderMutationResponse {
         let known = [
             ModelDefaults.codexProviderID,
@@ -227,9 +229,25 @@ extension SwooshDaemon {
         guard known.contains(request.providerID) else {
             throw APIError.badRequest("unknown provider: \(request.providerID)")
         }
+        // Persist to both stores: config.json preferredProviderID is the
+        // boot default; providers.json activeProviderID is the live-switch
+        // source of truth read by buildRouter on the next boot.
         try savePreferredProvider(request.providerID, configStore: configStore)
+        _ = try? ProviderConfigStore(directory: swooshDir).setActiveProvider(request.providerID)
+
+        // Live switch — point every text role at the selected provider on
+        // the running router so the change takes effect this session, no
+        // restart. Absent router (MLX/Foundation/diagnostic boot) → the
+        // persisted choice applies on next restart instead.
+        var applied = "saved — restart swooshd to apply"
+        if let router {
+            for role in ProviderFactory.textRoles {
+                await router.setRouteOverride(role: role, providerID: ProviderID(request.providerID))
+            }
+            applied = "applied live to new chat turns"
+        }
         return try await providerMutationResponse(
-            message: "Provider preference saved. Restart swooshd to apply it to new chat turns.",
+            message: "Provider switched to \(request.providerID) — \(applied).",
             configStore: configStore,
             secrets: secrets,
             currentProvider: currentProvider

@@ -10,6 +10,7 @@ import ArgumentParser
 import SwooshProviders
 import SwooshProviderBridge
 import SwooshModels
+import SwooshConfig
 import SwooshSecrets
 import SwooshTools
 import Foundation
@@ -25,11 +26,34 @@ struct ProviderCommand: AsyncParsableCommand {
         subcommands: [
             ProviderListCommand.self,
             ProviderAuthCommand.self,
+            ProviderSelectCommand.self,
             ProviderTestCommand.self,
             ProviderDiscoverCommand.self,
         ],
         defaultSubcommand: ProviderListCommand.self
     )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MARK: - provider select
+// ═══════════════════════════════════════════════════════════════════
+
+struct ProviderSelectCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "select",
+        abstract: "Set the active provider for all text queries."
+    )
+
+    @Argument(help: "Provider id (e.g. dev-proxy, openai, anthropic, openrouter, codex).")
+    var provider: String
+
+    func run() async throws {
+        let dir = SwooshConfigStore().configDirectory
+        _ = try ProviderConfigStore(directory: dir).setActiveProvider(provider)
+        print("\n  \u{001B}[32m✓\u{001B}[0m Active provider set to \(provider).")
+        print("  Applies to new CLI runs now. For a running daemon, restart swooshd")
+        print("  or use the app / `POST /api/providers/select` for a live (no-restart) switch.\n")
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
