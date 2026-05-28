@@ -46,15 +46,18 @@ final class WebBridgeIntegrationTests: XCTestCase {
         let bridge = WebGameBridge(service: .amazonLuna)
         let wv = bridge.configureWebView()
 
-        // Luna doesn't need a custom UA
-        XCTAssertNil(wv.customUserAgent, "Luna should use default UA")
+        // Luna doesn't need a custom UA. `userAgentOverride` is nil for it, so
+        // configureWebView never assigns one. Assert "no custom UA applied" —
+        // not strictly nil: on macOS 26 an unset WKWebView.customUserAgent
+        // reads back as "" rather than nil.
+        XCTAssertTrue((wv.customUserAgent ?? "").isEmpty, "Luna should use default UA")
     }
 
     func testWebViewConfigurationForBoosteroid() throws {
         let bridge = WebGameBridge(service: .boosteroid)
         let wv = bridge.configureWebView()
 
-        XCTAssertNil(wv.customUserAgent, "Boosteroid should use default UA")
+        XCTAssertTrue((wv.customUserAgent ?? "").isEmpty, "Boosteroid should use default UA")
     }
 
     // ─────────────────────────────────────────────────────────────────
