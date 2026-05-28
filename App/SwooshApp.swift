@@ -105,7 +105,7 @@ struct SwooshApp: App {
     // MARK: - In-process daemon
 
     /// Boot the agent runtime + HTTP server inside this process. Frees a
-    /// stale :8787 first (e.g. a leftover from the legacy LaunchAgent).
+    /// stale :8787 first (e.g. a leftover from a previous app instance).
     /// On success the app's existing loopback HTTP client (wired by
     /// `bootLocalDaemon`) talks to the in-process server. On failure the
     /// UI degrades to its normal offline state — we still call
@@ -119,16 +119,15 @@ struct SwooshApp: App {
             let detail = "\(error)"
             NSLog("[Swoosh] in-process daemon failed to start: \(detail)")
             if detail.contains("Address already in use") || detail.contains("EADDRINUSE") {
-                NSLog("[Swoosh] Port 8787 is held by another process — likely the legacy "
-                    + "LaunchAgent. Run: launchctl bootout gui/$(id -u) "
-                    + "~/Library/LaunchAgents/ai.swoosh.daemon.plist  then relaunch.")
+                NSLog("[Swoosh] Port 8787 is still held after SIGTERM — likely another "
+                    + "Swoosh instance. Quit it (or `lsof -ti:8787 | xargs kill`) then relaunch.")
             }
         }
     }
 
     /// Best-effort single-shot: SIGTERM whatever holds `port`, then wait
-    /// briefly. Not a retry loop — a launchd KeepAlive service would just
-    /// respawn, and the start() error path logs the bootout instruction.
+    /// briefly. Not a retry loop — if SIGTERM doesn't free it, a live
+    /// process owns it and the start() error path surfaces that.
     private static func freePort(_ port: Int) {
         let lsof = Process()
         lsof.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
