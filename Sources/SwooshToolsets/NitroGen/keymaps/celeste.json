@@ -1,0 +1,19 @@
+{
+    "_comment": "NitroGen macOS key mapping for Celeste. Edit to match your game.",
+    "SOUTH": "space",
+    "EAST": "escape",
+    "WEST": "e",
+    "NORTH": "r",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "f",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "c",
+    "RIGHT_THUMB": "v"
+}

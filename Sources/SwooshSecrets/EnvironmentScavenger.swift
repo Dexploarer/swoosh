@@ -12,7 +12,7 @@ public enum EnvironmentScavenger {
     static let envMap: [(KnownProvider, [String])] = [
         (.openAI,     ["OPENAI_API_KEY", "OPENAI_KEY"]),
         (.openRouter, ["OPENROUTER_API_KEY", "OPENROUTER_KEY"]),
-        (.elizaCloud, ["ELIZA_CLOUD_API_KEY", "ELIZACLOUD_API_KEY"]),
+        (.detourCloud, ["ELIZA_CLOUD_API_KEY", "ELIZACLOUD_API_KEY"]),
     ]
 
     public static func scan(

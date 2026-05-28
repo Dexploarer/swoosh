@@ -32,11 +32,18 @@ public enum SwooshDaemonClient {
     }
 
     public static func token(config: SwooshConfigStore = SwooshConfigStore()) -> String? {
+        // File-based token from swooshd takes priority — it's what
+        // the daemon writes on startup. Keychain may hold a stale value
+        // from a previous session.
+        if let fileToken = (try? String(contentsOf: config.apiTokenFile, encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+           !fileToken.isEmpty {
+            return fileToken
+        }
         if let token = TokenStore.load(), !token.isEmpty {
             return token
         }
-        return (try? String(contentsOf: config.apiTokenFile, encoding: .utf8))?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return nil
     }
 
     public static func health() async -> Bool {

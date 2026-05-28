@@ -5,7 +5,9 @@
 // role / model is one row, not a new `await registry.addRoute(...)` call.
 
 import Foundation
+#if canImport(SwooshMLX)
 import SwooshMLX
+#endif
 import SwooshModels
 import SwooshProviders
 import SwooshSecrets
@@ -54,8 +56,10 @@ public struct ProviderFactory {
         await registry.register(CodexBridgeProvider(), profile: .codex)
         await registry.register(OpenAIResponsesProvider(secrets: secrets), profile: .openAI)
         await registry.register(OpenRouterProvider(secrets: secrets), profile: .openRouter)
-        await registry.register(ElizaCloudProvider(secrets: secrets), profile: .elizaCloud)
+        await registry.register(DetourCloudProvider(secrets: secrets), profile: .detourCloud)
+        #if canImport(SwooshMLX)
         await registry.register(MLXLocalProvider(), profile: .mlxLocal)
+        #endif
         await registry.register(LocalOpenAICompatibleProvider(), profile: .localOpenAI)
     }
 
@@ -80,8 +84,8 @@ public struct ProviderFactory {
                        model: ModelDefaults.openAIModelID, priority: 100),
             RouteEntry(role: .primaryChat, providerID: ModelDefaults.openRouterProviderID,
                        model: ModelDefaults.openRouterModelID, priority: 90),
-            RouteEntry(role: .primaryChat, providerID: ModelDefaults.elizaCloudProviderID,
-                       model: ModelDefaults.elizaCloudModelID, priority: 70),
+            RouteEntry(role: .primaryChat, providerID: ModelDefaults.detourCloudProviderID,
+                       model: ModelDefaults.detourCloudModelID, priority: 70),
             RouteEntry(role: .primaryChat, providerID: ModelDefaults.localMLXProviderID,
                        model: ModelDefaults.localMLXModelID, priority: 65),
             RouteEntry(role: .primaryChat, providerID: ModelDefaults.localOpenAIProviderID,
@@ -100,7 +104,7 @@ public struct ProviderFactory {
             RouteEntry(role: .coding, providerID: ModelDefaults.localOpenAIProviderID,
                        model: "qwen3-coder-next", priority: 70),
             RouteEntry(role: .coding, providerID: ModelDefaults.localMLXProviderID,
-                       model: "mlx-community/Qwen3-8B-4bit", priority: 60),
+                       model: "mlx-community/Qwen3.5-8B-4bit", priority: 60),
             RouteEntry(role: .coding, providerID: ModelDefaults.localOpenAIProviderID,
                        model: localRouteModel, priority: 55)
         ]
@@ -136,8 +140,8 @@ public struct ProviderFactory {
                        model: ModelDefaults.openAIFastModelID, priority: 100),
             RouteEntry(role: .summarization, providerID: ModelDefaults.openRouterProviderID,
                        model: ModelDefaults.openRouterFastModelID, priority: 90),
-            RouteEntry(role: .summarization, providerID: ModelDefaults.elizaCloudProviderID,
-                       model: ModelDefaults.elizaCloudModelID, priority: 80),
+            RouteEntry(role: .summarization, providerID: ModelDefaults.detourCloudProviderID,
+                       model: ModelDefaults.detourCloudModelID, priority: 80),
             RouteEntry(role: .summarization, providerID: ModelDefaults.localMLXProviderID,
                        model: ModelDefaults.localMLXFallbackModelID, priority: 70),
             RouteEntry(role: .summarization, providerID: ModelDefaults.localOpenAIProviderID,
@@ -162,8 +166,8 @@ public struct ProviderFactory {
                        model: ModelDefaults.openAIModelID, priority: 100),
             RouteEntry(role: .workflowPlanning, providerID: ModelDefaults.openRouterProviderID,
                        model: ModelDefaults.openRouterModelID, priority: 90),
-            RouteEntry(role: .workflowPlanning, providerID: ModelDefaults.elizaCloudProviderID,
-                       model: ModelDefaults.elizaCloudModelID, priority: 80),
+            RouteEntry(role: .workflowPlanning, providerID: ModelDefaults.detourCloudProviderID,
+                       model: ModelDefaults.detourCloudModelID, priority: 80),
             RouteEntry(role: .workflowPlanning, providerID: ModelDefaults.localMLXProviderID,
                        model: ModelDefaults.localMLXModelID, priority: 70),
             RouteEntry(role: .workflowPlanning, providerID: ModelDefaults.localOpenAIProviderID,
@@ -180,7 +184,7 @@ public struct ProviderFactory {
             RouteEntry(role: .toolCallRepair, providerID: ModelDefaults.openRouterProviderID,
                        model: ModelDefaults.openRouterUtilityModelID, priority: 90),
             RouteEntry(role: .toolCallRepair, providerID: ModelDefaults.localMLXProviderID,
-                       model: "mlx-community/Qwen3-4B-4bit", priority: 80),
+                       model: "mlx-community/Qwen3.5-4B-4bit", priority: 80),
             RouteEntry(role: .toolCallRepair, providerID: ModelDefaults.localOpenAIProviderID,
                        model: localRouteModel, priority: 60)
         ]
@@ -200,7 +204,7 @@ public struct ProviderFactory {
             ModelDefaults.codexProviderID,
             ModelDefaults.openAIProviderID,
             ModelDefaults.openRouterProviderID,
-            ModelDefaults.elizaCloudProviderID,
+            ModelDefaults.detourCloudProviderID,
             ModelDefaults.localMLXProviderID,
             ModelDefaults.localOpenAIProviderID
         ]
@@ -249,7 +253,7 @@ public struct ProviderFactory {
         case ModelDefaults.codexProviderID: return await detectCodex()
         case ModelDefaults.openAIProviderID: return await detectOpenAI(secrets: secrets)
         case ModelDefaults.openRouterProviderID: return await detectOpenRouter(secrets: secrets)
-        case ModelDefaults.elizaCloudProviderID: return await detectElizaCloud(secrets: secrets)
+        case ModelDefaults.detourCloudProviderID: return await detectDetourCloud(secrets: secrets)
         case ModelDefaults.localMLXProviderID: return detectMLXLocal()
         case ModelDefaults.localOpenAIProviderID: return await detectLocalOpenAI()
         default: return nil
@@ -278,18 +282,35 @@ public struct ProviderFactory {
         return ("OpenRouter", ModelDefaults.openRouterModelID)
     }
 
-    private static func detectElizaCloud(
+    private static func detectDetourCloud(
         secrets: any SecretStoring
     ) async -> (name: String, model: String)? {
-        guard (try? await secrets.get(SecretRef("eliza-cloud", "api_key"))) != nil else {
+        guard (try? await secrets.get(SecretRef("detour-cloud", "api_key"))) != nil else {
             return nil
         }
-        return ("Eliza Cloud", ModelDefaults.elizaCloudModelID)
+        return ("Detour Cloud", ModelDefaults.detourCloudModelID)
     }
 
     private static func detectMLXLocal() -> (name: String, model: String)? {
+        #if canImport(SwooshMLX)
         guard MLXInferenceEngine.isAppleSilicon else { return nil }
-        return ("MLX Local", ModelDefaults.localMLXModelID)
+
+        // SwiftPM command-line builds do not compile metal shaders into default.metallib,
+        // causing MLX to crash at runtime when initialized. Check that the compiled metal
+        // shaders exist in at least one bundle before advertising MLX support.
+        let hasMetallib = Bundle.allBundles.contains { bundle in
+            bundle.url(forResource: "default", withExtension: "metallib") != nil
+        }
+        guard hasMetallib else { return nil }
+
+        let explicitModel = ProcessInfo.processInfo.environment["SWOOSH_MLX_MODEL"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = (explicitModel != nil && !explicitModel!.isEmpty) ? explicitModel! : ModelDefaults.localMLXModelID
+
+        return ("MLX Local", model)
+        #else
+        return nil
+        #endif
     }
 
     private static func detectLocalOpenAI() async -> (name: String, model: String)? {
@@ -310,8 +331,9 @@ public struct ProviderFactory {
         case "ChatGPT (Codex)": return ModelDefaults.codexProviderID
         case "OpenAI": return ModelDefaults.openAIProviderID
         case "OpenRouter": return ModelDefaults.openRouterProviderID
-        case "Eliza Cloud": return ModelDefaults.elizaCloudProviderID
+        case "Detour Cloud", "Eliza Cloud": return ModelDefaults.detourCloudProviderID
         case "MLX Local": return ModelDefaults.localMLXProviderID
+        case "Apple Foundation": return ModelDefaults.localFoundationProviderID
         default: return ModelDefaults.localOpenAIProviderID
         }
     }

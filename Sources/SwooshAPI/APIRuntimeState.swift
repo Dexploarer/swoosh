@@ -390,6 +390,14 @@ actor APIRuntimeState {
         try await sources.refreshWalletBalance(id)
     }
 
+    // ── Tier 1: Rebates & Anchoring ────────────────────────────────
+    func rebateSummary(_ wallet: String, period: String) async throws -> RebateSummaryResponse {
+        try await sources.rebateSummary(wallet, period)
+    }
+    func anchorBatches() async throws -> AnchorBatchesResponse {
+        try await sources.anchorBatches()
+    }
+
     private func activeProvider() async -> ProviderSummary? {
         let current = await providers()
         if let activeProviderID = current.activeProviderID {

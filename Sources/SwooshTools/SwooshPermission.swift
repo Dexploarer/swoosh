@@ -137,6 +137,10 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case pluginUninstall
     case pluginEnable
     case pluginDisable
+
+    // ── NitroGen gaming agent ─────────────────────────────────────
+    case nitrogenControl          // start/stop the NitroGen inference server + player
+    case nitrogenRead             // status checks, screenshot grabs
 }
 
 // MARK: - Permission state

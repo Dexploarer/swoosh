@@ -1,27 +1,12 @@
-// SwooshUI/Pickers/AttachmentMenu.swift — "+" button + attach sheet
+// SwooshUI/Pickers/AttachmentMenu.swift — "+" button with expanding gooey popover
 //
-// The composer's `+` glyph. Opens a bottom sheet with the actions the
-// user can take to enrich the next turn: attach a file, attach a photo,
-// surface a Skill, or open an MCP connection. Matches the mobile
-// agent pattern documented in the May-2026 SOTA agent UI survey —
-// bottom sheets beat popovers on a 6.7" screen because the thumb can
-// reach every row.
+// The composer's `+` glyph. Instead of opening a full sheet (which
+// interrupts the chat flow), the button expands outward with a fluid
+// "gooey" animation, showing action buttons that fan out from the
+// trigger. Tapping outside or pressing again collapses it.
 //
-// The actions themselves are wired to callbacks the host passes in so
-// `SwooshUI` doesn't need to know about file pickers, skill stores, or
-// MCP connectors — those live in their own modules and are plumbed
-// through AgentShellView. Default callbacks are no-ops so the sheet
-// renders the same in previews and on hosts that don't wire a given
-// capability yet.
-//
-// Navigation chaining: tapping a row that wants to push onto a
-// NavigationStack can't fire its handler synchronously — the sheet is
-// still mid-dismiss and UIKit silently swallows the push. The earlier
-// "dismiss + Task.sleep(120 ms) + action" hack helped intermittently
-// but wasn't deterministic. Final pattern: the row stores the chosen
-// action in shared @State, the sheet dismisses, and the `.sheet`'s
-// onDismiss callback runs the pending action exactly once the sheet
-// has fully gone. That's the iOS-blessed sequencing.
+// This pattern keeps the user in-context — they're attaching something
+// mid-conversation, not navigating to a separate modal.
 
 import SwiftUI
 import SwooshGenerativeUI
@@ -31,8 +16,7 @@ import SwooshGenerativeUI
 // ═══════════════════════════════════════════════════════════════════
 
 /// Bundle of handlers the host can wire. Any field left as the default
-/// no-op simply renders that row as a disabled placeholder — useful while
-/// the daemon side of a given capability is still being wired.
+/// no-op simply renders that row as a disabled placeholder.
 public struct AttachmentActions: Sendable {
     public var attachFile:     @MainActor () -> Void
     public var attachPhoto:    @MainActor () -> Void
@@ -56,7 +40,7 @@ public struct AttachmentActions: Sendable {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MARK: - Trigger
+// MARK: - Expanding gooey menu
 // ═══════════════════════════════════════════════════════════════════
 
 public struct AttachmentMenu: View {
@@ -64,10 +48,7 @@ public struct AttachmentMenu: View {
     public let accent: NeonAccent
     public let actions: AttachmentActions
 
-    @State private var isPresented = false
-    /// Action selected inside the sheet, run after the sheet has fully
-    /// dismissed. Nil means the user closed the sheet without picking.
-    @State private var pendingAction: PendingAction?
+    @State private var isExpanded = false
 
     public init(
         accent: NeonAccent = .cyan,
@@ -77,131 +58,140 @@ public struct AttachmentMenu: View {
         self.actions = actions
     }
 
+    private struct ActionItem: Identifiable {
+        let id: String
+        let symbol: String
+        let label: String
+        let action: @MainActor () -> Void
+    }
+
+    private var items: [ActionItem] {
+        var list = [
+            ActionItem(id: "file",   symbol: "doc.fill",           label: "File",    action: actions.attachFile),
+            ActionItem(id: "photo",  symbol: "photo.fill",         label: "Photo",   action: actions.attachPhoto),
+            ActionItem(id: "skills", symbol: "sparkles",           label: "Skills",  action: actions.openSkills),
+            ActionItem(id: "mcp",    symbol: "puzzlepiece.extension.fill", label: "MCP", action: actions.openMCP),
+        ]
+        #if os(iOS)
+        list.insert(
+            ActionItem(id: "camera", symbol: "camera.fill", label: "Camera", action: actions.attachCamera),
+            at: 2
+        )
+        #endif
+        return list
+    }
+
     public var body: some View {
-        Button {
-            isPresented = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(SwooshNeonTokens.Canvas.text2)
+        ZStack(alignment: .bottomLeading) {
+            // ── Dismiss backdrop when expanded ──
+            if isExpanded {
+                Color.black.opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture { collapse() }
+                    .transition(.opacity)
+            }
+
+            // ── Expanded items ──
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        gooeyItem(item: item, index: index)
+                    }
+                }
+                .padding(.bottom, 44)
+                .transition(.opacity.combined(with: .scale(scale: 0.5, anchor: .bottomLeading)))
+            }
+
+            // ── Trigger button ──
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: isExpanded ? 12 : 8, style: .continuous)
+                        .fill(
+                            isExpanded
+                            ? SwooshNeonTokens.Accent.cyan.opacity(0.12)
+                            : Color.white.opacity(0.04)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: isExpanded ? 12 : 8, style: .continuous)
+                                .stroke(
+                                    isExpanded
+                                    ? SwooshNeonTokens.Accent.cyan.opacity(0.3)
+                                    : Color.white.opacity(0.08),
+                                    lineWidth: 0.5
+                                )
+                        )
+                        .shadow(
+                            color: isExpanded ? SwooshNeonTokens.Accent.cyan.opacity(0.15) : .clear,
+                            radius: isExpanded ? 12 : 0
+                        )
+
+                    Image(systemName: isExpanded ? "xmark" : "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(
+                            isExpanded
+                            ? SwooshNeonTokens.Accent.cyan
+                            : SwooshNeonTokens.Canvas.text2
+                        )
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
                 .frame(width: 36, height: 36)
-                .neonTile(accent, state: .idle, shape: .card)
-        }
-        .buttonStyle(.plain)
-        .help("Attach a file, photo, skill, or MCP connection")
-        .accessibilityLabel("Attach")
-        .sheet(isPresented: $isPresented, onDismiss: {
-            // Sheet has fully closed — safe to push onto the host's
-            // NavigationStack now.
-            if let pending = pendingAction {
-                pendingAction = nil
-                pending.run()
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isExpanded)
             }
-        }) {
-            AttachmentSheet(
-                actions: actions,
-                onPick: { kind in
-                    pendingAction = PendingAction(kind: kind, actions: actions)
-                    isPresented = false
-                }
-            )
-            #if os(iOS)
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-            #endif
-        }
-    }
-}
-
-/// Concrete action the user picked. Captures the bundle by value so the
-/// pending closure stays valid across the dismiss cycle.
-private struct PendingAction {
-    enum Kind { case file, photo, camera, skills, mcp }
-    let kind: Kind
-    let actions: AttachmentActions
-
-    @MainActor
-    func run() {
-        switch kind {
-        case .file:   actions.attachFile()
-        case .photo:  actions.attachPhoto()
-        case .camera: actions.attachCamera()
-        case .skills: actions.openSkills()
-        case .mcp:    actions.openMCP()
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MARK: - Sheet body
-// ═══════════════════════════════════════════════════════════════════
-
-private struct AttachmentSheet: View {
-
-    let actions: AttachmentActions
-    let onPick: (PendingAction.Kind) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    row(symbol: "doc",     label: "Files",   kind: .file)
-                    row(symbol: "photo",   label: "Photos",  kind: .photo)
-                    #if os(iOS)
-                    row(symbol: "camera",  label: "Camera",  kind: .camera)
-                    #endif
-                } header: {
-                    Label("Attach", systemImage: "paperclip")
-                }
-                Section {
-                    row(symbol: "sparkles", label: "Skills", kind: .skills)
-                    row(symbol: "puzzlepiece.extension", label: "MCP Connections", kind: .mcp)
-                } header: {
-                    Label("Capabilities", systemImage: "wand.and.stars")
-                } footer: {
-                    Text("Skills are reusable prompts. MCP connections let the agent talk to external tools.")
-                }
-            }
-            .navigationTitle("Attach")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
-                }
-                #else
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-                #endif
-            }
+            .buttonStyle(.plain)
+            .help("Attach a file, photo, skill, or MCP connection")
+            .accessibilityLabel(isExpanded ? "Close attachments" : "Attach")
         }
     }
 
     @ViewBuilder
-    private func row(symbol: String, label: String, kind: PendingAction.Kind) -> some View {
+    private func gooeyItem(item: ActionItem, index: Int) -> some View {
         Button {
-            // Stash the user's choice in the host's @State and let the
-            // sheet dismiss — the host's onDismiss callback fires the
-            // action only after the sheet has fully gone, which is the
-            // only reliable moment to push onto a NavigationStack.
-            onPick(kind)
+            item.action()
+            collapse()
         } label: {
-            HStack {
-                Image(systemName: symbol)
-                    .frame(width: 24)
+            HStack(spacing: 8) {
+                Image(systemName: item.symbol)
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(SwooshNeonTokens.Accent.cyan)
-                Text(label)
+                    .frame(width: 24, height: 24)
+                    .background(
+                        Circle()
+                            .fill(SwooshNeonTokens.Accent.cyan.opacity(0.1))
+                    )
+
+                Text(item.label)
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text2)
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(SwooshNeonTokens.Canvas.bg)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .shadow(color: .black.opacity(0.3), radius: 8, y: 2)
+            )
         }
         .buttonStyle(.plain)
+        .scaleEffect(isExpanded ? 1 : 0.3)
+        .opacity(isExpanded ? 1 : 0)
+        .animation(
+            .spring(response: 0.35, dampingFraction: 0.65)
+                .delay(Double(index) * 0.04),
+            value: isExpanded
+        )
+    }
+
+    private func collapse() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+            isExpanded = false
+        }
     }
 }

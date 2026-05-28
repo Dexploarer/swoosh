@@ -1,0 +1,21 @@
+{
+    "_game": "Terraria",
+    "_genre": "sandbox",
+    "_notes": "Default PC keyboard bindings. Left stick → WASD movement. Mouse-dependent actions (attack/place) on triggers as x/z placeholders. E=grapple, Q=throw, H=quick heal, B=quick buff.",
+    "SOUTH": "space",
+    "EAST": "escape",
+    "WEST": "e",
+    "NORTH": "b",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "h",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

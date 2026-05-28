@@ -122,7 +122,8 @@ public struct SwooshAPIServer: Sendable {
                 sessionID: chatRequest.sessionID,
                 input: chatRequest.input,
                 model: chatRequest.model,
-                providerID: chatRequest.providerID
+                providerID: chatRequest.providerID,
+                walletAddress: chatRequest.walletAddress ?? ""
             )
             let agentResponse: AgentResponse
             do {
@@ -658,6 +659,24 @@ public struct SwooshAPIServer: Sendable {
             let id = try context.parameters.require("id", as: String.self)
             do {
                 return try await runtime.refreshWalletBalance(id)
+            } catch {
+                throw apiHTTPError(error)
+            }
+        }
+
+        // ── Tier 1: Rebates & Anchoring ────────────────────────────
+        apiGroup.get("/rebates/:wallet") { request, context -> RebateSummaryResponse in
+            let wallet = try context.parameters.require("wallet", as: String.self)
+            let period = request.uri.queryParameters.get("period") ?? currentQuarterPeriod()
+            do {
+                return try await runtime.rebateSummary(wallet, period: period)
+            } catch {
+                throw apiHTTPError(error)
+            }
+        }
+        apiGroup.get("/rebates/batches") { _, _ -> AnchorBatchesResponse in
+            do {
+                return try await runtime.anchorBatches()
             } catch {
                 throw apiHTTPError(error)
             }

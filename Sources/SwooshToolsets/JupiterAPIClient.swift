@@ -62,7 +62,14 @@ enum JupiterApi {
         try await get(path: "/ultra/v1/order/routers")
     }
 
-    static func order(inputMint: String, outputMint: String, amount: String, taker: String?) async throws -> OrderResponse {
+    static func order(
+        inputMint: String,
+        outputMint: String,
+        amount: String,
+        taker: String?,
+        platformFeeBps: Int? = nil,
+        feeAccount: String? = nil
+    ) async throws -> OrderResponse {
         var items = [
             URLQueryItem(name: "inputMint", value: inputMint),
             URLQueryItem(name: "outputMint", value: outputMint),
@@ -70,6 +77,13 @@ enum JupiterApi {
         ]
         if let taker {
             items.append(URLQueryItem(name: "taker", value: taker))
+        }
+        // $DTOUR trade tax — Jupiter collects the fee and routes to our account
+        if let bps = platformFeeBps, bps > 0 {
+            items.append(URLQueryItem(name: "platformFeeBps", value: String(bps)))
+        }
+        if let account = feeAccount, !account.isEmpty {
+            items.append(URLQueryItem(name: "feeAccount", value: account))
         }
         return try await get(path: "/swap/v2/order", queryItems: items)
     }

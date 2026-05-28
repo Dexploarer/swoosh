@@ -80,7 +80,7 @@ struct ModelCommand: AsyncParsableCommand {
         print("  1. Local MLX")
         print("  2. OpenAI")
         print("  3. OpenRouter")
-        print("  4. Eliza Cloud")
+        print("  4. Detour Cloud")
         print("\nAlready detected:")
 
         let hardware = HardwareDetector().detect()

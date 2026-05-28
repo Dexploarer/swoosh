@@ -84,7 +84,8 @@ public enum DefaultToolRegistrar {
         dependencies: ToolDependencies,
         selfImprovement: SelfImprovementDependencies = SelfImprovementDependencies(),
         mcp: MCPDependencies? = nil,
-        mediaGen: MediaGenDependencies? = nil
+        mediaGen: MediaGenDependencies? = nil,
+        nitrogen: NitroGenController? = nil
     ) async {
         await registerCore(into: registry, dependencies: dependencies)
         await registerMemory(into: registry, dependencies: dependencies)
@@ -120,6 +121,11 @@ public enum DefaultToolRegistrar {
         if let mediaGen = mediaGen {
             await registerMediaGen(into: registry, mediaGen: mediaGen)
         }
+        #if os(macOS)
+        if let nitrogen = nitrogen {
+            await registerNitroGen(into: registry, controller: nitrogen)
+        }
+        #endif
     }
 
     // ── MCP ───────────────────────────────────────────────────────
@@ -345,9 +351,16 @@ public enum DefaultToolRegistrar {
     }
 
     // ── Launchpads ────────────────────────────────────────────────
+    // Catalog tools are free. Launch tools are token-gated ($DTOUR stake).
     static func registerLaunchpads(into registry: ToolRegistry) async {
+        // Free: browse + analytics
         await registry.register(TypeErasedTool(LaunchpadListPlatformsTool()))
         await registry.register(TypeErasedTool(LaunchpadGetPlatformTool()))
+        // Token-gated: launch actions (isTokenGated = true)
+        await registry.register(TypeErasedTool(PumpPortalLaunchTool()))
+        await registry.register(TypeErasedTool(BagsLaunchTool()))
+        await registry.register(TypeErasedTool(FlapLaunchTool()))
+        await registry.register(TypeErasedTool(FourMemeLaunchTool()))
     }
 
     // ── Hyperliquid (perps DEX) ───────────────────────────────────
@@ -381,4 +394,22 @@ public enum DefaultToolRegistrar {
         await registry.register(TypeErasedTool(UniswapSwapTool(dependencies: dependencies)))
         await registry.register(TypeErasedTool(UniswapPoolTool(dependencies: dependencies)))
     }
+
+    // ── NitroGen (gaming agent) ───────────────────────────────────
+    #if os(macOS)
+    static func registerNitroGen(into registry: ToolRegistry, controller: NitroGenController) async {
+        await registry.register(TypeErasedTool(NitroGenStartTool(controller: controller)))
+        await registry.register(TypeErasedTool(NitroGenStopTool(controller: controller)))
+        await registry.register(TypeErasedTool(NitroGenStatusTool(controller: controller)))
+        await registry.register(TypeErasedTool(NitroGenScreenshotTool(controller: controller)))
+
+        // Gaming navigation tools (voice-driven game search/click/type)
+        await registry.register(TypeErasedTool(GamingSearchGameTool()))
+        await registry.register(TypeErasedTool(GamingClickElementTool()))
+        await registry.register(TypeErasedTool(GamingTypeTextTool()))
+        await registry.register(TypeErasedTool(GamingNavigateURLTool()))
+        await registry.register(TypeErasedTool(GamingScreenshotWebTool()))
+        await registry.register(TypeErasedTool(GamingSelectPlatformTool()))
+    }
+    #endif
 }

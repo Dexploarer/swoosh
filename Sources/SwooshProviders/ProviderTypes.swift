@@ -26,7 +26,7 @@ extension ProviderID: CustomStringConvertible, ExpressibleByStringLiteral {
 // ═══════════════════════════════════════════════════════════════════
 
 public enum ProviderKind: String, Codable, Sendable {
-    case openAI, openRouter, elizaCloud
+    case openAI, openRouter, detourCloud
     case localOpenAICompatible, mlx, codexCLI
 }
 
@@ -290,10 +290,10 @@ public struct ProviderProfile: Codable, Sendable, Identifiable {
         defaultModel: ModelDefaults.openRouterModelID, enabled: false, priority: 90
     )
 
-    public static let elizaCloud = ProviderProfile(
-        id: ProviderID(ModelDefaults.elizaCloudProviderID), kind: .elizaCloud, displayName: "Eliza Cloud",
-        baseURL: "https://elizacloud.ai/api/v1", auth: .apiKey(namespace: "eliza-cloud", key: "api_key"),
-        defaultModel: ModelDefaults.elizaCloudModelID,
+    public static let detourCloud = ProviderProfile(
+        id: ProviderID(ModelDefaults.detourCloudProviderID), kind: .detourCloud, displayName: "Detour Cloud",
+        baseURL: "https://elizacloud.ai/api/v1", auth: .apiKey(namespace: "detour-cloud", key: "api_key"),
+        defaultModel: ModelDefaults.detourCloudModelID,
         enabled: false, priority: 70
     )
 

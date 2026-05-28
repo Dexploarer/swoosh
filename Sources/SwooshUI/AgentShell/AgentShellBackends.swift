@@ -20,6 +20,9 @@
 import Foundation
 import SwooshClient
 import SwooshModels
+#if os(macOS)
+import AppKit
+#endif
 
 public enum AgentShellBackends {
 
@@ -140,9 +143,8 @@ public enum AgentShellBackends {
     /// prior history, and tries to drain any outbox left over from a
     /// previous offline window.
     ///
-    /// Safe to call even when the daemon isn't running — the offline
-    /// cache still loads, sends queue, and the user sees yesterday's
-    /// transcript immediately.
+    /// **Auto-spawns `swooshd` if it's not already running.** The user
+    /// only needs to launch the app — the daemon is a child process.
     @MainActor
     public static func bootLocalDaemon(
         shell: AgentShellModel,
@@ -150,6 +152,9 @@ public enum AgentShellBackends {
         bearerToken: String? = nil,
         sessionID: String = "default"
     ) async {
+        // ── Auto-spawn swooshd if not already up ──────────────
+        await ensureDaemonRunning()
+
         // Build cache. If app-support is unavailable (sandboxing edge
         // case), fall back to the temp dir so we at least preserve state
         // for the current launch.
@@ -199,6 +204,65 @@ public enum AgentShellBackends {
                 : (queued > 0 ? .queued(queued) : .offline)
         }
     }
+
+    #if os(macOS)
+    /// The child `swooshd` process, if we spawned it.
+    @MainActor private static var daemonProcess: Process?
+
+    /// Ensures `swooshd` is running. If it's already listening on 8787
+    /// we skip. Otherwise we find the built binary and spawn it.
+    @MainActor
+    private static func ensureDaemonRunning() async {
+        // Quick health check — is a daemon already up?
+        let probe = SwooshAPIClient(
+            baseURL: URL(string: "http://127.0.0.1:8787")!,
+            token: SwooshDaemonClient.token()
+        )
+        if await probe.health() { return }
+
+        // Find swooshd binary
+        var urls: [URL] = []
+        if let execURL = Bundle.main.executableURL {
+            urls.append(execURL.deletingLastPathComponent().appendingPathComponent("swooshd"))
+        }
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        urls.append(home.appendingPathComponent("swoosh/.build/debug/swooshd"))
+        urls.append(home.appendingPathComponent("swoosh/.build/release/swooshd"))
+
+        guard let binary = urls.first(where: { FileManager.default.isExecutableFile(atPath: $0.path) }) else {
+            return
+        }
+
+        let process = Process()
+        process.executableURL = binary
+        process.arguments = []
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            daemonProcess = process
+
+            // Kill daemon when the app terminates
+            NotificationCenter.default.addObserver(
+                forName: NSApplication.willTerminateNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                process.terminate()
+            }
+
+            // Give it a moment to bind the port
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        } catch {
+            // Failed to spawn — offline mode
+        }
+    }
+    #else
+    private static func ensureDaemonRunning() async {
+        // iOS doesn't spawn a daemon — it connects to the Mac
+    }
+    #endif
 
 }
 

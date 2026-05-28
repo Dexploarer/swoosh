@@ -265,7 +265,6 @@ public struct ChatAdapterCatalog: Sendable {
             features: ChatAdapterFeatures(supportsEdit: true, supportsDelete: true, supportsReactions: false, supportsTyping: true, supportsStreaming: true, supportsDMs: true),
             requiredCredentials: [
                 ChatAdapterCredentialRequirement(envVar: "TELEGRAM_BOT_TOKEN", description: "Telegram bot token"),
-                ChatAdapterCredentialRequirement(envVar: "TELEGRAM_WEBHOOK_SECRET", description: "Telegram webhook secret"),
             ]
         ),
         ChatAdapterDefinition(

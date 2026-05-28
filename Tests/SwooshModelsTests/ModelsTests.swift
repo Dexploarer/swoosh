@@ -344,7 +344,7 @@ struct UnifiedModelCatalogTests {
 
     @Test("chat route ignores non-chat catalog entries")
     func nonChatCatalogEntryHasNoChatRoute() {
-        guard let speech = UnifiedModelCatalog.speechToText.first else {
+        guard let speech = UnifiedModelCatalog.speechToText.first(where: { !$0.capabilities.contains(.textGeneration) }) else {
             Issue.record("Missing speech-to-text catalog entry")
             return
         }

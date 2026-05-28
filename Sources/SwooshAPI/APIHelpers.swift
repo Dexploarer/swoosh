@@ -38,6 +38,15 @@ func apiHTTPError(_ error: Error) -> HTTPError {
     return HTTPError(.internalServerError, message: error.localizedDescription)
 }
 
+/// Returns the current quarter period string, e.g. "2026-Q2".
+/// Matches the format used by `RebateTracker.currentPeriod()`.
+func currentQuarterPeriod() -> String {
+    let cal = Calendar.current; let now = Date()
+    let year = cal.component(.year, from: now)
+    let quarter = (cal.component(.month, from: now) - 1) / 3 + 1
+    return "\(year)-Q\(quarter)"
+}
+
 func runtimeConfigResponse(_ config: SwooshRuntimeConfig?) -> RuntimeConfigResponse {
     guard let config else {
         return RuntimeConfigResponse(

@@ -47,7 +47,7 @@ struct ProviderListCommand: AsyncParsableCommand {
         let providers: [(String, String, String, SecretRef)] = [
             ("OpenAI", ModelDefaults.openAIProviderID, ModelDefaults.openAIModelID, SecretRef(ModelDefaults.openAIProviderID, "api_key")),
             ("OpenRouter", ModelDefaults.openRouterProviderID, ModelDefaults.openRouterModelID, SecretRef(ModelDefaults.openRouterProviderID, "api_key")),
-            ("Eliza Cloud", ModelDefaults.elizaCloudProviderID, ModelDefaults.elizaCloudModelID, SecretRef(ModelDefaults.elizaCloudProviderID, "api_key")),
+            ("Detour Cloud", ModelDefaults.detourCloudProviderID, ModelDefaults.detourCloudModelID, SecretRef(ModelDefaults.detourCloudProviderID, "api_key")),
         ]
 
         for (name, _, model, ref) in providers {
@@ -83,7 +83,7 @@ struct ProviderListCommand: AsyncParsableCommand {
 struct ProviderAuthCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(commandName: "auth", abstract: "Store API key for a provider.")
 
-    @Argument(help: "Provider name: openai, openrouter, eliza-cloud")
+    @Argument(help: "Provider name: openai, openrouter, detour-cloud")
     var provider: String
 
     @Option(name: .long, help: "API key (stored in Keychain, never logged)")
@@ -164,7 +164,7 @@ func runProviderTests(provider: String?) async throws {
         return [
             ("openai", SecretRef("openai", "api_key")),
             ("openrouter", SecretRef("openrouter", "api_key")),
-            ("eliza-cloud", SecretRef("eliza-cloud", "api_key")),
+            ("detour-cloud", SecretRef("detour-cloud", "api_key")),
         ]
     }()
 
@@ -227,8 +227,8 @@ private func suggestFix(for error: Error, provider: String) -> String? {
             return "Run: swoosh provider auth openai --api-key <key>"
         case "openrouter":
             return "Run: swoosh provider auth openrouter (opens browser for PKCE flow)"
-        case "eliza-cloud":
-            return "Run: swoosh provider auth eliza-cloud --api-key <key>"
+        case "detour-cloud":
+            return "Run: swoosh provider auth detour-cloud --api-key <key>"
         default:
             return "Run: swoosh provider auth \(provider) --api-key <key>"
         }

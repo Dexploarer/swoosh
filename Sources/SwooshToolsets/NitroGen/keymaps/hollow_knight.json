@@ -1,0 +1,21 @@
+{
+    "_game": "Hollow Knight",
+    "_genre": "metroidvania",
+    "_notes": "Default PC keyboard bindings. Uses arrow keys for movement via D-pad (left stick also sends WASD). Z=attack, X=dash, C=focus/heal mapped to face buttons. Tab=map on BACK.",
+    "SOUTH": "space",
+    "EAST": "x",
+    "WEST": "z",
+    "NORTH": "c",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "e",
+    "LEFT_TRIGGER": "a",
+    "RIGHT_TRIGGER": "d",
+    "START": "escape",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

@@ -257,6 +257,14 @@ struct ProviderFactoryTests {
         let active = await ProviderFactoryTestHelper.detectActiveProvider(secrets: secrets)
         #expect(active?.name == "OpenAI") // Higher priority
     }
+
+    @Test("Codex auth check")
+    func testCodexAuth() async {
+        let p = CodexBridgeProvider()
+        let auth = await p.isAuthenticated()
+        print("--- TEST CODEX AUTH: \(auth)")
+        #expect(auth == true)
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════

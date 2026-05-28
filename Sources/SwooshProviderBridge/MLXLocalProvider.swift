@@ -4,7 +4,13 @@
 // and serves `complete(_:)` requests by flattening chat messages into a
 // single prompt string and forwarding to MLX. Streaming + tool-calling are
 // not yet supported on the MLX path; capabilities advertise that.
+//
+// Guarded behind `canImport(SwooshMLX)` because SwiftPM cannot compile
+// Metal shaders into .metallib — the process crashes at module-load time
+// when built via `swift build`. Xcode builds link SwooshMLX and bundle
+// the metallib correctly.
 
+#if canImport(SwooshMLX)
 import Foundation
 import SwooshMLX
 import SwooshModels
@@ -90,3 +96,4 @@ public actor MLXLocalProvider: SwooshProviders.ModelProviding {
             .replacingOccurrences(of: "]", with: "\u{FF3D}")
     }
 }
+#endif

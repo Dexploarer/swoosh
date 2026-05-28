@@ -123,7 +123,7 @@ public struct SwooshWidgetSnapshot: Codable, Sendable {
                                      sourceKind: "KEY", credentialKind: "apiKey",
                                      usagePercent: 0.72, usageLabel: "72%",
                                      resetLabel: "Resets in 1h 30m", costLabel: "$8.10"),
-                WidgetProviderStatus(providerID: "eliza-cloud", displayName: "Eliza Cloud",
+                WidgetProviderStatus(providerID: "detour-cloud", displayName: "Detour Cloud",
                                      sourceKind: "FILE", credentialKind: "apiKey",
                                      usagePercent: 0.18, usageLabel: "18%"),
                 WidgetProviderStatus(providerID: "mlx-local", displayName: "MLX Local",

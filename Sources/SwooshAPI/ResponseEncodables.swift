@@ -63,3 +63,5 @@ extension DoctorReportResponse: ResponseEncodable {}
 extension WalletAccountsResponse: ResponseEncodable {}
 extension WalletAccountResponse: ResponseEncodable {}
 extension WalletBalanceResponse: ResponseEncodable {}
+extension RebateSummaryResponse: ResponseEncodable {}
+extension AnchorBatchesResponse: ResponseEncodable {}

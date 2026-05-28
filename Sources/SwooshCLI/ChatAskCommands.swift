@@ -7,7 +7,6 @@
 // session" query.
 
 import ArgumentParser
-import ActantAgent
 import SwooshKit
 import SwooshConfig
 import SwooshTUI
@@ -27,13 +26,7 @@ struct ChatCommand: AsyncParsableCommand {
         try? config.ensureDirectories()
 
         var status = ShellStatus()
-
-        // Pull live counts when the ActantDB backend is wired up.
-        if let backend = loadCLIBackend() {
-            let memory = MemoryStore(backend: backend)
-            status.approvedMemoryCount = (try? await memory.listApproved().count) ?? 0
-            status.pendingCandidateCount = (try? await memory.listPending().count) ?? 0
-        }
+        // TODO: wire durable backend — pull live memory counts when available
 
         let hw = HardwareDetector().detect()
         let secrets = KeychainSecretStore()

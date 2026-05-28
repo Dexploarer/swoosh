@@ -7,8 +7,7 @@
 // (providers, wallet, MCP, …) are a follow-up.
 
 import Foundation
-import ActantAgent
-import ActantDB
+
 import SwooshAPI
 import SwooshClient
 import SwooshConfig
@@ -16,7 +15,9 @@ import SwooshCore
 import SwooshFirewall
 import SwooshKit
 import SwooshMCP
+#if canImport(SwooshMLX)
 import SwooshMLX
+#endif
 import SwooshModels
 import SwooshProviderBridge
 import SwooshProviders
@@ -37,7 +38,7 @@ extension SwooshDaemon {
     ) async -> (providers: [ProviderSummary], activeProviderID: String?, preferredProviderID: String?) {
         let openAIConfigured = (try? await secrets.exists(SecretRef("openai", "api_key"))) ?? false
         let openRouterConfigured = (try? await secrets.exists(SecretRef("openrouter", "api_key"))) ?? false
-        let elizaCloudConfigured = (try? await secrets.exists(SecretRef("eliza-cloud", "api_key"))) ?? false
+        let detourCloudConfigured = (try? await secrets.exists(SecretRef("detour-cloud", "api_key"))) ?? false
         let codexConfigured = await CodexBridgeProvider().isAuthenticated()
         let localServers = await LocalProviderDiscovery().discover()
         let localModel = localServers.first?.models.first
@@ -45,7 +46,11 @@ extension SwooshDaemon {
         let env = ProcessInfo.processInfo.environment
         let mlxModelEnv = env["SWOOSH_MLX_MODEL"]?.trimmingCharacters(in: .whitespaces)
         let mlxModel = (mlxModelEnv?.isEmpty == false) ? mlxModelEnv : ModelDefaults.localMLXModelID
+        #if canImport(SwooshMLX)
         let mlxConfigured = MLXInferenceEngine.isAppleSilicon
+        #else
+        let mlxConfigured = false
+        #endif
         let foundationEnabled = env["SWOOSH_FOUNDATION_MODEL"] == "1"
 
         let activeID: String? = {
@@ -79,12 +84,12 @@ extension SwooshDaemon {
                 status: openRouterConfigured ? "configured" : "missing_key"
             ),
             ProviderSummary(
-                id: ModelDefaults.elizaCloudProviderID,
-                name: "Eliza Cloud",
-                model: ModelDefaults.elizaCloudModelID,
-                configured: elizaCloudConfigured,
-                active: activeID == ModelDefaults.elizaCloudProviderID,
-                status: elizaCloudConfigured ? "configured" : "missing_key"
+                id: ModelDefaults.detourCloudProviderID,
+                name: "Detour Cloud",
+                model: ModelDefaults.detourCloudModelID,
+                configured: detourCloudConfigured,
+                active: activeID == ModelDefaults.detourCloudProviderID,
+                status: detourCloudConfigured ? "configured" : "missing_key"
             ),
         ]
 
@@ -183,7 +188,7 @@ extension SwooshDaemon {
         configStore: SwooshConfigStore,
         currentProvider: (name: String, model: String)?
     ) async throws -> ProviderMutationResponse {
-        // Eliza Cloud is intentionally not iOS-accessible — it's an
+        // Detour Cloud is intentionally not iOS-accessible — it's an
         // experimental provider configured server-side via the CLI.
         guard ["openai", "openrouter"].contains(request.providerID) else {
             throw APIError.badRequest("provider does not accept API keys from the iOS app")
@@ -212,7 +217,7 @@ extension SwooshDaemon {
             ModelDefaults.codexProviderID,
             ModelDefaults.openAIProviderID,
             ModelDefaults.openRouterProviderID,
-            ModelDefaults.elizaCloudProviderID,
+            ModelDefaults.detourCloudProviderID,
             ModelDefaults.localOpenAIProviderID,
             ModelDefaults.localMLXProviderID,
             ModelDefaults.localFoundationProviderID,
@@ -229,24 +234,15 @@ extension SwooshDaemon {
         )
     }
 
-    static func memoriesResponse(backend: AgentBackend) async -> SwooshClient.MemoriesResponse? {
-        let store = MemoryStore(backend: backend)
-        guard let approved = try? await store.listApproved(),
-              let pending = try? await store.listPending() else { return nil }
-        let rejectedRows = (try? await backend.client.memories(
-            workspaceID: backend.workspaceID,
-            status: "rejected"
-        )) ?? []
-        let rejected = rejectedRows.compactMap { row -> MemorySummary? in
-            if case .rejected(let candidate) = row {
-                return memorySummary(candidate)
-            }
-            return nil
-        }
+    // TODO: wire durable backend
+    static func memoriesResponse(memoryStore: any MemoryToolStoring) async -> SwooshClient.MemoriesResponse? {
+        guard let approved = try? await memoryStore.listApproved(category: nil, limit: nil),
+              let pending = try? await memoryStore.listCandidates(status: .pending, limit: nil) else { return nil }
+        let rejected = (try? await memoryStore.listCandidates(status: .rejected, limit: nil)) ?? []
         return SwooshClient.MemoriesResponse(
             approved: approved.map(memorySummary),
             pending: pending.map(memorySummary),
-            rejected: rejected
+            rejected: rejected.map(memorySummary)
         )
     }
 
@@ -915,27 +911,27 @@ extension SwooshDaemon {
         return insights
     }
 
-    static func memorySummary(_ memory: ActantDB.ApprovedMemory) -> MemorySummary {
+    static func memorySummary(_ memory: SwooshTools.ApprovedMemory) -> MemorySummary {
         MemorySummary(
             id: memory.id,
             text: memory.text,
-            category: memory.category,
-            status: memory.status,
+            category: memory.category.rawValue,
+            status: "approved",
             sensitivity: memory.sensitivity.rawValue,
             confidence: memory.confidence,
-            createdAt: memory.createdAt
+            createdAt: ISO8601DateFormatter().string(from: memory.createdAt)
         )
     }
 
-    static func memorySummary(_ candidate: ActantDB.MemoryCandidate) -> MemorySummary {
+    static func memorySummary(_ candidate: SwooshTools.MemoryCandidate) -> MemorySummary {
         MemorySummary(
             id: candidate.id,
             text: candidate.text,
-            category: candidate.category,
-            status: candidate.status,
+            category: candidate.category.rawValue,
+            status: candidate.status.rawValue,
             sensitivity: candidate.sensitivity.rawValue,
             confidence: candidate.confidence,
-            createdAt: candidate.createdAt
+            createdAt: ISO8601DateFormatter().string(from: candidate.createdAt)
         )
     }
 

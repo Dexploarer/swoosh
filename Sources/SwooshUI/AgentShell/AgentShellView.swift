@@ -234,46 +234,88 @@ public struct AgentShellView: View {
 
     // MARK: - Input row
 
+    @State private var gradientRotation: Double = 0
+
+    private var isListening: Bool { shell.voice == .listening }
+
     private var inputRow: some View {
-        VStack(spacing: SwooshNeonTokens.Spacing.micro) {
-            // Top metadata strip — sync badge + listening transcript
-            HStack(spacing: SwooshNeonTokens.Spacing.base) {
-                SyncBadge(state: shell.syncState)
-                if shell.voice == .listening, !shell.speech.transcript.isEmpty {
+        VStack(spacing: 0) {
+            // Live transcript when listening
+            if isListening, !shell.speech.transcript.isEmpty {
+                HStack {
                     Text(shell.speech.transcript)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(SwooshNeonTokens.Canvas.text3)
                         .lineLimit(1)
                         .truncationMode(.head)
+                    Spacer()
                 }
-                Spacer()
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // Main input row.
-            // [+] opens the attachment sheet (Files / Photos / Skills /
-            // MCP). [⚙] opens the unified picker (Brain / Listen / Speak /
-            // Music). Both are tiny 36×36 glyphs that defer their content
-            // to bottom sheets so the composer stays narrow.
+
+            // Main input row
             HStack(spacing: SwooshNeonTokens.Spacing.micro + 2) {
                 AttachmentMenu(accent: .cyan, actions: attachmentActions)
                 unifiedPicker
                 inputField
-                // On iPhone the host (AgentRoot toolbar + bottom voice
-                // pill) owns the mic affordance; rendering one here too
-                // would mean two mics on screen at once.
                 if mode != .phone {
                     micButton
                 }
             }
+            .padding(8)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(SwooshNeonTokens.Canvas.bg)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(
+                        isListening
+                            ? AnyShapeStyle(
+                                AngularGradient(
+                                    colors: [
+                                        .cyan,
+                                        .cyan.opacity(0.3),
+                                        .purple,
+                                        .purple.opacity(0.3),
+                                        .cyan
+                                    ],
+                                    center: .center,
+                                    angle: .degrees(gradientRotation)
+                                )
+                            )
+                            : AnyShapeStyle(
+                                SwooshNeonTokens.Line.rule
+                            ),
+                        lineWidth: isListening ? 2 : 0.5
+                    )
+            )
+            .shadow(
+                color: isListening ? .cyan.opacity(0.35) : .clear,
+                radius: isListening ? 12 : 0
+            )
+            .animation(.easeInOut(duration: 0.3), value: isListening)
         }
-        .padding(.horizontal, SwooshNeonTokens.Spacing.base + 2)
-        .padding(.vertical, SwooshNeonTokens.Spacing.base)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(SwooshNeonTokens.Line.rule)
-                .frame(height: 0.5)
-        }
+        .padding(.horizontal, 24)
+        .padding(.top, SwooshNeonTokens.Spacing.base)
+        .padding(.bottom, 16)
+        .frame(maxWidth: 860)
+        .frame(maxWidth: .infinity)
         .background(SwooshNeonTokens.Canvas.bg)
+        .onChange(of: isListening) { _, listening in
+            if listening {
+                withAnimation(
+                    .linear(duration: 2.0)
+                    .repeatForever(autoreverses: false)
+                ) {
+                    gradientRotation = 360
+                }
+            } else {
+                gradientRotation = 0
+            }
+        }
     }
 
     private var unifiedPicker: some View {

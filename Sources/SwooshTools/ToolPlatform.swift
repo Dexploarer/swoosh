@@ -41,7 +41,7 @@ extension ToolsetID {
         // Filesystem / dev shell / host-process toolsets are Mac-only — they
         // assume an unrestricted home directory and the ability to spawn
         // processes. They have no meaning in an iOS sandbox.
-        case .files, .git, .swiftDev, .xcode, .terminal:
+        case .files, .git, .swiftDev, .xcode, .terminal, .nitrogen:
             return [.macOS]
         // Browser-host integrations target macOS automation surfaces today.
         case .browser, .apple:

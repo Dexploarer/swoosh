@@ -1,21 +1,19 @@
 // SwooshDaemon/DaemonAutopilots.swift — 0.9S Scout autopilot + helpers
 //
 // Background Task that drives the passive Scout pipeline every N minutes
-// when the user is idle. Pulls candidates into the durable memory store
-// via ActantDB and logs proposed-candidate counts so the dashboard can
-// surface activity.
+// when the user is idle. Pulls candidates into the in-memory memory store
+// and logs proposed-candidate counts so the dashboard can surface activity.
 //
 // All helpers are file-private to the daemon executable. `Manifester` /
 // `GoalRunner` meta-task closures live in `DaemonMetaTasks.swift`.
 
 import Foundation
-import ActantAgent
-import ActantDB
 import SwooshScout
+import SwooshTools
 
 @Sendable
 func makeScoutAutopilotTask(
-    backend: AgentBackend,
+    memoryStore: any MemoryToolStoring,
     signalStore: PersonalizationSignalStore,
     env: [String: String]
 ) -> Task<Void, Never> {
@@ -33,7 +31,7 @@ func makeScoutAutopilotTask(
             let idle = await currentIdleSeconds()
             if idle == nil || (idle ?? 0) >= idleThreshold {
                 let result = try? await runPassiveScoutOnce(
-                    backend: backend,
+                    memoryStore: memoryStore,
                     signalStore: signalStore
                 )
                 if let result {
@@ -57,11 +55,10 @@ func makeScoutAutopilotTask(
 }
 
 func runPassiveScoutOnce(
-    backend: AgentBackend,
+    memoryStore: any MemoryToolStoring,
     signalStore: PersonalizationSignalStore
 ) async throws -> ScoutPipelineResult {
-    let memory = MemoryStore(backend: backend)
-    let existing = try await existingMemorySummaries(memory: memory)
+    let existing = try await existingMemorySummaries(memoryStore: memoryStore)
     let sources = makePassiveScoutSources(signalStore: signalStore)
     let pipeline = ScoutPipeline(sources: sources)
     let result = try await pipeline.run(
@@ -73,35 +70,16 @@ func runPassiveScoutOnce(
         )
     )
 
-    let client = await backend.client
-    let workspaceID = await backend.workspaceID
-    let actorID = await backend.actorID
-    for record in result.records {
-        _ = try await client.saveScoutRecord(
-            workspaceID: workspaceID,
-            actorID: actorID,
-            sourceID: record.sourceID,
-            kind: record.kind.rawValue,
-            sensitivity: actantSensitivity(from: record.sensitivity.rawValue),
-            content: record.content,
-            metadata: jsonValue(record.metadata)
-        )
-    }
+    // TODO: wire durable backend — scout records were previously persisted
+    // to ActantDB; for now they are only used for the pipeline result stats.
     for candidate in result.candidates {
-        _ = try await memory.propose(
+        _ = try await memoryStore.propose(ProposeMemoryCandidateInput(
             text: candidate.text,
-            category: candidate.category,
-            sensitivity: actantSensitivity(from: candidate.sensitivity.rawValue),
+            category: toolCategory(from: candidate.category),
+            sensitivity: toolSensitivity(from: candidate.sensitivity),
             confidence: candidate.confidence,
-            evidence: candidateEvidenceJSON(evidence: candidate.evidence, ttl: candidate.recommendedTTL)
-        )
-    }
-    if result.recordsCollected > 0 || result.candidatesGenerated > 0 {
-        _ = try await client.saveSetupReport(
-            workspaceID: workspaceID,
-            actorID: actorID,
-            content: result.setupReport
-        )
+            evidence: candidate.evidence.map(toolEvidence)
+        ))
     }
     return result
 }
@@ -110,42 +88,32 @@ func makePassiveScoutSources(signalStore: PersonalizationSignalStore) -> [any Sc
     ScoutSourceCatalog.passiveLocalSources(signalStore: signalStore)
 }
 
-func existingMemorySummaries(memory: MemoryStore) async throws -> [ExistingMemorySummary] {
-    let approved = try await memory.listApproved()
-    let pending = try await memory.listPending()
-    return approved.map { ExistingMemorySummary(text: $0.text, category: $0.category) } +
-        pending.map { ExistingMemorySummary(text: $0.text, category: $0.category) }
+func existingMemorySummaries(memoryStore: any MemoryToolStoring) async throws -> [ExistingMemorySummary] {
+    let approved = try await memoryStore.listApproved(category: nil, limit: nil)
+    let pending = try await memoryStore.listCandidates(status: .pending, limit: nil)
+    return approved.map { ExistingMemorySummary(text: $0.text, category: $0.category.rawValue) } +
+        pending.map { ExistingMemorySummary(text: $0.text, category: $0.category.rawValue) }
 }
 
-func actantSensitivity(from raw: String) -> ActantDB.Sensitivity {
-    switch raw {
-    case "low": .low
-    case "medium": .medium
-    default: .high
+/// Maps a Scout sensitivity level to the SwooshTools `Sensitivity` enum.
+func toolSensitivity(from scout: SwooshScout.Sensitivity) -> SwooshTools.Sensitivity {
+    switch scout {
+    case .low, .medium: return .normal
+    case .high:         return .sensitive
+    case .critical:     return .secret
     }
 }
 
-func jsonValue(_ metadata: [String: String]) -> ActantDB.JSONValue {
-    guard
-        let data = try? JSONSerialization.data(withJSONObject: metadata),
-        let value = try? JSONDecoder().decode(ActantDB.JSONValue.self, from: data)
-    else { return .object([:]) }
-    return value
+/// Maps a Scout category string to the SwooshTools `MemoryCategory` enum.
+/// Falls back to `.fact` for unknown categories.
+func toolCategory(from raw: String) -> MemoryCategory {
+    MemoryCategory(rawValue: raw) ?? .fact
 }
 
-private struct CandidateEvidencePayload<Evidence: Encodable>: Encodable {
-    let evidence: Evidence
-    let recommendedTTL: TimeInterval?
-}
-
-func candidateEvidenceJSON<Evidence: Encodable>(
-    evidence: Evidence,
-    ttl: TimeInterval?
-) -> ActantDB.JSONValue {
-    let payload = CandidateEvidencePayload(evidence: evidence, recommendedTTL: ttl)
-    guard
-        let data = try? JSONEncoder().encode(payload),
-        let value = try? JSONDecoder().decode(ActantDB.JSONValue.self, from: data)
-    else { return .array([]) }
-    return value
+/// Maps a Scout `EvidencePointer` to the SwooshTools `EvidencePointer`.
+func toolEvidence(_ pointer: SwooshScout.EvidencePointer) -> SwooshTools.EvidencePointer {
+    SwooshTools.EvidencePointer(
+        sourceID: pointer.source,
+        description: pointer.detail
+    )
 }

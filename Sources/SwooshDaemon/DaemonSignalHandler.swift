@@ -1,15 +1,12 @@
 // SwooshDaemon/DaemonSignalHandler.swift — 0.9S SIGTERM/SIGINT trap
 //
 // Installs a C-convention signal handler so Ctrl-C and `kill <pid>`
-// gracefully exit the daemon. The supervisor stop is best-effort —
-// process exit is the contract.
+// gracefully exit the daemon. Process exit is the contract.
 
 import Foundation
-import ActantAgent
 
 final class SignalHandler: @unchecked Sendable {
-    let supervisor: ActantDBSupervisor
-    init(supervisor: ActantDBSupervisor) { self.supervisor = supervisor }
+    init() {}
 
     func install() {
         let action: @convention(c) (Int32) -> Void = { sig in

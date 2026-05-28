@@ -14,6 +14,7 @@
 
 #if os(macOS)
 
+import AppKit
 import SwiftUI
 import SwooshGenerativeUI
 
@@ -42,6 +43,7 @@ public struct DesktopOverlayScene: Scene {
 
 private struct DesktopOverlayContainer: View {
     @Bindable var shell: AgentShellModel
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -63,6 +65,7 @@ private struct DesktopOverlayContainer: View {
             radius: SwooshNeonTokens.Glow.radius * 1.4
         )
         .padding(20)
+        .background(WindowDragEnabler())
     }
 
     private var header: some View {
@@ -79,10 +82,31 @@ private struct DesktopOverlayContainer: View {
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundStyle(SwooshNeonTokens.Canvas.text3)
             }
+            windowControls
         }
         .padding(.horizontal, SwooshNeonTokens.Spacing.base + 6)
         .padding(.top, SwooshNeonTokens.Spacing.base + 4)
         .padding(.bottom, SwooshNeonTokens.Spacing.base)
+    }
+
+    private var windowControls: some View {
+        HStack(spacing: 6) {
+            OverlayControlButton(
+                systemImage: "minus",
+                accessibilityLabel: "Minimize"
+            ) {
+                NSApp.windows
+                    .first { $0.title == "Swoosh Overlay" }?
+                    .miniaturize(nil)
+            }
+            OverlayControlButton(
+                systemImage: "xmark",
+                accessibilityLabel: "Close"
+            ) {
+                dismissWindow(id: DesktopOverlayScene.windowID)
+            }
+        }
+        .padding(.leading, SwooshNeonTokens.Spacing.base)
     }
 
     @ViewBuilder
@@ -113,6 +137,63 @@ private struct DesktopOverlayContainer: View {
                 .frame(maxWidth: 360)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Window controls
+
+/// Small circular icon button for the overlay header — dims at rest,
+/// highlights to cyan on hover with a subtle background fill.
+private struct OverlayControlButton: View {
+    let systemImage: String
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(
+                    isHovered
+                        ? SwooshNeonTokens.Accent.cyan
+                        : SwooshNeonTokens.Canvas.text3
+                )
+                .frame(width: 20, height: 20)
+                .background(
+                    Circle()
+                        .fill(
+                            isHovered
+                                ? SwooshNeonTokens.Accent.cyan.opacity(0.15)
+                                : Color.clear
+                        )
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(.easeInOut(duration: 0.15), value: isHovered)
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+// MARK: - Window drag
+
+/// Invisible AppKit view that sets `isMovableByWindowBackground` on its
+/// hosting `NSWindow`, giving the frameless overlay a title-bar-style drag
+/// region on every non-interactive surface (Text, Spacer, background).
+/// Interactive elements (buttons, scroll views) keep their own tracking
+/// areas and work normally.
+private struct WindowDragEnabler: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { EnablerView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class EnablerView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            window?.isMovableByWindowBackground = true
+        }
     }
 }
 

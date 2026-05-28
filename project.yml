@@ -48,6 +48,10 @@ targets:
         product: SwooshSecrets
       - package: Swoosh
         product: SwooshWidgets
+      - package: Swoosh
+        product: CodexBar
+      - package: Swoosh
+        product: CodexBarCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.swoosh.app

@@ -22,19 +22,23 @@ public struct AgentRequest: Sendable {
     public let mode: AgentMode
     public let model: String?
     public let providerID: String?
+    /// Wallet address, threaded from the API request into ToolContext.
+    public let walletAddress: String
 
     public init(
         sessionID: String = "default",
         input: String,
         mode: AgentMode = .standard,
         model: String? = nil,
-        providerID: String? = nil
+        providerID: String? = nil,
+        walletAddress: String = ""
     ) {
         self.sessionID = sessionID
         self.input = input
         self.mode = mode
         self.model = model
         self.providerID = providerID
+        self.walletAddress = walletAddress
     }
 }
 

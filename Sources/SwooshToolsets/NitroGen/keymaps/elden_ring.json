@@ -1,0 +1,21 @@
+{
+    "_game": "Elden Ring",
+    "_genre": "action-rpg",
+    "_notes": "Default PC keyboard bindings. Space=dodge/roll(SOUTH), e=interact(WEST), f=use item(NORTH), r=switch item(RIGHT_SHOULDER), shift=sprint(LEFT_THUMB), tab=menu(BACK). Mouse attack/heavy on triggers as x/z placeholders.",
+    "SOUTH": "space",
+    "EAST": "escape",
+    "WEST": "e",
+    "NORTH": "f",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "r",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

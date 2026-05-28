@@ -20,17 +20,22 @@ public struct ChatRequest: Codable, Sendable {
     public let input: String
     public let model: String?
     public let providerID: String?
+    /// Wallet address of the calling user. Threaded into `ToolContext`
+    /// for stake gating and receipt tracking on crypto toolsets.
+    public let walletAddress: String?
 
     public init(
         sessionID: String = "default",
         input: String,
         model: String? = nil,
-        providerID: String? = nil
+        providerID: String? = nil,
+        walletAddress: String? = nil
     ) {
         self.sessionID = sessionID
         self.input = input
         self.model = model
         self.providerID = providerID
+        self.walletAddress = walletAddress
     }
 }
 

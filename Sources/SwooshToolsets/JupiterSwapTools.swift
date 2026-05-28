@@ -127,7 +127,9 @@ public struct JupiterQuoteTool: SwooshTool {
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         let result = try await JupiterApi.order(
             inputMint: input.inputMint, outputMint: input.outputMint,
-            amount: input.amountLamports, taker: nil
+            amount: input.amountLamports, taker: nil,
+            platformFeeBps: DtourFeeConfig.defaultBps,
+            feeAccount: DtourFeeConfig.feeAccount(for: input.outputMint)
         )
         return JupiterQuoteOutput(
             inputMint: result.inputMint, outputMint: result.outputMint,
@@ -169,7 +171,9 @@ public struct JupiterSwapTool: SwooshTool {
         // 2. Get order + unsigned transaction from Jupiter
         let order = try await JupiterApi.order(
             inputMint: input.inputMint, outputMint: input.outputMint,
-            amount: input.amountLamports, taker: taker.base58
+            amount: input.amountLamports, taker: taker.base58,
+            platformFeeBps: DtourFeeConfig.defaultBps,
+            feeAccount: DtourFeeConfig.feeAccount(for: input.outputMint)
         )
         guard let unsignedTx = order.transaction else {
             let detail = order.errorMessage.map { ": \($0)" } ?? ""
@@ -245,7 +249,9 @@ public struct JupiterBuildOrderTool: SwooshTool {
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
         let result = try await JupiterApi.order(
             inputMint: input.inputMint, outputMint: input.outputMint,
-            amount: input.amountLamports, taker: input.takerAddress.base58
+            amount: input.amountLamports, taker: input.takerAddress.base58,
+            platformFeeBps: DtourFeeConfig.defaultBps,
+            feeAccount: DtourFeeConfig.feeAccount(for: input.outputMint)
         )
         guard let tx = result.transaction else {
             let detail = result.errorMessage.map { ": \($0)" } ?? ""

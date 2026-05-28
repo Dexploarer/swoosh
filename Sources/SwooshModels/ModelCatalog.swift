@@ -56,10 +56,15 @@ public enum ModelCapability: String, Codable, Sendable, CaseIterable {
     case videoGeneration       // Text-to-video
     case musicGeneration       // Text-to-music/audio
     case threeD                // 3D generation / point cloud
+    case worldGeneration       // 3D world / scene generation
+    case threeDReconstruction  // Image(s)-to-3D reconstruction
 
     // ── Retrieval ───────────────────────────────────
     case embedding             // Semantic vectors
     case reranking             // RAG reranker
+
+    // ── Agent ───────────────────────────────────────
+    case gaming                // Game-playing agent (vision-to-action)
 }
 
 // MARK: - Default roles for capabilities
@@ -104,10 +109,14 @@ extension ModelCapability {
         case .imageUpscaling: return [.upscaler]
         case .videoGeneration: return [.videoGenerator]
         case .musicGeneration: return [.musicGenerator]
-        case .threeD: return [.imageGenerator]
+        case .threeD: return [.threeDGenerator]
+        case .worldGeneration: return [.worldGenerator]
+        case .threeDReconstruction: return [.threeDGenerator]
         // Retrieval
         case .embedding: return [.embedder]
         case .reranking: return [.reranker]
+        // Agent
+        case .gaming: return [.gamingAgent]
         }
     }
 }
@@ -196,9 +205,12 @@ public enum ModelRole: String, Codable, Sendable, CaseIterable {
     case videoGenerator    // Video creation
     case musicGenerator    // Music/audio creation
     case soundDesigner     // Sound effects
+    case threeDGenerator   // 3D mesh / asset creation
+    case worldGenerator    // 3D world / scene creation
     case translator        // Translation
     case vadGate           // Voice activity detection
     case speakerIdentifier // Speaker diarization
+    case gamingAgent       // Game-playing vision-to-action agent
     case fast              // Quick/cheap tasks (Apple Foundation Models)
     case fallback          // Cloud fallback
 }

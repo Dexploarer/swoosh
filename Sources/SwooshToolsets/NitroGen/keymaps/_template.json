@@ -1,0 +1,23 @@
+{
+    "_game": "Game Name Here",
+    "_genre": "genre (e.g. platformer, rpg, fps, sandbox, racing)",
+    "_notes": "Template keymap — copy this file and rename to <game>.json. Map Xbox controller buttons to keyboard key names. Left stick is always WASD (handled by the injector). Right stick is always mouse movement. Underscore-prefixed fields are metadata, ignored by the loader.",
+    "_buttons": "SOUTH (A), EAST (B), WEST (X), NORTH (Y), DPAD_UP/DOWN/LEFT/RIGHT, LEFT/RIGHT_SHOULDER (LB/RB), LEFT/RIGHT_TRIGGER (LT/RT), START, BACK, LEFT/RIGHT_THUMB (L3/R3)",
+    "_keys": "space, escape, return, tab, shift, control, option, command, up, down, left, right, a-z, 0-9",
+    "SOUTH": "space",
+    "EAST": "escape",
+    "WEST": "e",
+    "NORTH": "r",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "f",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "c",
+    "RIGHT_THUMB": "v"
+}

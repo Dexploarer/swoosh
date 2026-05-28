@@ -204,24 +204,24 @@ public enum CloudCatalog {
         ),
     ]
 
-    public static let elizaCloud: [CloudModelEntry] = [
+    public static let detourCloud: [CloudModelEntry] = [
         CloudModelEntry(
-            id: "eliza-cloud-auto",
-            routeModelID: ModelDefaults.elizaCloudModelID,
-            displayName: "Eliza Cloud Auto",
-            family: "Eliza Cloud",
-            providerID: ModelDefaults.elizaCloudProviderID,
+            id: "detour-cloud-auto",
+            routeModelID: ModelDefaults.detourCloudModelID,
+            displayName: "Detour Cloud Auto",
+            family: "Detour Cloud",
+            providerID: ModelDefaults.detourCloudProviderID,
             contextWindow: 0,
             supportsReasoningEffort: false,
             supportsToolCalling: true,
             supportsVision: false,
             isFamilyDefault: true,
-            blurb: "Lets Eliza Cloud select the hosted model."
+            blurb: "Lets Detour Cloud select the hosted model."
         ),
     ]
 
     public static var all: [CloudModelEntry] {
-        router + codex + openAI + openRouter + elizaCloud
+        router + codex + openAI + openRouter + detourCloud
     }
 
     public static func entry(for id: String) -> CloudModelEntry? {

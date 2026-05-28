@@ -105,6 +105,10 @@ public struct SwooshAPIRuntimeSources: Sendable {
     public let renameWalletAccount: @Sendable (String, WalletRenameRequest) async throws -> WalletAccountResponse
     public let refreshWalletBalance: @Sendable (String) async throws -> WalletBalanceResponse
 
+    // ── Tier 1: Rebates & Anchoring ────────────────────────────────
+    public let rebateSummary: @Sendable (String, String) async throws -> RebateSummaryResponse
+    public let anchorBatches: @Sendable () async throws -> AnchorBatchesResponse
+
     public init(
         providers: @escaping @Sendable () async -> ProvidersResponse? = { nil },
         saveProviderKey: @escaping @Sendable (ProviderAuthRequest) async throws -> ProviderMutationResponse = { _ in
@@ -290,6 +294,12 @@ public struct SwooshAPIRuntimeSources: Sendable {
         },
         refreshWalletBalance: @escaping @Sendable (String) async throws -> WalletBalanceResponse = { _ in
             throw APIError.badRequest("wallet store is not configured")
+        },
+        rebateSummary: @escaping @Sendable (String, String) async throws -> RebateSummaryResponse = { _, _ in
+            throw APIError.badRequest("rebate tracker is not configured")
+        },
+        anchorBatches: @escaping @Sendable () async throws -> AnchorBatchesResponse = {
+            throw APIError.badRequest("anchor engine is not configured")
         }
     ) {
         self.providers = providers
@@ -356,5 +366,7 @@ public struct SwooshAPIRuntimeSources: Sendable {
         self.deleteWalletAccount = deleteWalletAccount
         self.renameWalletAccount = renameWalletAccount
         self.refreshWalletBalance = refreshWalletBalance
+        self.rebateSummary = rebateSummary
+        self.anchorBatches = anchorBatches
     }
 }

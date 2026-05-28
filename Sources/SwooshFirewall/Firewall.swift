@@ -12,8 +12,11 @@ import SwooshTools
 public actor SwooshFirewallActor: SwooshTools.Firewall {
     private var grantedPermissions: Set<SwooshPermission> = []
     private var deniedPermissions: Set<SwooshPermission> = []
+    private let persister: (any PermissionPersisting)?
 
-    public init() {}
+    public init() {
+        self.persister = nil
+    }
 
     public init(
         granted: Set<SwooshPermission> = [],
@@ -21,13 +24,36 @@ public actor SwooshFirewallActor: SwooshTools.Firewall {
     ) {
         self.grantedPermissions = granted
         self.deniedPermissions = denied
+        self.persister = nil
+    }
+
+    /// Init with a durable persistence backend. Call `loadPersistedGrants()`
+    /// after init to hydrate from disk.
+    public init(persister: any PermissionPersisting) {
+        self.persister = persister
+    }
+
+    /// Load persisted grants from the backing store. Call once at startup.
+    public func loadPersistedGrants() async {
+        guard let persister else { return }
+        do {
+            let grants = try await persister.loadGrants()
+            for (permission, granted) in grants {
+                if granted {
+                    grantedPermissions.insert(permission)
+                } else {
+                    deniedPermissions.insert(permission)
+                }
+            }
+        } catch {
+            // Log but don't crash — the firewall defaults to deny-all
+        }
     }
 
     public func require(_ permission: SwooshPermission) async throws {
         if deniedPermissions.contains(permission) {
             throw ToolError.denied(permission.rawValue, "Permission \(permission.rawValue) is denied by firewall policy.")
         }
-        // If not explicitly granted, also deny
         guard grantedPermissions.contains(permission) else {
             throw ToolError.denied(permission.rawValue, "Permission \(permission.rawValue) has not been granted.")
         }
@@ -37,19 +63,24 @@ public actor SwooshFirewallActor: SwooshTools.Firewall {
         grantedPermissions.contains(permission) && !deniedPermissions.contains(permission)
     }
 
-    public func grant(_ permission: SwooshPermission) {
+    public func grant(_ permission: SwooshPermission) async {
         grantedPermissions.insert(permission)
         deniedPermissions.remove(permission)
+        try? await persister?.saveGrant(permission, granted: true)
     }
 
-    public func deny(_ permission: SwooshPermission) {
+    public func deny(_ permission: SwooshPermission) async {
         deniedPermissions.insert(permission)
         grantedPermissions.remove(permission)
+        try? await persister?.saveGrant(permission, granted: false)
     }
 
-    public func grantAll(_ permissions: Set<SwooshPermission>) {
+    public func grantAll(_ permissions: Set<SwooshPermission>) async {
         grantedPermissions.formUnion(permissions)
         deniedPermissions.subtract(permissions)
+        for p in permissions {
+            try? await persister?.saveGrant(p, granted: true)
+        }
     }
 
     public func listGranted() -> Set<SwooshPermission> {
@@ -60,8 +91,9 @@ public actor SwooshFirewallActor: SwooshTools.Firewall {
         deniedPermissions
     }
 
-    public func revoke(_ permission: SwooshPermission) {
+    public func revoke(_ permission: SwooshPermission) async {
         grantedPermissions.remove(permission)
+        try? await persister?.removeGrant(permission)
     }
 }
 

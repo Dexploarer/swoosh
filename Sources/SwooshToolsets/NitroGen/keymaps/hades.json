@@ -1,0 +1,21 @@
+{
+    "_game": "Hades",
+    "_genre": "roguelike",
+    "_notes": "Default PC keyboard bindings. Mouse-dependent attack on RIGHT_TRIGGER as x placeholder. Space=special(SOUTH), shift=dash(LEFT_THUMB), e=cast(WEST), q=call(LEFT_SHOULDER), r=reload(NORTH).",
+    "SOUTH": "space",
+    "EAST": "escape",
+    "WEST": "e",
+    "NORTH": "r",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "f",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

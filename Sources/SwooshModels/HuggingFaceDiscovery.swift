@@ -67,6 +67,12 @@ extension ModelCapability {
             return ["text-to-audio"]
         case .threeD:
             return ["text-to-3d", "image-to-3d"]
+        case .threeDReconstruction:
+            return ["image-to-3d"]
+        case .worldGeneration:
+            return ["text-to-3d", "text-to-video"]
+        case .gaming:
+            return ["reinforcement-learning"]
         // Retrieval
         case .embedding:
             return ["feature-extraction", "sentence-similarity"]
@@ -76,11 +82,48 @@ extension ModelCapability {
     }
 }
 
+// MARK: - HF Dataset API types
+
+struct HFDatasetAPIResponse: Decodable, Sendable {
+    let id: String
+    let author: String?
+    let downloads: Int?
+    let likes: Int?
+    let tags: [String]?
+    let description: String?
+    let lastModified: String?
+    let cardData: CardData?
+
+    struct CardData: Decodable, Sendable {
+        let task_categories: [String]?
+        let license: [String]?
+        let size_categories: [String]?
+    }
+}
+
+/// A file or directory entry inside a HuggingFace repository tree.
+public struct HFRepoFile: Codable, Sendable, Identifiable {
+    public var id: String { oid ?? path }
+    public let path: String
+    /// `"file"` or `"directory"`.
+    public let type: String
+    public let size: Int64?
+    public let oid: String?
+    public let lfs: LFSInfo?
+
+    public struct LFSInfo: Codable, Sendable {
+        public let size: Int64
+        public let sha256: String?
+        public let pointerSize: Int64?
+    }
+}
+
 // MARK: - Discovery actor
 
 public actor HuggingFaceDiscovery {
 
-    private let baseURL = "https://huggingface.co/api/models"
+    private let modelsBaseURL = "https://huggingface.co/api/models"
+    private let datasetsBaseURL = "https://huggingface.co/api/datasets"
     private let session: URLSession
 
     public init() {
@@ -88,6 +131,8 @@ public actor HuggingFaceDiscovery {
         config.timeoutIntervalForRequest = 15
         self.session = URLSession(configuration: config)
     }
+
+    // MARK: - Model discovery
 
     /// Discover models for a capability, filtered by format
     public func discover(
@@ -100,7 +145,7 @@ public actor HuggingFaceDiscovery {
 
         for tag in tags {
             let library = format == .mlx ? "mlx" : format.rawValue
-            var components = URLComponents(string: baseURL)!
+            var components = URLComponents(string: modelsBaseURL)!
             components.queryItems = [
                 URLQueryItem(name: "pipeline_tag", value: tag),
                 URLQueryItem(name: "library", value: library),
@@ -121,6 +166,160 @@ public actor HuggingFaceDiscovery {
         }
 
         return allResults
+    }
+
+    // MARK: - Dataset discovery
+
+    /// Search HuggingFace datasets, optionally filtered by task category.
+    ///
+    /// - Parameters:
+    ///   - query: Free-text search string (maps to HF `search` parameter).
+    ///   - task: Optional task category filter (e.g. `"text-classification"`).
+    ///   - limit: Maximum results to return per request.
+    /// - Returns: An array of discovered dataset entries sorted by downloads.
+    public func discoverDatasets(
+        query: String = "",
+        task: String? = nil,
+        limit: Int = 20
+    ) async throws -> [HFDatasetEntry] {
+        var components = URLComponents(string: datasetsBaseURL)!
+        var items = [
+            URLQueryItem(name: "sort", value: "downloads"),
+            URLQueryItem(name: "direction", value: "-1"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        if !query.isEmpty {
+            items.append(URLQueryItem(name: "search", value: query))
+        }
+        if let task, !task.isEmpty {
+            items.append(URLQueryItem(name: "task_categories", value: task))
+        }
+        components.queryItems = items
+
+        guard let url = components.url else { return [] }
+        let (data, _) = try await session.data(from: url)
+        let responses = try JSONDecoder().decode([HFDatasetAPIResponse].self, from: data)
+        return responses.compactMap(Self.toDatasetEntry)
+    }
+
+    /// Get detailed information about a specific dataset by ID.
+    public func datasetInfo(id: String) async throws -> HFDatasetEntry? {
+        let urlString = "\(datasetsBaseURL)/\(id)"
+        guard let url = URL(string: urlString) else { return nil }
+        let (data, _) = try await session.data(from: url)
+        let response = try JSONDecoder().decode(HFDatasetAPIResponse.self, from: data)
+        return Self.toDatasetEntry(response)
+    }
+
+    // MARK: - Repo file listing
+
+    /// List files in any HuggingFace repository (model, dataset, or space).
+    ///
+    /// - Parameters:
+    ///   - repoId: Full repo identifier, e.g. `"meta-llama/Llama-3-8B"`.
+    ///   - path: Sub-path inside the repo tree (empty for root).
+    ///   - repoType: One of `"model"`, `"dataset"`, `"space"`. Defaults to `"model"`.
+    /// - Returns: Array of file/directory entries at the requested path.
+    public func repoFiles(
+        repoId: String,
+        path: String = "",
+        repoType: String = "model"
+    ) async throws -> [HFRepoFile] {
+        let pathSuffix = path.isEmpty ? "" : "/\(path)"
+        let urlString = "https://huggingface.co/api/\(repoType)s/\(repoId)/tree/main\(pathSuffix)"
+        guard let url = URL(string: urlString) else { return [] }
+        let (data, _) = try await session.data(from: url)
+        return try JSONDecoder().decode([HFRepoFile].self, from: data)
+    }
+
+    /// Resolve a direct download URL for a file in a HuggingFace repository.
+    ///
+    /// - Parameters:
+    ///   - repoId: Full repo identifier.
+    ///   - filename: Path to the file within the repo.
+    ///   - repoType: One of `"model"`, `"dataset"`, `"space"`. Defaults to `"model"`.
+    /// - Returns: The resolved download URL.
+    public func downloadURL(
+        repoId: String,
+        filename: String,
+        repoType: String = "model"
+    ) -> URL? {
+        let prefix: String
+        switch repoType {
+        case "dataset":  prefix = "datasets/"
+        case "space":    prefix = "spaces/"
+        default:         prefix = ""
+        }
+        return URL(string: "https://huggingface.co/\(prefix)\(repoId)/resolve/main/\(filename)")
+    }
+
+    // MARK: - Internal converters
+
+    /// Convert HF dataset API response to a typed `HFDatasetEntry`.
+    private static func toDatasetEntry(_ response: HFDatasetAPIResponse) -> HFDatasetEntry? {
+        let parts = response.id.split(separator: "/", maxSplits: 1)
+        let author = response.author ?? (parts.count > 1 ? String(parts[0]) : "unknown")
+        let displayName = parts.count > 1 ? String(parts[1]) : response.id
+
+        // Parse lastModified ISO 8601 date
+        var lastModified: Date?
+        if let dateStr = response.lastModified {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            lastModified = formatter.date(from: dateStr)
+        }
+
+        // Estimate size from size_categories tag (e.g. "1K<n<10K", "1G<n<10G")
+        let sizeBytes = estimateDatasetSize(response.cardData?.size_categories)
+
+        return HFDatasetEntry(
+            id: response.id,
+            displayName: displayName,
+            author: author,
+            downloads: response.downloads ?? 0,
+            likes: response.likes ?? 0,
+            tags: response.tags ?? [],
+            sizeBytes: sizeBytes,
+            lastModified: lastModified,
+            description: response.description,
+            taskCategories: response.cardData?.task_categories ?? [],
+            license: response.cardData?.license?.first,
+            citation: nil
+        )
+    }
+
+    /// Best-effort bytes estimate from HF's `size_categories` tag.
+    /// Tags look like `"1K<n<10K"`, `"100M<n<1B"`, etc. We take the
+    /// upper bound as a conservative estimate of dataset row-count,
+    /// then map to a rough byte estimate (10 KB per row heuristic).
+    private static func estimateDatasetSize(_ categories: [String]?) -> Int64? {
+        guard let cat = categories?.first else { return nil }
+        // Extract the upper bound number + suffix from patterns like "1K<n<10K"
+        let components = cat.components(separatedBy: "<")
+        guard let upperStr = components.last, !upperStr.isEmpty else { return nil }
+
+        // Parse number + suffix (K, M, B, T)
+        let cleaned = upperStr.trimmingCharacters(in: .whitespaces)
+        var numStr = ""
+        var suffix = ""
+        for ch in cleaned {
+            if ch.isNumber || ch == "." {
+                numStr.append(ch)
+            } else {
+                suffix.append(ch)
+            }
+        }
+        guard let num = Double(numStr) else { return nil }
+        let multiplier: Double
+        switch suffix.uppercased() {
+        case "K":  multiplier = 1_000
+        case "M":  multiplier = 1_000_000
+        case "B":  multiplier = 1_000_000_000
+        case "T":  multiplier = 1_000_000_000_000
+        default:   multiplier = 1
+        }
+        // Rough heuristic: assume ~10 KB average per row
+        return Int64(num * multiplier * 10_000)
     }
 
     /// Convert HF model info to a CatalogEntry

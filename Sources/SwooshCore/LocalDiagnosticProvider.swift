@@ -56,7 +56,7 @@ public struct LocalDiagnosticProvider: ModelProvider, Sendable {
         responseLines.append("To enable real replies, add a provider key on the Mac. For example:")
         responseLines.append("  swoosh provider auth openai --api-key sk-…")
         responseLines.append("  swoosh provider auth openrouter --api-key sk-or-…")
-        responseLines.append("  swoosh provider auth eliza-cloud --api-key sk-…")
+        responseLines.append("  swoosh provider auth detour-cloud --api-key sk-…")
         responseLines.append("…then restart swooshd.")
 
         return ModelCompletionResponse(

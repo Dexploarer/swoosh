@@ -1,0 +1,21 @@
+{
+    "_game": "Rocket League",
+    "_genre": "racing-sports",
+    "_notes": "Default PC keyboard bindings. Space=jump(SOUTH), shift=boost(EAST), left-click=ball cam on RIGHT_TRIGGER as x placeholder. E=air roll(RIGHT_SHOULDER), Q=powerslide(LEFT_SHOULDER). Left stick → WASD for driving.",
+    "SOUTH": "space",
+    "EAST": "shift",
+    "WEST": "q",
+    "NORTH": "r",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "e",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "control",
+    "RIGHT_THUMB": "f"
+}

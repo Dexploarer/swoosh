@@ -1,7 +1,5 @@
 // SwooshCLI/CLIToolRuntime.swift — Tool-loop runtime for chat and ask
 import Foundation
-import ActantAgent
-import SwooshActantBackend
 import SwooshApprovals
 import SwooshConfig
 import SwooshCron
@@ -31,12 +29,7 @@ func makeCLIToolRegistry() async throws -> ToolRegistry {
         allowedWrite: true
     ))
 
-    let memoryStore: any MemoryToolStoring
-    if let backend = loadCLIBackend() {
-        memoryStore = MemoryStore(backend: backend)
-    } else {
-        memoryStore = InMemoryMemoryToolStore()
-    }
+    let memoryStore: any MemoryToolStoring = InMemoryMemoryToolStore()
 
     let registry = ToolRegistry(
         firewall: firewall,

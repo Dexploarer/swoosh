@@ -6,10 +6,8 @@
 @_exported import SwooshCore
 
 import Foundation
-import ActantDB
-import ActantAgent
-import SwooshActantBackend
 import SwooshTools
+import SwooshStorage
 
 // MARK: - SwooshKit entry point
 
@@ -23,10 +21,10 @@ import SwooshTools
 /// let response = try await swoosh.ask("What should we build?")
 /// ```
 ///
-/// When `ACTANT_BASE_URL` is set in the process environment, every default
-/// loader/store/auditor is wired through ActantDB via SwooshActantBackend's
-/// conformance extensions. Otherwise the `InMemory*` defaults are used so
-/// unit tests work without a server.
+/// When custom stores are provided via `SwooshConfiguration`, those are
+/// used. Otherwise the `InMemory*` defaults are wired so the SDK works
+/// out of the box for unit tests and one-shot runs without a persistent
+/// backend.
 public final class Swoosh: Sendable {
     public let kernel: AgentKernel
     public let toolLoop: AgentToolLoop?
@@ -57,21 +55,35 @@ public final class Swoosh: Sendable {
     // MARK: - Builder
 
     private static func build(from config: SwooshConfiguration) async throws -> Swoosh {
-        let env = ProcessInfo.processInfo.environment
-        let actantBackend: AgentBackend? = {
-            guard let raw = env["ACTANT_BASE_URL"], let url = URL(string: raw) else { return nil }
-            return AgentBackend(
-                client: ActantClient(baseURL: url, token: env["ACTANT_TOKEN"]),
-                workspaceID: env["ACTANT_WORKSPACE_ID"] ?? "ws_swoosh",
-                actorID: env["ACTANT_ACTOR_ID"] ?? "act_swoosh"
-            )
-        }()
+        // Try to open the durable SQLite backend unless overridden
+        let database: SwooshDatabase? = if ProcessInfo.processInfo.environment["SWOOSH_STORAGE"] == "memory" {
+            nil
+        } else {
+            try? SwooshDatabase()
+        }
 
-        let memoryLoader   = config.memoryLoader   ?? actantBackend.map { MemoryStore(backend: $0) } ?? InMemoryMemoryLoader()
-        let reportLoader   = config.reportLoader   ?? actantBackend.map { MemoryStore(backend: $0) } ?? InMemoryReportLoader()
-        let permSummarizer = config.permSummarizer ?? actantBackend.map { ApprovalCenter(backend: $0) } ?? InMemoryPermSummarizer()
-        let sessionStore   = config.sessionStore   ?? actantBackend.map { SwooshSessionStore(backend: $0) } ?? InMemorySessionStore()
-        let auditLogger    = config.auditLogger    ?? actantBackend.map { SwooshResponseAuditor(backend: $0) } ?? InMemoryResponseAuditor()
+        let memoryLoader: any MemoryContextLoading
+        let reportLoader: any SetupReportLoading
+        let permSummarizer: any PermissionSummarizing
+        let sessionStore: any SessionStoring
+        let auditLogger: any ResponseAuditing
+
+        if let db = database {
+            // Durable SQLite stores
+            let sqliteMemoryStore = SQLiteMemoryStore(db: db)
+            memoryLoader   = config.memoryLoader   ?? SQLiteMemoryContextLoader(memoryStore: sqliteMemoryStore)
+            reportLoader   = config.reportLoader   ?? SQLiteSetupReportStore(db: db)
+            permSummarizer = config.permSummarizer ?? InMemoryPermSummarizer()
+            sessionStore   = config.sessionStore   ?? SQLiteSessionStore(db: db)
+            auditLogger    = config.auditLogger    ?? SQLiteResponseAuditor(db: db)
+        } else {
+            // In-memory fallback
+            memoryLoader   = config.memoryLoader   ?? InMemoryMemoryLoader()
+            reportLoader   = config.reportLoader   ?? InMemoryReportLoader()
+            permSummarizer = config.permSummarizer ?? InMemoryPermSummarizer()
+            sessionStore   = config.sessionStore   ?? InMemorySessionStore()
+            auditLogger    = config.auditLogger    ?? InMemoryResponseAuditor()
+        }
 
         let modelProvider = config.modelProvider ?? LocalDiagnosticProvider()
         let kernel = AgentKernel(

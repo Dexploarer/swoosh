@@ -11,50 +11,39 @@
 
 import Testing
 import Foundation
-import ActantDB
+import SwooshTools
 @testable import SwooshCLI
 
 @Suite("MemoryListCommand — rejected filter")
 struct RejectedMemoryFilterTests {
-    private static func candidate(id: String, status: String) -> MemoryCandidate {
+    private static func candidate(id: String, status: CandidateStatus) -> MemoryCandidate {
         MemoryCandidate(
             id: id,
-            workspaceID: "ws_test",
             text: "candidate \(id)",
-            category: "fact",
-            sensitivity: .low,
+            category: .fact,
+            sensitivity: .normal,
             confidence: 0.5,
-            createdAt: "2026-05-23T00:00:00Z",
-            status: status
+            evidence: [],
+            status: status,
+            createdAt: Date(timeIntervalSince1970: 1_716_422_400)
         )
     }
 
-    private static func approvedMemory(id: String) -> ApprovedMemory {
-        ApprovedMemory(
-            id: id,
-            workspaceID: "ws_test",
-            text: "approved \(id)",
-            category: "preference",
-            sensitivity: .low,
-            createdAt: "2026-05-23T00:00:00Z"
-        )
-    }
-
-    @Test("MemoryListCommand.rejectedCandidates extracts payloads from .rejected rows")
+    @Test("MemoryListCommand.rejectedCandidates extracts payloads from .rejected candidates")
     func extractsRejectedOnly() {
-        let approvedRow = MemoryRow.approved(Self.approvedMemory(id: "m-approved"))
-        let pendingRow = MemoryRow.pending(Self.candidate(id: "c-pending", status: "pending"))
-        let rejectedRow = MemoryRow.rejected(Self.candidate(id: "c-rejected", status: "rejected"))
+        let pending = Self.candidate(id: "c-pending", status: .pending)
+        let rejected = Self.candidate(id: "c-rejected", status: .rejected)
+        let approved = Self.candidate(id: "c-approved", status: .approved)
 
-        let result = MemoryListCommand.rejectedCandidates(from: [approvedRow, pendingRow, rejectedRow])
+        let result = MemoryListCommand.rejectedCandidates(from: [approved, pending, rejected])
         #expect(result.count == 1)
         #expect(result.first?.id == "c-rejected")
     }
 
-    @Test("MemoryListCommand.rejectedCandidates returns empty when no .rejected rows")
+    @Test("MemoryListCommand.rejectedCandidates returns empty when no .rejected candidates")
     func noRejectedRows() {
-        let pendingRow = MemoryRow.pending(Self.candidate(id: "c1", status: "pending"))
-        #expect(MemoryListCommand.rejectedCandidates(from: [pendingRow]).isEmpty)
+        let pending = Self.candidate(id: "c1", status: .pending)
+        #expect(MemoryListCommand.rejectedCandidates(from: [pending]).isEmpty)
     }
 
     @Test("MemoryListCommand.rejectedCandidates returns empty for empty input")

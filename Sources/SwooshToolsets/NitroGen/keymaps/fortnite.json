@@ -1,0 +1,21 @@
+{
+    "_game": "Fortnite",
+    "_genre": "battle-royale",
+    "_notes": "Default PC keyboard bindings. Space=jump, shift=sprint, e=use/interact. Mouse shoot/aim on triggers as x/z placeholders. Q=edit, 1-5=weapon slots mapped across shoulders and DPAD.",
+    "SOUTH": "space",
+    "EAST": "b",
+    "WEST": "e",
+    "NORTH": "q",
+    "DPAD_UP": "1",
+    "DPAD_DOWN": "3",
+    "DPAD_LEFT": "2",
+    "DPAD_RIGHT": "4",
+    "LEFT_SHOULDER": "5",
+    "RIGHT_SHOULDER": "r",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "escape",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

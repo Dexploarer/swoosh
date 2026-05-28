@@ -1,0 +1,21 @@
+{
+    "_game": "Minecraft",
+    "_genre": "sandbox",
+    "_notes": "Default PC keyboard bindings. Left stick → WASD movement. RIGHT_TRIGGER/LEFT_TRIGGER mapped to x/z as mouse-click placeholders (destroy/place blocks). Hotbar slots mapped to DPAD.",
+    "SOUTH": "space",
+    "EAST": "q",
+    "WEST": "e",
+    "NORTH": "f",
+    "DPAD_UP": "1",
+    "DPAD_DOWN": "3",
+    "DPAD_LEFT": "2",
+    "DPAD_RIGHT": "4",
+    "LEFT_SHOULDER": "5",
+    "RIGHT_SHOULDER": "6",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "escape",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

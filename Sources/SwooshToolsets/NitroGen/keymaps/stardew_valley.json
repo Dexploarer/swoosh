@@ -1,0 +1,21 @@
+{
+    "_game": "Stardew Valley",
+    "_genre": "farming-rpg",
+    "_notes": "Default PC keyboard bindings. Left stick → WASD movement. Space=use tool, E=action/check, Tab=menu, F=journal. Mouse-dependent actions on triggers as placeholders.",
+    "SOUTH": "space",
+    "EAST": "escape",
+    "WEST": "e",
+    "NORTH": "f",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "q",
+    "RIGHT_SHOULDER": "r",
+    "LEFT_TRIGGER": "z",
+    "RIGHT_TRIGGER": "x",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "shift",
+    "RIGHT_THUMB": "control"
+}

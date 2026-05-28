@@ -1,8 +1,12 @@
 // Apps/SwooshiOS/WorkspaceScreen.swift — Customizable iOS workspace
 //
-// Hosts the PanelHost with surface "ios". Default layout (defined in
-// PanelLayoutStore.defaultLayout) lands a sensible set of capsules;
-// user drags-reorders and add/removes via edit mode.
+// A segmented-pane view displaying the live agent database states:
+//   • Memories — approved / pending / rejected semantic memories
+//   • Skills   — promoted / draft / frozen bundled capabilities
+//   • Tools    — active tool catalog & permission gates
+//   • Audit    — real-time execution timeline of decisions
+//
+// Aligned with the flagship macOS tabbed panel layout.
 
 import SwiftUI
 import SwooshGenerativeUI
@@ -10,47 +14,60 @@ import SwooshUI
 
 struct WorkspaceScreen: View {
     @Environment(AgentShellModel.self) private var shell
-    @State private var store = PanelLayoutStore()
-    @State private var editing = false
+    @State private var selectedTab: WorkspaceTab = .memories
 
-    var body: some View {
-        PanelHost(
-            store: store,
-            surface: "ios",
-            context: PanelHostContext(shell: shell),
-            editing: $editing
-        )
-        .navigationTitle("Workspace")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Menu {
-                    ForEach(PanelLayoutPreset.options(for: "ios")) { preset in
-                        Button {
-                            withAnimation(.spring(duration: 0.2)) {
-                                store.applyPreset(preset, to: "ios")
-                            }
-                        } label: {
-                            Label(preset.name, systemImage: preset.systemImage)
-                        }
-                    }
-                } label: {
-                    Label("Preset", systemImage: "rectangle.3.group")
-                        .labelStyle(.titleAndIcon)
-                }
-            }
+    enum WorkspaceTab: String, CaseIterable, Identifiable {
+        case memories = "Memories"
+        case skills = "Skills"
+        case tools = "Tools"
+        case audit = "Audit"
 
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    withAnimation(.spring(duration: 0.2)) { editing.toggle() }
-                } label: {
-                    Label(
-                        editing ? "Done" : "Edit",
-                        systemImage: editing ? "checkmark.circle.fill" : "square.grid.2x2"
-                    )
-                    .labelStyle(.titleAndIcon)
-                }
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .memories: return "brain.head.profile"
+            case .skills: return "lightbulb"
+            case .tools: return "wrench.and.screwdriver"
+            case .audit: return "list.bullet.rectangle"
             }
         }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Segmented selector aligned with neon theme tokens
+            Picker("Workspace Tab", selection: $selectedTab) {
+                ForEach(WorkspaceTab.allCases) { tab in
+                    Label(tab.rawValue, systemImage: tab.icon)
+                        .tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(SwooshNeonTokens.Canvas.bg)
+
+            Divider()
+                .background(SwooshNeonTokens.Line.rule)
+
+            // Selected Pane Content
+            Group {
+                switch selectedTab {
+                case .memories:
+                    MemoriesPane()
+                case .skills:
+                    SkillsPane()
+                case .tools:
+                    ToolsPane()
+                case .audit:
+                    AuditPane()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(SwooshNeonTokens.Canvas.bg)
+        .navigationTitle("Workspace")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

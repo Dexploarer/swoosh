@@ -50,10 +50,10 @@ struct ProviderProfileTests {
         #expect(p.baseURL == "https://openrouter.ai/api/v1")
     }
 
-    @Test("Eliza Cloud profile defaults")
-    func elizaCloudDefaults() {
-        let p = ProviderProfile.elizaCloud
-        #expect(p.id == ProviderID("eliza-cloud"))
+    @Test("Detour Cloud profile defaults")
+    func detourCloudDefaults() {
+        let p = ProviderProfile.detourCloud
+        #expect(p.id == ProviderID("detour-cloud"))
         #expect(!p.enabled)
     }
 
@@ -606,23 +606,23 @@ struct LocalProviderDiscoveryTests {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MARK: - Eliza Cloud Provider Tests
+// MARK: - Detour Cloud Provider Tests
 // ═══════════════════════════════════════════════════════════════════
 
-@Suite("ElizaCloudProvider")
-struct ElizaCloudProviderTests {
+@Suite("DetourCloudProvider")
+struct DetourCloudProviderTests {
 
     @Test("Provider has correct ID")
     func correctID() {
         let store = InMemorySecretStore()
-        let provider = ElizaCloudProvider(secrets: store)
-        #expect(provider.providerID == ProviderID("eliza-cloud"))
+        let provider = DetourCloudProvider(secrets: store)
+        #expect(provider.providerID == ProviderID("detour-cloud"))
     }
 
     @Test("Health reports authMissing when no key")
     func healthAuthMissing() async {
         let store = InMemorySecretStore()
-        let provider = ElizaCloudProvider(secrets: store)
+        let provider = DetourCloudProvider(secrets: store)
         let health = await provider.health()
         #expect(health.status == .authMissing)
         #expect(health.message?.contains("swoosh provider auth") == true)
@@ -631,7 +631,7 @@ struct ElizaCloudProviderTests {
     @Test("Missing API key gives clean error on complete")
     func missingKeyComplete() async {
         let store = InMemorySecretStore()
-        let provider = ElizaCloudProvider(secrets: store)
+        let provider = DetourCloudProvider(secrets: store)
         do {
             _ = try await provider.complete(
                 ModelRequest(model: "test", messages: [ChatMessage(role: .user, content: "hi")])

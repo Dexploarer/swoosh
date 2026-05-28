@@ -11,7 +11,7 @@
 // factory so the route surface stays declarative.
 
 import Foundation
-import ActantAgent
+
 import SwooshAPI
 import SwooshClient
 import SwooshConfig
@@ -45,7 +45,6 @@ extension SwooshDaemon {
         cronScheduler: CronScheduler,
         cronExecutor: @escaping CronAgentExecutor,
         manifester: Manifester,
-        agentBackend: AgentBackend,
         swooshDir: URL
     ) -> SwooshAPIRuntimeSources {
         return SwooshAPIRuntimeSources(
@@ -85,7 +84,7 @@ extension SwooshDaemon {
                         .map(SwooshDaemon.skillSummary))
                 },
                 memories: {
-                    await SwooshDaemon.memoriesResponse(backend: agentBackend)
+                    await SwooshDaemon.memoriesResponse(memoryStore: toolRuntime.dependencies.memoryStore)
                 },
                 records: {
                     await SwooshDaemon.recordsResponse(
@@ -262,16 +261,16 @@ extension SwooshDaemon {
                     try await SwooshDaemon.deleteSkillResponse(store: skillStore, id: id)
                 },
                 memoryDetail: { id in
-                    try await SwooshDaemon.memoryDetailResponse(backend: agentBackend, id: id)
+                    try await SwooshDaemon.memoryDetailResponse(memoryStore: toolRuntime.dependencies.memoryStore, id: id)
                 },
                 proposeMemory: { request in
-                    try await SwooshDaemon.proposeMemoryResponse(backend: agentBackend, request: request)
+                    try await SwooshDaemon.proposeMemoryResponse(memoryStore: toolRuntime.dependencies.memoryStore, request: request)
                 },
                 approveMemory: { id in
-                    try await SwooshDaemon.approveMemoryResponse(backend: agentBackend, id: id)
+                    try await SwooshDaemon.approveMemoryResponse(memoryStore: toolRuntime.dependencies.memoryStore, id: id)
                 },
                 rejectMemory: { id, request in
-                    try await SwooshDaemon.rejectMemoryResponse(backend: agentBackend, id: id, request: request)
+                    try await SwooshDaemon.rejectMemoryResponse(memoryStore: toolRuntime.dependencies.memoryStore, id: id, request: request)
                 },
                 executeTool: { name, request in
                     try await SwooshDaemon.executeToolResponse(

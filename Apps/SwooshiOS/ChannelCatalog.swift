@@ -157,7 +157,7 @@ enum ChannelCatalog {
             distribution: .official,
             category: .direct,
             description: "Telegram bot with edits, deletes, typing, streaming, and DMs.",
-            credentialEnvVars: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_SECRET"]
+            credentialEnvVars: ["TELEGRAM_BOT_TOKEN"]
         ),
         ChannelCatalogEntry(
             kindRawValue: "whatsApp",

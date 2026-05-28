@@ -17,18 +17,19 @@ public enum ConfigFileScavenger {
     static var sources: [ConfigSource] {[
         // ── OpenAI ──
         ConfigSource(provider: .openAI, paths: [
+            ".codex/auth.json",
             ".codex/credentials.json",
             ".config/openai/credentials.json",
-        ], extractor: { jsonKey($0, keys: ["api_key", "apiKey", "token"]) }),
+        ], extractor: { jsonKey($0, keys: ["access_token", "api_key", "apiKey", "token"]) }),
 
         // ── OpenRouter ──
         ConfigSource(provider: .openRouter, paths: [
             ".config/openrouter/credentials.json",
         ], extractor: { jsonKey($0, keys: ["api_key", "apiKey", "token"]) }),
 
-        // ── Eliza Cloud ──
-        ConfigSource(provider: .elizaCloud, paths: [
-            ".config/eliza-cloud/credentials.json",
+        // ── Detour Cloud ──
+        ConfigSource(provider: .detourCloud, paths: [
+            ".config/detour-cloud/credentials.json",
             ".config/eliza/credentials.json",
         ], extractor: { jsonKey($0, keys: ["api_key", "apiKey", "token"]) }),
     ]}

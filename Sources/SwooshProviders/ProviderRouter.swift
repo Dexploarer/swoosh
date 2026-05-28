@@ -87,8 +87,40 @@ public actor ProviderRouter {
     private let registry: ProviderRegistry
     private var auditLog: [ProviderAuditEvent] = []
 
+    /// Per-role provider overrides. When set, the specified provider gets a
+    /// +2000 priority boost for that role — it always wins but fallback
+    /// still works if it fails. Enables cloud/local mix-and-match.
+    private var routeOverrides: [ModelRole: ProviderID] = [:]
+
     public init(registry: ProviderRegistry) {
         self.registry = registry
+    }
+
+    /// Set a per-role provider override for mix-and-match routing.
+    /// Pass `nil` to clear the override and revert to default priority chain.
+    public func setRouteOverride(role: ModelRole, providerID: ProviderID?) {
+        if let providerID {
+            routeOverrides[role] = providerID
+            appendAudit(.init(kind: .routeSelected, providerID: providerID,
+                              message: "Route override set: \(role.rawValue) → \(providerID)"))
+        } else {
+            routeOverrides.removeValue(forKey: role)
+        }
+    }
+
+    /// Get the current route override for a role, if any.
+    public func routeOverride(for role: ModelRole) -> ProviderID? {
+        routeOverrides[role]
+    }
+
+    /// Get all current route overrides.
+    public func allRouteOverrides() -> [ModelRole: ProviderID] {
+        routeOverrides
+    }
+
+    /// Clear all route overrides.
+    public func clearAllRouteOverrides() {
+        routeOverrides.removeAll()
     }
 
     /// Complete a request using the best available route for the given role.
@@ -219,7 +251,19 @@ public actor ProviderRouter {
     }
 
     private func candidates(for role: ModelRole, request: ModelRequest) async -> [ProviderRoute] {
-        let routes = await registry.routes(for: role)
+        var routes = await registry.routes(for: role)
+
+        // Apply per-role provider override as a priority boost
+        if let overrideID = routeOverrides[role] {
+            routes = routes.map { route in
+                guard route.providerID == overrideID else { return route }
+                return ProviderRoute(
+                    id: route.id, role: route.role, providerID: route.providerID,
+                    model: route.model, priority: route.priority + 2_000, enabled: route.enabled
+                )
+            }.sorted { $0.priority > $1.priority }
+        }
+
         let scoped: [ProviderRoute]
         if let providerID = request.metadata["providerID"], !providerID.isEmpty {
             scoped = routes.filter { $0.providerID.rawValue == providerID }

@@ -1,0 +1,21 @@
+{
+    "_game": "Cuphead",
+    "_genre": "run-and-gun",
+    "_notes": "Default PC keyboard bindings. Z=shoot, X=jump, C=dash, V=EX shoot. Left stick → WASD movement. Tab=switch weapon on BACK. Lock on LB, aiming uses right stick (mouse).",
+    "SOUTH": "x",
+    "EAST": "c",
+    "WEST": "z",
+    "NORTH": "v",
+    "DPAD_UP": "up",
+    "DPAD_DOWN": "down",
+    "DPAD_LEFT": "left",
+    "DPAD_RIGHT": "right",
+    "LEFT_SHOULDER": "shift",
+    "RIGHT_SHOULDER": "e",
+    "LEFT_TRIGGER": "q",
+    "RIGHT_TRIGGER": "z",
+    "START": "return",
+    "BACK": "tab",
+    "LEFT_THUMB": "control",
+    "RIGHT_THUMB": "r"
+}

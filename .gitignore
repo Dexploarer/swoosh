@@ -45,3 +45,7 @@ Backend/SwooshDB/.build
 
 # Superpowers visual brainstorming scratch files
 .superpowers/
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

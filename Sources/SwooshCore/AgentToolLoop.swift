@@ -183,7 +183,8 @@ public actor AgentToolLoop {
         let toolContext = ToolContext(
             sessionID: request.sessionID,
             toolPolicy: policy,
-            isModelInvocation: true
+            isModelInvocation: true,
+            walletAddress: request.walletAddress
         )
         let availableTools = policy.allowModelToolCalls
             ? await toolRegistry.listAvailable(context: toolContext)

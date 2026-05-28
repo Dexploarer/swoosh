@@ -8,5 +8,11 @@
     <false/>
     <key>NSMainNibFile</key>
     <string></string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Swoosh needs microphone access for voice commands to the gaming agent and conversational interaction.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Swoosh uses on-device speech recognition to transcribe your voice commands for the agent.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Swoosh uses screen capture for the NitroGen gaming agent to observe gameplay.</string>
 </dict>
 </plist>
