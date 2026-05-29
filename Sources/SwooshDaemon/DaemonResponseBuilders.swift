@@ -633,8 +633,8 @@ extension SwooshDaemon {
             ),
         ]
         return WalletDashboardResponse(
-            connected: walletBridgeAvailable,
-            walletLabel: walletBridgeAvailable ? "Local Swoosh wallet" : nil,
+            connected: !walletAccounts.isEmpty,
+            walletLabel: walletAccounts.isEmpty ? nil : "Local Swoosh wallet",
             analytics: WalletAnalyticsSummary(
                 totalValueUSD: nil,
                 realizedPnLUSD: nil,

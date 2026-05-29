@@ -1,7 +1,8 @@
-// SwooshUI/Dashboard/WalletPane.swift — Live wallet dashboard — 0.9X
+// SwooshUI/Dashboard/WalletPane.swift — Live wallet dashboard — 0.9Y
 //
-// Calls walletDashboard() on the daemon for REAL data.
-// Shows connected state, balances, assets, PnL. Not a capability showcase.
+// Calls walletDashboard() on the daemon for REAL data. Shows connected state,
+// balances, assets, PnL. Create-wallet flow posts to /api/wallet/accounts.
+// Leaf renderers live in WalletPane+Connected.swift (LOC seam).
 
 #if os(macOS)
 import SwiftUI
@@ -12,6 +13,9 @@ public struct WalletPane: View {
     @State private var dashboard: WalletDashboardResponse?
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var showCreateSheet = false
+    @State private var isCreating = false
+    @State private var createError: String?
 
     public init() {}
 
@@ -22,12 +26,8 @@ public struct WalletPane: View {
                     loadingState
                 } else if let error = errorMessage {
                     errorState(error)
-                } else if let dash = dashboard {
-                    if dash.connected {
-                        connectedDashboard(dash)
-                    } else {
-                        disconnectedState
-                    }
+                } else if let dash = dashboard, dash.connected {
+                    connectedDashboard(dash)
                 } else {
                     disconnectedState
                 }
@@ -36,6 +36,14 @@ public struct WalletPane: View {
         }
         .background(SwooshNeonTokens.Canvas.bg)
         .task { await load() }
+        .sheet(isPresented: $showCreateSheet) {
+            WalletCreateSheet(
+                isCreating: isCreating,
+                errorMessage: createError,
+                onCreate: { chain, label in Task { await createWallet(chain: chain, label: label) } },
+                onCancel: { showCreateSheet = false; createError = nil }
+            )
+        }
     }
 
     // ── Loading ──────────────────────────────────────────────────
@@ -80,13 +88,12 @@ public struct WalletPane: View {
             Text("No Wallet Connected")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-            Text("Create or import a wallet to view balances, assets, and trading capabilities.")
+            Text("Create a wallet to view balances, assets, and trading capabilities.")
                 .font(.system(size: 13))
                 .foregroundStyle(SwooshNeonTokens.Canvas.text3)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 400)
 
-            // Supported chains
             HStack(spacing: 16) {
                 chainCard("Solana", icon: "s.circle.fill", color: VoltPaper.Chart.c1)
                 chainCard("Ethereum", icon: "e.circle.fill", color: VoltPaper.Chart.c3)
@@ -94,9 +101,9 @@ public struct WalletPane: View {
             }
             .padding(.top, 8)
 
-            HStack(spacing: 12) {
-                actionButton("Create Wallet", icon: "plus", color: SwooshNeonTokens.Accent.cyan)
-                actionButton("Import Wallet", icon: "square.and.arrow.down", color: VoltPaper.accent)
+            actionButton("Create Wallet", icon: "plus", color: SwooshNeonTokens.Accent.cyan) {
+                createError = nil
+                showCreateSheet = true
             }
             .padding(.top, 4)
 
@@ -108,7 +115,7 @@ public struct WalletPane: View {
     // ── Connected dashboard ──────────────────────────────────────
 
     @ViewBuilder
-    private func connectedDashboard(_ dash: WalletDashboardResponse) -> some View {
+    func connectedDashboard(_ dash: WalletDashboardResponse) -> some View {
         // Header
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 3) {
@@ -135,6 +142,13 @@ public struct WalletPane: View {
                 }
             }
             Spacer()
+            Button { createError = nil; showCreateSheet = true } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(VoltPaper.accent)
+            }
+            .buttonStyle(.plain)
+            .help("Add wallet")
             Button { Task { await load() } } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 13))
@@ -199,167 +213,7 @@ public struct WalletPane: View {
         }
     }
 
-    // ── Analytics card ───────────────────────────────────────────
-
-    private func analyticCard(_ label: String, value: String?, prefix: String = "", suffix: String = "") -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-            if let v = value {
-                let isNeg = v.hasPrefix("-")
-                Text("\(prefix)\(v)\(suffix)")
-                    .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundStyle(isNeg ? VoltPaper.destructive : SwooshNeonTokens.Canvas.text1)
-            } else {
-                Text("—")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(VoltPaper.foreground.opacity(0.02))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(SwooshNeonTokens.Line.rule, lineWidth: 0.5)
-        )
-    }
-
-    private func analyticCard(_ label: String, value: String) -> some View {
-        analyticCard(label, value: Optional(value))
-    }
-
-    // ── Asset table ──────────────────────────────────────────────
-
-    private func assetTable(_ assets: [WalletAssetSummary]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 12))
-                    .foregroundStyle(SwooshNeonTokens.Accent.cyan)
-                Text("Holdings (\(assets.count))")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-            }
-
-            // Column headers
-            HStack(spacing: 0) {
-                Text("Asset").frame(width: 140, alignment: .leading)
-                Text("Chain").frame(width: 70, alignment: .leading)
-                Text("Qty").frame(width: 100, alignment: .trailing)
-                Text("Value").frame(width: 90, alignment: .trailing)
-                Text("P&L").frame(width: 80, alignment: .trailing)
-                Text("P&L%").frame(width: 60, alignment: .trailing)
-            }
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-            .padding(.horizontal, 10)
-
-            Rectangle().fill(SwooshNeonTokens.Line.rule).frame(height: 0.5)
-
-            ForEach(assets) { asset in
-                HStack(spacing: 0) {
-                    HStack(spacing: 6) {
-                        Text(asset.symbol)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                        if let name = asset.name {
-                            Text(name)
-                                .font(.system(size: 10))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                                .lineLimit(1)
-                        }
-                    }
-                    .frame(width: 140, alignment: .leading)
-
-                    Text(asset.chain)
-                        .font(.system(size: 10))
-                        .foregroundStyle(chainColorForAsset(asset.chain))
-                        .frame(width: 70, alignment: .leading)
-
-                    Text(asset.quantity)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                        .frame(width: 100, alignment: .trailing)
-
-                    Text(asset.valueUSD.map { "$\($0)" } ?? "—")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                        .frame(width: 90, alignment: .trailing)
-
-                    pnlText(asset.pnlUSD, prefix: "$")
-                        .frame(width: 80, alignment: .trailing)
-
-                    pnlText(asset.pnlPercent, suffix: "%")
-                        .frame(width: 60, alignment: .trailing)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(VoltPaper.foreground.opacity(0.02))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(SwooshNeonTokens.Line.rule, lineWidth: 0.5)
-        )
-    }
-
-    // ── Insights ─────────────────────────────────────────────────
-
-    private func insightsSection(_ insights: [WalletInsightSummary]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(VoltPaper.Chart.c4)
-                Text("Insights (\(insights.count))")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-            }
-
-            ForEach(insights) { insight in
-                HStack(alignment: .top, spacing: 10) {
-                    Circle()
-                        .fill(severityColor(insight.severity))
-                        .frame(width: 8, height: 8)
-                        .padding(.top, 4)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(insight.title)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                        Text(insight.detail)
-                            .font(.system(size: 11))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                    }
-                }
-                .padding(10)
-                .background(severityColor(insight.severity).opacity(0.04))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
-        }
-    }
-
-    // ── Small helpers ─────────────────────────────────────────────
-
-    @ViewBuilder
-    private func pnlText(_ value: String?, prefix: String = "", suffix: String = "") -> some View {
-        if let v = value {
-            let isNeg = v.hasPrefix("-")
-            Text("\(prefix)\(v)\(suffix)")
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(isNeg ? VoltPaper.destructive : VoltPaper.accent)
-        } else {
-            Text("—")
-                .font(.system(size: 10))
-                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-        }
-    }
+    // ── Buttons ──────────────────────────────────────────────────
 
     private func chainCard(_ name: String, icon: String, color: Color) -> some View {
         VStack(spacing: 6) {
@@ -379,8 +233,8 @@ public struct WalletPane: View {
         )
     }
 
-    private func actionButton(_ label: String, icon: String, color: Color) -> some View {
-        Button {} label: {
+    private func actionButton(_ label: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 12))
@@ -412,23 +266,6 @@ public struct WalletPane: View {
         .buttonStyle(.plain)
     }
 
-    private func severityColor(_ severity: WalletInsightSeverity) -> Color {
-        switch severity {
-        case .info: return SwooshNeonTokens.Accent.cyan
-        case .warning: return VoltPaper.Chart.c4
-        case .critical: return VoltPaper.destructive
-        }
-    }
-
-    private func chainColorForAsset(_ chain: String) -> Color {
-        switch chain.lowercased() {
-        case "solana", "sol": return VoltPaper.Chart.c1
-        case "ethereum", "eth": return VoltPaper.Chart.c3
-        case "bnb", "bsc", "bnb chain": return VoltPaper.Chart.c4
-        default: return VoltPaper.mutedFg
-        }
-    }
-
     // ── Network ──────────────────────────────────────────────────
 
     private func load() async {
@@ -443,6 +280,27 @@ public struct WalletPane: View {
             dashboard = try await client.walletDashboard()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func createWallet(chain: String, label: String) async {
+        guard let client = SwooshDaemonClient.client() else {
+            createError = "Daemon not reachable."
+            return
+        }
+        isCreating = true
+        createError = nil
+        defer { isCreating = false }
+        let trimmed = label.trimmingCharacters(in: .whitespaces)
+        let finalLabel = trimmed.isEmpty ? "\(chain.capitalized) wallet" : trimmed
+        do {
+            _ = try await client.createWalletAccount(
+                WalletCreateAccountRequest(chain: chain, label: finalLabel)
+            )
+            showCreateSheet = false
+            await load()
+        } catch {
+            createError = error.localizedDescription
         }
     }
 }
