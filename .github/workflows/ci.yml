@@ -1,12 +1,10 @@
 # Swoosh CI — build, flow-check, and the full test suite.
 #
-# TOOLCHAIN CAVEAT: this package pins swift-tools-version 6.3 and targets
-# macOS 26 / iOS 26 (see Package.swift). GitHub-hosted macOS runners may not
-# ship an Xcode/Swift new enough yet. If the `test` job fails at toolchain
-# selection, either bump the runner image once GitHub ships Xcode 26, or
-# register a self-hosted runner with the right toolchain and change
-# `runs-on:` to its label. The `flow-check` job needs no Swift toolchain and
-# runs anywhere.
+# TOOLCHAIN: this package pins swift-tools-version 6.3 and targets macOS 26 /
+# iOS 26 (see Package.swift), which needs Xcode 26 — only present on the
+# `macos-26` runner image. If that label is ever unavailable, fall back to a
+# self-hosted runner with the right toolchain and change `runs-on:`. The
+# `flow-check` job needs no Swift toolchain and runs anywhere.
 name: CI
 
 on:
@@ -37,7 +35,7 @@ jobs:
   # (no test touches a real ~/.swoosh/swoosh.db). No provider API keys are
   # present in CI, so the live smoke tests skip themselves.
   test:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
