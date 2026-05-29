@@ -59,6 +59,7 @@ extension FirewallMutationResponse: ResponseEncodable {}
 extension FirewallCheckResponse: ResponseEncodable {}
 extension CronJobsResponse: ResponseEncodable {}
 extension CronJobMutationResponse: ResponseEncodable {}
+extension CalendarEventsResponse: ResponseEncodable {}
 extension DoctorReportResponse: ResponseEncodable {}
 extension WalletAccountsResponse: ResponseEncodable {}
 extension WalletAccountResponse: ResponseEncodable {}

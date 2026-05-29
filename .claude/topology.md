@@ -42,6 +42,11 @@ chat (in-app)   : SwooshAPI /api/agent/chat -> SwooshCore.AgentToolLoop/AgentKer
                                                                     -> ProviderBridgeAdapter -> ProviderRouter -> SwooshProviders adapter
 tool call       : AgentToolLoop -> ToolRegistry.execute -> SwooshFirewallActor.require (gate) -> SwooshTool (SwooshToolsets)
 CLI one-shot    : SwooshCLI -> SwooshKit.configure -> AgentKernel -> ModelProvider -> ProviderRouter -> adapter
+calendar(write) : AgentToolLoop -> ToolRegistry.execute -> SwooshFirewallActor.require(.detourCalendarWrite)
+                                -> CalendarManageTool (SwooshCalendar) -> FileCalendarStore
+calendar(read)  : SwooshUI CalendarTrayPanel -> SwooshAPIClient.calendarEvents() --GET /api/calendar/events-->
+                                SwooshAPI route -> SwooshAPIRuntimeSources.calendarEvents (daemon-built closure)
+                                -> FileCalendarStore; domain->wire mapping in SwooshDaemon/CalendarAPIBridge.swift
 ```
 
 ## Single sources of truth (do not re-derive elsewhere)

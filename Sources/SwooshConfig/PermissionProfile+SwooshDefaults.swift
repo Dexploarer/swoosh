@@ -88,6 +88,7 @@ extension PermissionProfile {
         .workflowRead, .workflowWrite, .workflowRun,
         .skillsRead, .skillsWrite, .goalsRead, .goalsWrite,
         .manifestRead, .manifestRun,
+        .detourCalendarRead, .detourCalendarWrite,
         .imageGenerate,
     ]
 

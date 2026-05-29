@@ -358,6 +358,9 @@ actor APIRuntimeState {
     func cronJobs() async -> CronJobsResponse {
         await sources.cronJobs()
     }
+    func calendarEvents() async -> CalendarEventsResponse {
+        await sources.calendarEvents()
+    }
     func createCronJob(_ request: CronJobCreateRequest) async throws -> CronJobMutationResponse {
         try await sources.createCronJob(request)
     }

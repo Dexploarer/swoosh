@@ -47,6 +47,7 @@ public enum ToolsetID: String, Codable, Sendable, CaseIterable {
     case plugins
     case mediaGen
     case nitrogen
+    case calendar
 
     /// Toolsets whose successful calls generate on-chain receipt
     /// anchoring entries (for optional rebate earning).

@@ -225,6 +225,9 @@ public struct SwooshAPIServer: Sendable {
         apiGroup.get("/board/lanes") { _, _ -> BoardLanesResponse in
             await runtime.boardLanes(chatEnabled: agent != nil)
         }
+        apiGroup.get("/calendar/events") { _, _ -> CalendarEventsResponse in
+            await runtime.calendarEvents()
+        }
         apiGroup.get("/metrics") { _, _ -> MetricsResponse in
             await runtime.metrics()
         }

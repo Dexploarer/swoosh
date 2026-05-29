@@ -96,10 +96,9 @@ struct SwooshApp: App {
 
     @ViewBuilder
     private var menuBarContent: some View {
-        codexBarHost.makeTrayTabView {
-            AgentShellView(shell: shell, mode: .tray)
+        MenuBarTray(shell: shell) {
+            codexBarHost.makeUsagePanel()
         }
-        .frame(width: 400, height: 520)
     }
 
     // MARK: - In-process daemon

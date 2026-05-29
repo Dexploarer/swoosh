@@ -16,6 +16,7 @@ import SwooshAPI
 import SwooshClient
 import SwooshConfig
 import SwooshCron
+import SwooshCalendar
 import SwooshDaemonSupport
 import SwooshGoals
 import SwooshManifesting
@@ -43,6 +44,7 @@ extension SwooshDaemon {
         goalStore: FileGoalStore,
         manifestStore: FileManifestationStore,
         cronStore: FileCronJobStore,
+        calendarStore: FileCalendarStore,
         cronScheduler: CronScheduler,
         cronExecutor: @escaping CronAgentExecutor,
         manifester: Manifester,
@@ -326,6 +328,9 @@ extension SwooshDaemon {
                         executor: cronExecutor,
                         id: id
                     )
+                },
+                calendarEvents: {
+                    await SwooshDaemon.calendarEventsAPIResponse(store: calendarStore)
                 },
                 doctorReport: {
                     await SwooshDaemon.doctorReportResponse(config: configStore)

@@ -41,6 +41,7 @@ let package = Package(
         .library(name: "SwooshManifesting",  targets: ["SwooshManifesting"]),
         .library(name: "SwooshProviderBridge", targets: ["SwooshProviderBridge"]),
         .library(name: "SwooshCron", targets: ["SwooshCron"]),
+        .library(name: "SwooshCalendar", targets: ["SwooshCalendar"]),
         .library(name: "SwooshChatSDK", targets: ["SwooshChatSDK"]),
         .library(name: "SwooshLocalLLM", targets: ["SwooshLocalLLM"]),
         .library(name: "SwooshModels", targets: ["SwooshModels"]),
@@ -150,6 +151,7 @@ let package = Package(
                 "SwooshGoals",
                 "SwooshManifesting",
                 "SwooshCron",
+                "SwooshCalendar",
                 "SwooshDoctor",
                 "SwooshProviderBridge",
                 "SwooshSecrets",
@@ -265,6 +267,7 @@ let package = Package(
             "SwooshGoals",
             "SwooshManifesting",
             "SwooshCron",
+            "SwooshCalendar",
             "SwooshMCP",
             "SwooshClient",
             "SwooshImageGen",
@@ -299,6 +302,7 @@ let package = Package(
         .target(name: "SwooshGoals",        dependencies: ["SwooshTools"]),
         .target(name: "SwooshManifesting",  dependencies: ["SwooshTools"]),
         .target(name: "SwooshCron", dependencies: ["SwooshTools"]),
+        .target(name: "SwooshCalendar", dependencies: ["SwooshTools"]),
         .target(name: "SwooshCloudGaming", dependencies: ["SwooshTools"]),
         .target(name: "SwooshChatSDK", dependencies: ["SwooshClient"]),
         .target(
@@ -692,6 +696,10 @@ let package = Package(
         .testTarget(
             name: "SwooshCronTests",
             dependencies: ["SwooshCron", "SwooshTools"]
+        ),
+        .testTarget(
+            name: "SwooshCalendarTests",
+            dependencies: ["SwooshCalendar", "SwooshTools"]
         ),
         .testTarget(
             name: "SwooshSkillsTests",

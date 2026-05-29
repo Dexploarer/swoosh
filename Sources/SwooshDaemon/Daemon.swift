@@ -31,6 +31,7 @@ import SwooshSkills
 import SwooshGoals
 import SwooshManifesting
 import SwooshCron
+import SwooshCalendar
 import SwooshToolsets
 import SwooshTools
 import SwooshFirewall
@@ -291,6 +292,9 @@ public enum SwooshDaemon {
 
         let cronStore = FileCronJobStore(root: swooshDir.appendingPathComponent("cron", isDirectory: true))
         let cronScheduler = CronScheduler(store: cronStore, processRunner: CronProcessRunner())
+        // One FileCalendarStore shared by the agent's calendar tools (write
+        // path) and the read API (UI path) — same instance, same cache.
+        let calendarStore = FileCalendarStore(root: swooshDir.appendingPathComponent("calendar", isDirectory: true))
 
         // ── MCP servers (loaded from ~/.swoosh/mcp/servers.json) ──
         // The registry stays empty when the file is absent; the CLI is
@@ -337,7 +341,8 @@ public enum SwooshDaemon {
                 skills: SkillToolDependencies(store: skillStore),
                 goals: GoalToolDependencies(store: goalStore),
                 manifest: ManifestToolDependencies(store: manifestStore, manifester: manifester),
-                cron: CronToolDependencies(store: cronStore, scheduler: cronScheduler)
+                cron: CronToolDependencies(store: cronStore, scheduler: cronScheduler),
+                calendar: CalendarToolDependencies(store: calendarStore)
             ),
             mcp: mcpDeps,
             mediaGen: mediaGenDeps,
@@ -547,6 +552,7 @@ public enum SwooshDaemon {
                 toolRuntime: toolRuntime, codexAuth: codexAuth, pluginHost: pluginHost,
                 pluginRegistry: pluginRegistry, mcpRegistry: mcpRegistry, skillStore: skillStore,
                 goalStore: goalStore, manifestStore: manifestStore, cronStore: cronStore,
+                calendarStore: calendarStore,
                 cronScheduler: cronScheduler, cronExecutor: cronExecutor, manifester: manifester,
                 swooshDir: swooshDir, providerRouter: providerRouter
             )

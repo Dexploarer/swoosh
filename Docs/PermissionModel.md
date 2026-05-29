@@ -86,3 +86,14 @@ The plugin host (`SwooshPluginRuntime.PluginHost`) gates its lifecycle through f
 Plugin **tools** declare ordinary `SwooshPermission` cases (`fileRead`, `networkAccess`, etc.) which the user grants when they enable the plugin. Each tool call still routes through `ToolRegistry.execute` → `firewall.require(descriptor.permission)`. There is no `pluginExecute` permission — the per-tool permission is the gate.
 
 The user-facing surfaces for these admin permissions are `swoosh plugin {install,uninstall,enable,disable,list,status}` and the bearer-gated `/api/plugins/*` HTTP routes. The model has no path to either — these routes aren't reachable from inside an agent tool call, and the four admin permissions are excluded from any `PluginManifest.requestedPermissions` by `validate()` so a plugin can't grant itself the right to install other plugins.
+
+## Detour Calendar permissions
+
+Detour ships its own agent-managed calendar (`SwooshCalendar`) — distinct from the **system** calendar that `calendarRead` / `calendarWrite` gate (Apple Calendar / EventKit, and Scout's aggregate `CalendarSource`). The agent's calendar tools use two dedicated cases so granting one never grants the other.
+
+| Permission | Gates |
+|------------|-------|
+| `detourCalendarRead` | `calendar_list_events` — list upcoming events on the Detour calendar. |
+| `detourCalendarWrite` | `calendar_manage_event` — create, update, or remove Detour calendar events. |
+
+Both tools route through `SwooshFirewallActor` like every other tool. The tray/dashboard read events over the bearer-gated `GET /api/calendar/events`; the agent mutates them via the write tool. Granted by `.developer`+ profiles alongside the other agent-productivity permissions (skills / goals / manifest).

@@ -12,6 +12,7 @@ import SwooshSkills
 import SwooshGoals
 import SwooshManifesting
 import SwooshCron
+import SwooshCalendar
 import SwooshMCP
 import SwooshImageGen
 import SwooshMusic
@@ -27,17 +28,20 @@ public struct SelfImprovementDependencies: Sendable {
     public let goals: GoalToolDependencies?
     public let manifest: ManifestToolDependencies?
     public let cron: CronToolDependencies?
+    public let calendar: CalendarToolDependencies?
 
     public init(
         skills: SkillToolDependencies? = nil,
         goals: GoalToolDependencies? = nil,
         manifest: ManifestToolDependencies? = nil,
-        cron: CronToolDependencies? = nil
+        cron: CronToolDependencies? = nil,
+        calendar: CalendarToolDependencies? = nil
     ) {
         self.skills = skills
         self.goals = goals
         self.manifest = manifest
         self.cron = cron
+        self.calendar = calendar
     }
 }
 
@@ -116,6 +120,9 @@ public enum DefaultToolRegistrar {
         if let cron = selfImprovement.cron {
             await registerCron(into: registry, dependencies: cron)
         }
+        if let calendar = selfImprovement.calendar {
+            await registerCalendar(into: registry, dependencies: calendar)
+        }
         if let mcp = mcp {
             await registerMCP(into: registry, dependencies: dependencies, mcp: mcp)
         }
@@ -169,6 +176,11 @@ public enum DefaultToolRegistrar {
 
     static func registerCron(into registry: ToolRegistry, dependencies: CronToolDependencies) async {
         await registry.register(TypeErasedTool(CronJobTool(dependencies: dependencies)))
+    }
+
+    static func registerCalendar(into registry: ToolRegistry, dependencies: CalendarToolDependencies) async {
+        await registry.register(TypeErasedTool(CalendarListTool(dependencies: dependencies)))
+        await registry.register(TypeErasedTool(CalendarManageTool(dependencies: dependencies)))
     }
 
     // ── Core ──────────────────────────────────────────────────────

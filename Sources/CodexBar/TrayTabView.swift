@@ -1,145 +1,19 @@
-// CodexBar/TrayTabView.swift — Two-panel tray dropdown
+// CodexBar/TrayTabView.swift — CodexBar host + factories
 //
-// The menu-bar popover has two modes:
-//   • Chat   — provided by the host via @ViewBuilder
-//   • Usage  — CodexBar's embedded provider usage panel
+// Bootstraps CodexBar's usage/settings stores and exposes opaque factories
+// the host app uses to embed CodexBar surfaces:
+//   • makeUsagePanel()      — the provider quota panel (hosted inside
+//                             SwooshUI's MenuBarTray as the "Usage" tab)
+//   • makePreferencesView() — the full preferences window
 //
-// Lives in the CodexBar module so it has access to internal
-// UsageStore/SettingsStore types. The chat content is injected
-// via a generic view builder to avoid circular deps.
+// Lives in the CodexBar module so it can reach internal
+// UsageStore/SettingsStore types; views are returned opaquely so those
+// types stay encapsulated. (The old two-panel TrayTabView was retired when
+// SwooshUI.MenuBarTray became the app's tray container.)
 
 import AppKit
 import CodexBarCore
 import SwiftUI
-
-/// Two-panel tray: Chat and Usage tabs.
-/// `ChatContent` is the host-supplied chat view (e.g. AgentShellView).
-public struct TrayTabView<ChatContent: View>: View {
-    let chatContent: ChatContent
-    let store: UsageStore
-    let settings: SettingsStore
-
-    public enum Tab: String, CaseIterable {
-        case chat = "Chat"
-        case usage = "Usage"
-
-        var icon: String {
-            switch self {
-            case .chat: return "bubble.left.fill"
-            case .usage: return "chart.bar.fill"
-            }
-        }
-    }
-
-    @State private var selectedTab: Tab = .chat
-
-    /// Create a two-panel tray. Call from the host app, passing in CodexBar
-    /// stores that were created at app launch.
-    ///
-    /// Because `UsageStore` and `SettingsStore` are internal to CodexBar,
-    /// callers must use the `makeTrayTabView` factory instead.
-    init(
-        store: UsageStore,
-        settings: SettingsStore,
-        @ViewBuilder chat: () -> ChatContent
-    ) {
-        self.store = store
-        self.settings = settings
-        self.chatContent = chat()
-    }
-
-    private var neonCyan: Color {
-        Color(red: 0x26 / 255.0, green: 0xE0 / 255.0, blue: 0xE8 / 255.0)
-    }
-
-    public var body: some View {
-        VStack(spacing: 0) {
-            tabBar
-
-            Divider()
-                .opacity(0.08)
-
-            // Content
-            Group {
-                switch selectedTab {
-                case .chat:
-                    chatContent
-                case .usage:
-                    EmbeddedUsagePanel(store: store, settings: settings)
-                        .environment(\.colorScheme, .dark)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .background(Color.black)
-    }
-
-    // MARK: - Tab Bar
-
-    private var tabBar: some View {
-        HStack(spacing: 2) {
-            ForEach(Tab.allCases, id: \.self) { tab in
-                tabButton(tab)
-            }
-            Spacer()
-            settingsButton
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 6)
-    }
-
-    private var settingsButton: some View {
-        Button {
-            NSApp.activate(ignoringOtherApps: true)
-            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.40))
-                .padding(6)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
-    }
-
-    private func tabButton(_ tab: Tab) -> some View {
-        let isSelected = selectedTab == tab
-        return Button {
-            withAnimation(.spring(duration: 0.25, bounce: 0.15)) {
-                selectedTab = tab
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: tab.icon)
-                    .font(.system(size: 10, weight: .semibold))
-                Text(tab.rawValue)
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .foregroundStyle(
-                isSelected ? neonCyan : Color.white.opacity(0.40)
-            )
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? neonCyan.opacity(0.12) : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(
-                        isSelected ? neonCyan.opacity(0.3) : Color.clear,
-                        lineWidth: 0.5
-                    )
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tab.rawValue)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
 
 // MARK: - Factory Helpers
 
@@ -161,7 +35,7 @@ final class SilentStatusBar: NSStatusBar {
 
 // MARK: - Factory
 
-/// Public factory so the host app can create a `TrayTabView` without
+/// Public factory so the host app can create CodexBar surfaces without
 /// directly touching internal CodexBar stores. The host calls this at
 /// app-init time.
 public struct CodexBarHost {
@@ -179,7 +53,7 @@ public struct CodexBarHost {
             destination: .oslog(subsystem: "ai.detour.codexbar"),
             level: .verbose,
             json: false))
-        
+
         let settings = SettingsStore()
         let language = settings.appLanguage
         if language.isEmpty {
@@ -233,16 +107,17 @@ public struct CodexBarHost {
         )
     }
 
-    /// Build the two-panel tray view. Chat content is injected via closure.
+    /// Build the embedded usage panel (CodexBar's provider quota view) for
+    /// hosting inside SwooshUI's `MenuBarTray` as the "Usage" tab. Returns an
+    /// opaque view so the internal `UsageStore`/`SettingsStore` stay
+    /// encapsulated.
     @MainActor
-    public func makeTrayTabView<C: View>(
-        @ViewBuilder chat: () -> C
-    ) -> TrayTabView<C> {
-        TrayTabView(
+    public func makeUsagePanel() -> some View {
+        EmbeddedUsagePanel(
             store: _store as! UsageStore,
-            settings: _settings as! SettingsStore,
-            chat: chat
+            settings: _settings as! SettingsStore
         )
+        .environment(\.colorScheme, .dark)
     }
 
     /// Build the preferences panel/view.

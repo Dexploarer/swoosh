@@ -95,6 +95,9 @@ public struct SwooshAPIRuntimeSources: Sendable {
     public let deleteCronJob: @Sendable (String) async throws -> CronJobsResponse
     public let runCronJob: @Sendable (String) async throws -> CronJobMutationResponse
 
+    // ── Calendar (Detour agent-managed) ────────────────────────────
+    public let calendarEvents: @Sendable () async -> CalendarEventsResponse
+
     // ── Tier 1: Doctor ─────────────────────────────────────────────
     public let doctorReport: @Sendable () async -> DoctorReportResponse
 
@@ -270,6 +273,9 @@ public struct SwooshAPIRuntimeSources: Sendable {
         runCronJob: @escaping @Sendable (String) async throws -> CronJobMutationResponse = { _ in
             throw APIError.badRequest("cron store is not configured")
         },
+        calendarEvents: @escaping @Sendable () async -> CalendarEventsResponse = {
+            CalendarEventsResponse(events: [])
+        },
         doctorReport: @escaping @Sendable () async -> DoctorReportResponse = {
             DoctorReportResponse(
                 id: "unconfigured",
@@ -360,6 +366,7 @@ public struct SwooshAPIRuntimeSources: Sendable {
         self.createCronJob = createCronJob
         self.deleteCronJob = deleteCronJob
         self.runCronJob = runCronJob
+        self.calendarEvents = calendarEvents
         self.doctorReport = doctorReport
         self.walletAccounts = walletAccounts
         self.createWalletAccount = createWalletAccount

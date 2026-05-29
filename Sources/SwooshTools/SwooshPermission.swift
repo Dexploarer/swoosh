@@ -37,6 +37,12 @@ public enum SwooshPermission: String, Codable, Sendable, CaseIterable, Hashable 
     case manifestRead
     case manifestRun
 
+    // ── Detour Calendar (agent-managed; NOT Apple Calendar/EventKit) ─
+    // Gate the agent's own calendar tools. Distinct from `calendarRead`/
+    // `calendarWrite` above, which gate the *system* (Apple/Scout) calendar.
+    case detourCalendarRead
+    case detourCalendarWrite
+
     // ── Personal-data Scout sources ────────────────────────────────
     // These power Scout's deep personalization layer. Every one of
     // them grants raw access to *very* personal data; the trust

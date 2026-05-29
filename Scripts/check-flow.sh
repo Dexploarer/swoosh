@@ -51,7 +51,7 @@ echo ""
 # pull in Foundation.Process, Hummingbird, or ActantDBSupervisor and break
 # the iOS build. SwooshKit is the canonical one (CLAUDE.md).
 echo "Rule: iOS app imports no macOS-only / daemon module (Apps/SwooshiOS)"
-IOS_FORBIDDEN="SwooshKit|SwooshDaemon|SwooshDaemonSupport|SwooshActantBackend|SwooshProcess|SwooshAPI|SwooshProviderBridge"
+IOS_FORBIDDEN="SwooshKit|SwooshDaemon|SwooshDaemonSupport|SwooshActantBackend|SwooshProcess|SwooshAPI|SwooshProviderBridge|SwooshCalendar"
 ios_hits="$(violations "Apps/SwooshiOS" "$IOS_FORBIDDEN")"
 if [ -n "$ios_hits" ]; then
   note "iOS imports a forbidden daemon/macOS module:"
@@ -93,6 +93,21 @@ if [ -n "$core_hits" ]; then
   printf '%s\n' "$core_hits" | sed 's/^/      /'
 else
   ok "SwooshCore imports no concrete adapter / server / UI module"
+fi
+
+# ── Rule 4: UI reads the calendar via RPC, never the domain module ────
+# The Detour calendar's domain module (SwooshCalendar) is daemon-side. The
+# tray/dashboard must read events through SwooshAPIClient (RPC), never by
+# importing SwooshCalendar — that would couple shared UI to a daemon module
+# and break iOS buildability.
+echo ""
+echo "Rule: SwooshUI imports no SwooshCalendar (reads via RPC only)"
+ui_cal_hits="$(violations "Sources/SwooshUI" "SwooshCalendar")"
+if [ -n "$ui_cal_hits" ]; then
+  note "SwooshUI imports SwooshCalendar — use SwooshAPIClient.calendarEvents() instead:"
+  printf '%s\n' "$ui_cal_hits" | sed 's/^/      /'
+else
+  ok "SwooshUI imports no SwooshCalendar"
 fi
 
 echo ""
