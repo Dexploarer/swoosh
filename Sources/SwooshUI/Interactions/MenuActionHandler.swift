@@ -379,9 +379,7 @@ struct MenuActionHandlerModifier: ViewModifier {
 
             // ── Approvals ────────────────────────────────────
             .onReceive(note(.swooshOpenApprovals)) { _ in
-                selectedTab = .tools
-                shell.input = "/approvals pending"
-                Task { await shell.submit() }
+                selectedTab = .approvals
             }
             .onReceive(note(.swooshQuickSearch)) { _ in
                 selectedTab = .chat

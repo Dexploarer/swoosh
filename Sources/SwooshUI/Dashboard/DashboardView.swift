@@ -95,6 +95,8 @@ public struct DashboardView: View {
                         sidebarRow("Memories", icon: "brain.head.profile", tab: .memories)
                         sidebarRow("Skills", icon: "lightbulb", tab: .skills)
                         sidebarRow("Safety", icon: "shield.lefthalf.filled", tab: .safety)
+                        sidebarRow("Approvals", icon: "checkmark.shield", tab: .approvals)
+                        sidebarRow("Firewall", icon: "lock.shield", tab: .firewall)
                         sidebarRow("Gaming", icon: "gamecontroller.fill", tab: .gaming)
                     }
 
@@ -284,6 +286,10 @@ public struct DashboardView: View {
             SkillsPane()
         case .safety:
             SafetyPane()
+        case .approvals:
+            ApprovalsPane()
+        case .firewall:
+            FirewallPane()
         case .gaming:
             GamingPane(
                 selectedSource: $gamingSelectedSource,
@@ -363,7 +369,7 @@ public struct DashboardView: View {
 // ═══════════════════════════════════════════════════════════════════
 
 public enum DashboardTab: String, CaseIterable, Identifiable, Hashable {
-    case chat, memories, skills, safety, gaming, wallet, launchpads, models, tools, audit, voice, settings
+    case chat, memories, skills, safety, approvals, firewall, gaming, wallet, launchpads, models, tools, audit, voice, settings
     public var id: String { rawValue }
 }
 
