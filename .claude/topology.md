@@ -75,9 +75,12 @@ calendar(read)  : SwooshUI CalendarTrayPanel -> SwooshAPIClient.calendarEvents()
 
 - `Scripts/check-flow.sh` — fast grep guard for: (1) iOS importing a
   daemon/macOS module, (2) domain/data layers (Core/Tools/Models) importing a
-  UI framework, (3) SwooshCore importing a concrete adapter/server/UI module.
-  Exit non-zero on violation. **Green as of this baseline.** `plumber` runs it
-  POST-FLIGHT for graph evidence instead of returning UNKNOWN.
+  UI framework, (3) SwooshCore importing a concrete adapter/server/UI module,
+  (4) SwooshUI importing SwooshCalendar (must read via RPC), (5)
+  SwooshGenerativeUI importing any Swoosh module (the shared design-tokens
+  layer — SwooshNeonTokens + VoltPaper — must stay system-frameworks-only so
+  it can't become a coupling hub / cycle). Exit non-zero on violation. `plumber`
+  runs it POST-FLIGHT for graph evidence instead of returning UNKNOWN.
 - `swift build` — the module-graph illegal-import + cycle gate (SwiftPM).
 - There is no recorded-violation baseline file: the repo is clean, so the gate
   is a hard PASS, not a ratchet over existing debt.

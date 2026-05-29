@@ -110,6 +110,22 @@ else
   ok "SwooshUI imports no SwooshCalendar"
 fi
 
+# ── Rule 5: design-tokens module stays a leaf ────────────────────────
+# SwooshGenerativeUI holds the shared design tokens (SwooshNeonTokens +
+# VoltPaper) and is imported widely (SwooshUI, CodexBar, …). It must stay
+# system-frameworks-only — a Swoosh module dep here would turn the token
+# layer into a coupling hub and risk cycles. Build catches cycles; this
+# catches the edge before it lands.
+echo ""
+echo "Rule: design-tokens module imports no Swoosh module (SwooshGenerativeUI is a leaf)"
+gen_hits="$(violations "Sources/SwooshGenerativeUI" "Swoosh[A-Za-z]+")"
+if [ -n "$gen_hits" ]; then
+  note "SwooshGenerativeUI imports a Swoosh module — keep it system-frameworks-only:"
+  printf '%s\n' "$gen_hits" | sed 's/^/      /'
+else
+  ok "SwooshGenerativeUI imports no Swoosh module"
+fi
+
 echo ""
 if [ "$fail" -ne 0 ]; then
   printf '─── flow check: \033[31mFAIL\033[0m — fix the edges above (or update the rule\n'
