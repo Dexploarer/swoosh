@@ -1,12 +1,15 @@
-# Swoosh
+# Detour — Swoosh Edition
 
 [![CI](https://github.com/Dtour-Stack/swoosh/actions/workflows/ci.yml/badge.svg)](https://github.com/Dtour-Stack/swoosh/actions/workflows/ci.yml)
+![Release](https://img.shields.io/github/v/tag/Dtour-Stack/swoosh?label=release&sort=semver)
 ![Swift 6.3](https://img.shields.io/badge/Swift-6.3-orange.svg)
 ![Platforms](https://img.shields.io/badge/platforms-macOS%2026%20·%20iOS%2026-blue.svg)
 ![Architecture](https://img.shields.io/badge/concurrency-Sendable--clean%20actors-green.svg)
 
-> **Swoosh is a Swift-native, MLX-capable, Apple-first autonomous agent runtime.**
+> **A Swift-native, MLX-capable, Apple-first autonomous agent runtime.**
 > Private by default. Typed by design. Local when possible. Auditable always.
+
+**Detour** is the product; **Swoosh** is the runtime/SDK and codebase it's built on. (This is the *Swoosh Edition* line.)
 
 Swoosh is the native agent operating layer for Apple devices: an embeddable SDK (`SwooshKit`), a `swoosh` CLI, and native **macOS menu-bar + iOS companion** apps. The shipping app is branded **Detour**. It runs an agent loop with a typed tool registry, a permission firewall, an inspectable memory vault, replayable workflows, voice in/out, on-device + cloud LLMs, a crypto wallet + launchpad surface, and agent-emitted generative UI.
 
