@@ -53,31 +53,37 @@ public enum SwooshNeonTokens {
     // ── Canvas ──────────────────────────────────────────────────────
 
     public enum Canvas {
-        /// Pure black. Universal background; no off-black, no near-black.
-        public static let bg: Color = .black
+        // Retuned onto Volt Paper (see VoltPaper.swift). This file is now a
+        // compatibility shim: the API is unchanged so all 33 token-consuming
+        // files reskin at once, but the VALUES map to the warm-obsidian Volt
+        // palette — no more pure black / stark white.
+        /// Obsidian purple-black canvas. Never pure black.
+        public static let bg: Color = VoltPaper.background
 
-        /// Primary text. Active state.
-        public static let text1: Color = .white
+        /// Primary text — warm ink.
+        public static let text1: Color = VoltPaper.foreground
 
         /// Body, secondary.
-        public static let text2: Color = .white.opacity(0.64)
+        public static let text2: Color = VoltPaper.foreground.opacity(0.72)
 
-        /// Captions, dimension labels, "off" states.
-        public static let text3: Color = .white.opacity(0.40)
+        /// Captions, metadata, "off" states.
+        public static let text3: Color = VoltPaper.mutedFg
     }
 
     // ── Accent ──────────────────────────────────────────────────────
 
     public enum Accent {
-        /// Primary — every default interactive, every line, every
-        /// selected state on a neutral surface.
-        public static let cyan: Color = Color(red: 0x26 / 255.0, green: 0xE0 / 255.0, blue: 0xE8 / 255.0)
+        // Volt Paper remap: collapse the three neon accents onto Volt's
+        // restrained pair — VIOLET for decisions/selection (was cyan + gold),
+        // LIME for value/success/live signal (was green).
+        /// Default interactive / selected → electric violet.
+        public static let cyan: Color = VoltPaper.primary
 
-        /// Energy, heat, throughput, manifesting.
-        public static let gold: Color = Color(red: 0xF2 / 255.0, green: 0xB5 / 255.0, blue: 0x30 / 255.0)
+        /// Energy / throughput / manifesting → violet (Volt has no gold).
+        public static let gold: Color = VoltPaper.primary
 
-        /// Funds, value, approvals, success.
-        public static let green: Color = Color(red: 0x3C / 255.0, green: 0xDF / 255.0, blue: 0x52 / 255.0)
+        /// Funds / value / success / live → acid lime.
+        public static let green: Color = VoltPaper.accent
     }
 
     // ── Glow scale (replaces shadow) ────────────────────────────────
@@ -86,15 +92,18 @@ public enum SwooshNeonTokens {
         /// Outline of a tile at rest. Barely there — a thin breath of
         /// light, not a halo. Was 0.20 / r=18 and read as a heavy aura
         /// when every tile on a dashboard rendered it at once.
-        public static let idle: Double = 0.10
+        // Volt Paper is FLAT — borders + spacing, never glow/shadow. All
+        // glow intensities are zeroed so the neonTile/neonGlow modifiers
+        // render no halo. Kept as tokens so the API is stable.
+        public static let idle: Double = 0
 
         /// Hover / focus ring.
-        public static let focus: Double = 0.30
+        public static let focus: Double = 0
 
         /// Pressed, selected, in-progress.
-        public static let active: Double = 0.50
+        public static let active: Double = 0
 
-        /// Radius of the diffuse glow, in points.
+        /// Radius of the diffuse glow, in points (unused at 0 intensity).
         public static let radius: CGFloat = 8
     }
 
@@ -107,8 +116,8 @@ public enum SwooshNeonTokens {
         /// Active / focused outline.
         public static let bright: Double = 0.56
 
-        /// Internal divider — never accent-colored.
-        public static let rule = Color.white.opacity(0.08)
+        /// Internal divider / structural border — Volt Paper border.
+        public static let rule = VoltPaper.border
 
         /// Outline stroke width.
         public static let width: CGFloat = 1
@@ -204,18 +213,16 @@ private struct NeonTileModifier: ViewModifier {
     let shape: NeonTileShape
 
     func body(content: Content) -> some View {
+        // Volt Paper: flat card — surface fill + border, no shadow. Neutral
+        // border at rest; accent (violet/lime) border when focused/selected.
         let r = RoundedRectangle(cornerRadius: shape.radius, style: .continuous)
+        let strokeColor: Color
+        switch state {
+        case .idle:           strokeColor = VoltPaper.border
+        case .focus, .active: strokeColor = accent.color
+        }
         return content
-            .background(SwooshNeonTokens.Canvas.bg, in: r)
-            .overlay(
-                r.strokeBorder(
-                    accent.color.opacity(state.lineOpacity),
-                    lineWidth: SwooshNeonTokens.Line.width
-                )
-            )
-            .shadow(
-                color: accent.color.opacity(state.glowIntensity),
-                radius: SwooshNeonTokens.Glow.radius
-            )
+            .background(VoltPaper.surface, in: r)
+            .overlay(r.strokeBorder(strokeColor, lineWidth: SwooshNeonTokens.Line.width))
     }
 }

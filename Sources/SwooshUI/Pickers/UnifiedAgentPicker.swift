@@ -1,21 +1,18 @@
 // SwooshUI/Pickers/UnifiedAgentPicker.swift — Brain · Listen · Speak · Music
 //
-// A single compact glyph in the chat header that opens a full-screen
-// configuration sheet for every modality the agent uses:
-//   • Brain   — model + reasoning effort (was ModelPicker)
+// A single compact glyph in the chat header that opens a configuration sheet
+// for every modality the agent uses:
+//   • Brain   — model + reasoning effort
 //   • Listen  — STT engine (Apple Speech vs Whisper on-device)
 //   • Speak   — TTS engine (Apple, ElevenLabs, OpenAI, Cartesia)
 //   • Music   — music-gen provider (Suno, ElevenLabs Music, Stable Audio)
 //
-// Why a sheet instead of a Menu: on a 6.7" iPhone the input row is tight,
-// and the SOTA pattern for mobile assistants routes multi-section
-// configuration into a bottom sheet so the composer stays minimal. The
-// trigger is a single SF Symbol — no model name, no effort glyph, no
-// reflow when the chosen model has a long name. Bottom-sheet selections
-// persist through `@AppStorage` keys that match VoiceRouter's UserDefaults
-// keys exactly, so flipping a row here changes what the router returns
-// from `activeCloudTTSProvider()` / `activeSTTProvider()` /
-// `activeMusicProvider()` on the very next call.
+// The sheet is styled in the **Volt Paper** system (see VoltPaper.swift):
+// obsidian canvas, inky type, electric-violet for selections, acid-lime only
+// for live signal, flat bordered rows — no gradients, no stock gray Pickers.
+// Selections persist through `@AppStorage` keys matching VoltRouter's
+// UserDefaults keys, so flipping a row changes what the router returns on the
+// next call.
 
 import SwiftUI
 import SwooshGenerativeUI
@@ -23,7 +20,7 @@ import SwooshModels
 import SwooshProviders
 
 // ═══════════════════════════════════════════════════════════════════
-// MARK: - Trigger
+// MARK: - Trigger (lives in the neon chat input row — left as-is)
 // ═══════════════════════════════════════════════════════════════════
 
 public struct UnifiedAgentPicker: View {
@@ -75,7 +72,7 @@ public struct UnifiedAgentPicker: View {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MARK: - Sheet body
+// MARK: - Sheet (Volt Paper)
 // ═══════════════════════════════════════════════════════════════════
 
 private struct UnifiedAgentSheet: View {
@@ -94,22 +91,13 @@ private struct UnifiedAgentSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    // ── Derived ──
+    // ── Derived (unchanged) ──
 
-    /// Models the user has selected across all slots (brain + stt + tts).
-    /// Used to compute total memory budget in the hardware banner.
     private var selectedModels: [UnifiedModelEntry] {
         var result: [UnifiedModelEntry] = []
-        if let brain = models.first(where: { $0.id == selectedModelID }) {
-            result.append(brain)
-        }
-        // Add STT/TTS local models if any match
-        if let stt = localMLXModels.first(where: { $0.id.contains(sttEngineRaw) }) {
-            result.append(stt)
-        }
-        if let tts = localMLXModels.first(where: { $0.id.contains(ttsEngineRaw) }) {
-            result.append(tts)
-        }
+        if let brain = models.first(where: { $0.id == selectedModelID }) { result.append(brain) }
+        if let stt = localMLXModels.first(where: { $0.id.contains(sttEngineRaw) }) { result.append(stt) }
+        if let tts = localMLXModels.first(where: { $0.id.contains(ttsEngineRaw) }) { result.append(tts) }
         return result
     }
 
@@ -121,7 +109,6 @@ private struct UnifiedAgentSheet: View {
         models.filter { $0.runtime == .openAI || $0.runtime == .openRouter || $0.runtime == .detourCloud || $0.runtime == .router || $0.runtime == .codex }
     }
 
-    /// Brain-eligible local models, grouped by family.
     private var localBrainFamilies: [(family: String, models: [UnifiedModelEntry])] {
         let brain = localMLXModels.filter { entry in
             entry.capabilities.contains(.textGeneration)
@@ -140,7 +127,6 @@ private struct UnifiedAgentSheet: View {
         return seen.map { ($0, grouped[$0] ?? []) }
     }
 
-    /// Specialty local models (STT, TTS, image gen, embeddings, rerankers, vision-only).
     private var localSpecialtyModels: [UnifiedModelEntry] {
         localMLXModels.filter { entry in
             !entry.capabilities.contains(.textGeneration)
@@ -154,356 +140,265 @@ private struct UnifiedAgentSheet: View {
         models.first(where: { $0.id == selectedModelID })?.supportsReasoningEffort ?? false
     }
 
+    private var cloudModelsByProvider: [(providerID: String, models: [UnifiedModelEntry])] {
+        var seen: [String] = []
+        var grouped: [String: [UnifiedModelEntry]] = [:]
+        for entry in cloudModels {
+            if grouped[entry.providerID] == nil { seen.append(entry.providerID) }
+            grouped[entry.providerID, default: []].append(entry)
+        }
+        return seen.map { ($0, grouped[$0] ?? []) }
+    }
+
+    // ── Body ──
+
     var body: some View {
         VStack(spacing: 0) {
-            // ── Header ──
-            HStack {
-                Text("AGENT CONFIG")
-                    .font(.system(size: 11, weight: .bold))
-                    .tracking(2)
-                    .foregroundStyle(SwooshNeonTokens.Accent.cyan)
-                Spacer()
-                Button { dismiss() } label: {
-                    Text("Done")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(SwooshNeonTokens.Accent.cyan)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 12)
-
-            // ── Hardware banner ──
-            MemoryBudgetView(hardware: hardware, selectedModels: selectedModels)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
-
-            Rectangle()
-                .fill(SwooshNeonTokens.Line.rule)
-                .frame(height: 0.5)
-
-            // ── Content ──
+            header
             ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    // ── Brain: Intelligence ──
-                    sectionHeader("Brain", icon: "brain")
-
-                    if currentSupportsEffort {
-                        HStack(spacing: 12) {
-                            Text("Intelligence")
-                                .font(.system(size: 13))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                            Spacer()
-                            Picker("", selection: $effort) {
-                                ForEach(ReasoningEffort.allCases, id: \.self) { level in
-                                    Text(level.displayName).tag(level)
-                                }
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.segmented)
-                            .frame(width: 220)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                    }
-
-                    // ── Search bar ──
-                    HStack(spacing: 8) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 11))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                        TextField("Search models…", text: $searchText)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 12))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(0.04))
-                    )
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-
-                    // ── Local MLX Models (Brain) ──
-                    ForEach(localBrainFamilies, id: \.family) { group in
-                        familyHeader(group.family, count: group.models.count)
-                        ForEach(group.models) { entry in
-                            modelRow(entry: entry)
-                        }
-                    }
-
-                    // ── Cloud toggle ──
-                    if !cloudModels.isEmpty {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showCloudModels.toggle()
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: showCloudModels ? "chevron.down" : "chevron.right")
-                                    .font(.system(size: 9, weight: .semibold))
-                                Text("CLOUD PROVIDERS")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .tracking(1.5)
-                                Text("(\(cloudModels.count))")
-                                    .font(.system(size: 9))
-                                Spacer()
-                                Text("No memory impact")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                            }
-                            .foregroundStyle(SwooshNeonTokens.Accent.cyan.opacity(0.6))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 12)
-
-                        if showCloudModels {
-                            ForEach(cloudModelsByProvider, id: \.providerID) { group in
-                                providerSubheader(group.providerID)
-                                ForEach(group.models) { entry in
-                                    cloudModelRow(entry: entry)
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Specialty local models ──
-                    if !localSpecialtyModels.isEmpty {
-                        sectionHeader("Specialty Models", icon: "sparkles")
-                            .padding(.top, 16)
-
-                        ForEach(localSpecialtyModels) { entry in
-                            specialtyRow(entry: entry)
-                        }
-                    }
-
-                    // ── Listen / Speak / Music ──
-                    sectionHeader("Listen", icon: "ear")
-                        .padding(.top, 16)
-
-                    HStack(spacing: 14) {
-                        SwooshOrbView(configuration: SwooshOrbConfiguration(
-                            backgroundColors: [.cyan, .green, .teal],
-                            glowColor: .cyan,
-                            coreGlowIntensity: 0.7,
-                            showParticles: false, showShadow: false, speed: 35
-                        ))
-                        .frame(width: 32, height: 32)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Speech-to-Text")
-                                .font(.system(size: 11))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                            Picker("", selection: $sttEngineRaw) {
-                                Text("Apple Speech").tag("system")
-                                Text("Whisper (on-device)").tag("whisper")
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.segmented)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-
-                    sectionHeader("Speak", icon: "waveform")
-                        .padding(.top, 12)
-
-                    HStack(spacing: 14) {
-                        SwooshOrbView(configuration: SwooshOrbConfiguration(
-                            backgroundColors: [.purple, .indigo, .cyan],
-                            glowColor: .purple,
-                            coreGlowIntensity: 0.7,
-                            showParticles: false, showShadow: false, speed: 30
-                        ))
-                        .frame(width: 32, height: 32)
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Text-to-Speech")
-                                .font(.system(size: 11))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                            Picker("", selection: $ttsEngineRaw) {
-                                Text("Apple").tag("system")
-                                Text("ElevenLabs").tag("elevenlabs")
-                                Text("OpenAI").tag("openai-tts")
-                                Text("Cartesia").tag("cartesia")
-                            }
-                            .labelsHidden()
-                            .pickerStyle(.segmented)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-
-                    sectionHeader("Music", icon: "music.note")
-                        .padding(.top, 12)
-
-                    HStack(spacing: 12) {
-                        Text("Provider")
-                            .font(.system(size: 13))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                        Spacer()
-                        Picker("", selection: $musicProviderRaw) {
-                            Text("Suno").tag("suno")
-                            Text("ElevenLabs").tag("elevenlabs-music")
-                            Text("Stable Audio").tag("stable-audio")
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                VStack(alignment: .leading, spacing: 22) {
+                    MemoryBudgetView(hardware: hardware, selectedModels: selectedModels)
+                    brainSection
+                    if !localSpecialtyModels.isEmpty { specialtySection }
+                    listenSpeakMusicSection
                 }
-                .padding(16)
+                .padding(20)
             }
         }
         .frame(width: 680, height: 720)
-        .background(SwooshNeonTokens.Canvas.bg)
+        .background(VoltPaper.background)
+        .environment(\.colorScheme, .dark)
     }
 
-    // MARK: - Helpers
-
-    @ViewBuilder
-    private func sectionHeader(_ title: String, icon: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
-            Text(title.uppercased())
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(1.5)
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 4) {
+                VoltSectionLabel("Agent / Config")
+                Text("Models & voices")
+                    .font(.system(size: 22, weight: .bold))
+                    .tracking(-0.3)
+                    .foregroundStyle(VoltPaper.foreground)
+            }
+            Spacer()
+            Button("Done") { dismiss() }
+                .buttonStyle(.voltPrimary)
         }
-        .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.horizontal, 20)
+        .padding(.top, 22)
+        .padding(.bottom, 16)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(VoltPaper.border).frame(height: 1)
+        }
     }
 
-    @ViewBuilder
+    // ── Brain ──
+
+    private var brainSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VoltSectionLabel("Brain")
+
+            if currentSupportsEffort {
+                HStack(spacing: 14) {
+                    Text("Reasoning effort")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(VoltPaper.foreground)
+                    Spacer()
+                    VoltSegmented(
+                        ReasoningEffort.allCases.map { .init($0.displayName, $0) },
+                        selection: $effort
+                    )
+                    .frame(width: 260)
+                }
+            }
+
+            searchField
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(localBrainFamilies, id: \.family) { group in
+                    familyHeader(group.family, count: group.models.count)
+                    ForEach(group.models) { entry in modelRow(entry: entry) }
+                }
+            }
+
+            if !cloudModels.isEmpty { cloudDisclosure }
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12))
+                .foregroundStyle(VoltPaper.mutedFg)
+            TextField("Search models…", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(VoltPaper.foreground)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 40)
+        .background(RoundedRectangle(cornerRadius: VoltPaper.Radius.md, style: .continuous).fill(VoltPaper.background))
+        .overlay(RoundedRectangle(cornerRadius: VoltPaper.Radius.md, style: .continuous).strokeBorder(VoltPaper.border, lineWidth: 1))
+    }
+
+    private var cloudDisclosure: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { showCloudModels.toggle() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: showCloudModels ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
+                    VoltSectionLabel("Cloud Providers")
+                    Text("(\(cloudModels.count))")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(VoltPaper.mutedFg)
+                    Spacer()
+                    Text("no memory impact")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(VoltPaper.mutedFg)
+                }
+                .foregroundStyle(VoltPaper.mutedFg)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if showCloudModels {
+                ForEach(cloudModelsByProvider, id: \.providerID) { group in
+                    providerSubheader(group.providerID)
+                    ForEach(group.models) { entry in modelRow(entry: entry, cloud: true) }
+                }
+            }
+        }
+        .padding(.top, 6)
+    }
+
+    // ── Specialty ──
+
+    private var specialtySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VoltSectionLabel("Specialty Models")
+            VStack(spacing: 8) {
+                ForEach(localSpecialtyModels) { entry in specialtyRow(entry: entry) }
+            }
+        }
+    }
+
+    // ── Listen / Speak / Music ──
+
+    private var listenSpeakMusicSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            providerRow(
+                label: "Listen", caption: "Speech-to-text",
+                options: [.init("Apple Speech", "system"), .init("Whisper", "whisper")],
+                selection: $sttEngineRaw
+            )
+            providerRow(
+                label: "Speak", caption: "Text-to-speech",
+                options: [.init("Apple", "system"), .init("ElevenLabs", "elevenlabs"),
+                          .init("OpenAI", "openai-tts"), .init("Cartesia", "cartesia")],
+                selection: $ttsEngineRaw
+            )
+            providerRow(
+                label: "Music", caption: "Generation provider",
+                options: [.init("Suno", "suno"), .init("ElevenLabs", "elevenlabs-music"),
+                          .init("Stable Audio", "stable-audio")],
+                selection: $musicProviderRaw
+            )
+        }
+    }
+
+    private func providerRow(
+        label: String, caption: String,
+        options: [VoltSegmented<String>.Option], selection: Binding<String>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                VoltSectionLabel(label)
+                Text(caption)
+                    .font(.system(size: 11))
+                    .foregroundStyle(VoltPaper.mutedFg)
+            }
+            VoltSegmented(options, selection: selection)
+        }
+        .voltCard(padding: 16)
+    }
+
+    // ── Rows ──
+
     private func familyHeader(_ family: String, count: Int) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Text(family.uppercased())
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
                 .tracking(1)
-            Text("(\(count))")
-                .font(.system(size: 9))
+            Text("(\(count))").font(.system(size: 10, design: .monospaced))
         }
-        .foregroundStyle(SwooshNeonTokens.Accent.cyan.opacity(0.5))
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 2)
+        .foregroundStyle(VoltPaper.mutedFg)
+        .padding(.top, 4)
     }
 
     @ViewBuilder
-    private func modelRow(entry: UnifiedModelEntry) -> some View {
+    private func modelRow(entry: UnifiedModelEntry, cloud: Bool = false) -> some View {
         let selected = entry.id == selectedModelID
         let memGB = entry.estimatedMemoryGB ?? 0
-        let fits = memGB <= usableMemory
-
+        let fits = cloud || memGB <= usableMemory
         Button {
             selectedModelID = entry.id
         } label: {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Text(entry.displayName)
-                            .font(.system(size: 13, weight: selected ? .semibold : .regular))
-                            .foregroundStyle(selected ? SwooshNeonTokens.Canvas.text1 : (fits ? SwooshNeonTokens.Canvas.text2 : .red.opacity(0.7)))
+                            .font(.system(size: 13, weight: selected ? .bold : .medium))
+                            .foregroundStyle(fits ? VoltPaper.foreground : VoltPaper.destructive)
                         if !fits {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(.red.opacity(0.7))
+                                .font(.system(size: 9)).foregroundStyle(VoltPaper.destructive)
                         }
                     }
                     Text(entry.blurb)
-                        .font(.system(size: 10))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                        .lineLimit(1)
+                        .font(.system(size: 11)).foregroundStyle(VoltPaper.mutedFg).lineLimit(1)
                 }
-
                 Spacer()
-
-                if memGB > 0 {
+                if cloud {
+                    Image(systemName: "cloud").font(.system(size: 11)).foregroundStyle(VoltPaper.mutedFg)
+                } else if memGB > 0 {
                     ModelMemoryBar(memoryGB: memGB, maxMemoryGB: usableMemory)
                 }
-
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(SwooshNeonTokens.Accent.cyan)
+                        .font(.system(size: 15)).foregroundStyle(VoltPaper.primary)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 12).padding(.vertical, 9)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(selected ? SwooshNeonTokens.Accent.cyan.opacity(0.06) : Color.clear)
+                RoundedRectangle(cornerRadius: VoltPaper.Radius.md, style: .continuous)
+                    .fill(selected ? VoltPaper.primary.opacity(0.14) : Color.clear)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: VoltPaper.Radius.md, style: .continuous)
+                    .strokeBorder(selected ? VoltPaper.primary.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    @ViewBuilder
-    private func cloudModelRow(entry: UnifiedModelEntry) -> some View {
-        let selected = entry.id == selectedModelID
-        Button {
-            selectedModelID = entry.id
-        } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.displayName)
-                        .font(.system(size: 12, weight: selected ? .semibold : .regular))
-                        .foregroundStyle(selected ? SwooshNeonTokens.Canvas.text1 : SwooshNeonTokens.Canvas.text2)
-                    Text(entry.blurb)
-                        .font(.system(size: 10))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "cloud")
-                    .font(.system(size: 10))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                if selected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 13))
-                        .foregroundStyle(SwooshNeonTokens.Accent.cyan)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 5)
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
     private func specialtyRow(entry: UnifiedModelEntry) -> some View {
         let memGB = entry.estimatedMemoryGB ?? 0
-        HStack(spacing: 10) {
-            let icon = specialtyIcon(for: entry)
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(SwooshNeonTokens.Accent.cyan.opacity(0.7))
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 1) {
+        return HStack(spacing: 12) {
+            Image(systemName: specialtyIcon(for: entry))
+                .font(.system(size: 13)).foregroundStyle(VoltPaper.primary).frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(entry.displayName)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(VoltPaper.foreground)
                 Text(entry.blurb)
-                    .font(.system(size: 10))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                    .lineLimit(1)
+                    .font(.system(size: 10.5)).foregroundStyle(VoltPaper.mutedFg).lineLimit(1)
             }
             Spacer()
-            if memGB > 0 {
-                ModelMemoryBar(memoryGB: memGB, maxMemoryGB: usableMemory)
-            }
+            if memGB > 0 { ModelMemoryBar(memoryGB: memGB, maxMemoryGB: usableMemory) }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .voltCard(VoltPaper.Radius.md, padding: 0)
     }
 
     private func specialtyIcon(for entry: UnifiedModelEntry) -> String {
@@ -516,26 +411,11 @@ private struct UnifiedAgentSheet: View {
         return "cube"
     }
 
-    @ViewBuilder
     private func providerSubheader(_ providerID: String) -> some View {
         Text(UnifiedModelCatalog.providerDisplayName(providerID).uppercased())
-            .font(.system(size: 9, weight: .semibold))
+            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
             .tracking(1)
-            .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-            .padding(.horizontal, 12)
+            .foregroundStyle(VoltPaper.mutedFg)
             .padding(.top, 6)
-            .padding(.bottom, 2)
-    }
-
-    private var cloudModelsByProvider: [(providerID: String, models: [UnifiedModelEntry])] {
-        var seen: [String] = []
-        var grouped: [String: [UnifiedModelEntry]] = [:]
-        for entry in cloudModels {
-            if grouped[entry.providerID] == nil { seen.append(entry.providerID) }
-            grouped[entry.providerID, default: []].append(entry)
-        }
-        return seen.map { ($0, grouped[$0] ?? []) }
     }
 }
-
-
