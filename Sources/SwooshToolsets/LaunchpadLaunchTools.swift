@@ -18,28 +18,54 @@ public struct LaunchTokenInput: Codable, Sendable {
     public let symbol: String
     /// Token description / tagline.
     public let description: String
-    /// Initial supply (base units). Platforms may override.
-    public let initialSupply: UInt64?
-    /// Image URL or data URI for the token logo.
-    public let imageURL: String?
+    // ── Logo (uploaded to IPFS as a binary file, NOT a URL) ──
+    /// Base64-encoded logo image bytes.
+    public let imageBase64: String?
+    /// MIME type of the logo (e.g. "image/png").
+    public let imageMimeType: String?
+    // ── Socials (carried in the IPFS metadata) ──
+    public let website: String?
+    public let twitter: String?
+    public let telegram: String?
+    // ── Initial dev buy ──
+    /// Creator's initial buy, in SOL (0 to skip). Solana platforms.
+    public let devBuySOL: Double?
+    /// Slippage percent for the dev buy.
+    public let slippagePercent: Double?
+    /// Priority fee in SOL for the dev buy.
+    public let priorityFeeSOL: Double?
     /// Platform-specific extra parameters (JSON object).
     public let platformParams: JSONValue?
+    // NOTE: token supply/decimals are NOT inputs — every supported
+    // launchpad fixes them by protocol (pump.fun 1e9 / 6dp).
 
     public init(
         platformID: String,
         name: String,
         symbol: String,
         description: String,
-        initialSupply: UInt64? = nil,
-        imageURL: String? = nil,
+        imageBase64: String? = nil,
+        imageMimeType: String? = nil,
+        website: String? = nil,
+        twitter: String? = nil,
+        telegram: String? = nil,
+        devBuySOL: Double? = nil,
+        slippagePercent: Double? = nil,
+        priorityFeeSOL: Double? = nil,
         platformParams: JSONValue? = nil
     ) {
         self.platformID = platformID
         self.name = name
         self.symbol = symbol
         self.description = description
-        self.initialSupply = initialSupply
-        self.imageURL = imageURL
+        self.imageBase64 = imageBase64
+        self.imageMimeType = imageMimeType
+        self.website = website
+        self.twitter = twitter
+        self.telegram = telegram
+        self.devBuySOL = devBuySOL
+        self.slippagePercent = slippagePercent
+        self.priorityFeeSOL = priorityFeeSOL
         self.platformParams = platformParams
     }
 }
@@ -47,8 +73,14 @@ public struct LaunchTokenInput: Codable, Sendable {
 public struct LaunchTokenOutput: Codable, Sendable {
     /// Platform that handled the launch.
     public let platform: String
-    /// Unsigned transaction bytes (base64) for wallet signing.
+    /// Unsigned transaction bytes (base64) for wallet signing. Nil while a
+    /// launch is only *prepared* (broadcast not yet wired).
     public let unsignedTransaction: String?
+    /// IPFS metadata URI produced for the token (when the metadata was pinned).
+    public let metadataUri: String?
+    /// True when the launch was prepared (metadata pinned + request assembled)
+    /// but NOT broadcast — no funds moved.
+    public let prepared: Bool
     /// Human-readable summary for the user to review before signing.
     public let reviewSummary: String
     /// Whether the launch draft was persisted (for resumable flows).
@@ -57,11 +89,15 @@ public struct LaunchTokenOutput: Codable, Sendable {
     public init(
         platform: String,
         unsignedTransaction: String? = nil,
+        metadataUri: String? = nil,
+        prepared: Bool = false,
         reviewSummary: String,
         draftSaved: Bool = false
     ) {
         self.platform = platform
         self.unsignedTransaction = unsignedTransaction
+        self.metadataUri = metadataUri
+        self.prepared = prepared
         self.reviewSummary = reviewSummary
         self.draftSaved = draftSaved
     }
@@ -82,11 +118,59 @@ public struct PumpPortalLaunchTool: SwooshTool {
     public static let toolset = ToolsetID.launchpads
     public static let isTokenGated = true
 
-    public init() {}
+    private let client: PumpPortalLaunchClient
+
+    public init(client: PumpPortalLaunchClient = PumpPortalLaunchClient()) {
+        self.client = client
+    }
 
     public func call(_ input: Input, context: ToolContext) async throws -> Output {
-        // Delegate to the PumpPortal skill / API client when wired
-        throw ToolError.notImplemented("PumpPortal launch execution pending API client registration")
+        // PREPARE-ONLY: pin metadata to IPFS + assemble the create request for
+        // review. Broadcast (which moves funds) is intentionally not wired —
+        // see PumpPortalLaunchClient. All firewall/approval/token gates have
+        // already passed by the time this runs (ToolRegistry.call).
+        guard let base64 = input.imageBase64, let imageData = Data(base64Encoded: base64), !imageData.isEmpty else {
+            throw ToolError.invalidInput("A logo image is required to prepare a pump.fun launch.")
+        }
+        // Bounds — no funds move here, but pin the expected ranges now so the
+        // future sign/broadcast path inherits a validated input.
+        if let buy = input.devBuySOL, buy < 0 || buy > 100 {
+            throw ToolError.invalidInput("Dev buy must be between 0 and 100 SOL.")
+        }
+        if let slip = input.slippagePercent, slip < 0 || slip > 50 {
+            throw ToolError.invalidInput("Slippage must be between 0 and 50%.")
+        }
+        if let fee = input.priorityFeeSOL, fee < 0 || fee > 1 {
+            throw ToolError.invalidInput("Priority fee must be between 0 and 1 SOL.")
+        }
+        let metadataUri = try await client.uploadMetadata(
+            name: input.name,
+            symbol: input.symbol,
+            description: input.description,
+            imageData: imageData,
+            mimeType: input.imageMimeType ?? "image/png",
+            twitter: input.twitter,
+            telegram: input.telegram,
+            website: input.website
+        )
+        let devBuy = input.devBuySOL ?? 0
+        let summary = """
+        Prepared pump.fun launch — NOT broadcast (no funds moved).
+        • Token: \(input.name) ($\(input.symbol))
+        • Metadata (IPFS): \(metadataUri)
+        • Dev buy: \(devBuy) SOL\(devBuy > 0 ? " · slippage \(input.slippagePercent ?? 5)% · priority \(input.priorityFeeSOL ?? 0.00005) SOL" : "")
+        • Fees on launch (when broadcast): 0.5% Local / 1% Lightning on the dev buy, + Solana network + pump.fun protocol fees.
+        Supply is fixed by pump.fun (1,000,000,000 / 6 decimals).
+        To complete the launch, the create transaction must be signed and broadcast — that step is not yet enabled.
+        """
+        return Output(
+            platform: "pump.fun",
+            unsignedTransaction: nil,
+            metadataUri: metadataUri,
+            prepared: true,
+            reviewSummary: summary,
+            draftSaved: false
+        )
     }
 }
 

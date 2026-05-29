@@ -380,7 +380,10 @@ extension JSONValue {
         // Redact known sensitive patterns
         let sensitivePatterns = [
             "private_key", "privateKey", "seed_phrase", "seedPhrase",
-            "mnemonic", "password", "secret", "cookie", "token"
+            "mnemonic", "password", "secret", "cookie", "token",
+            // Not sensitive, but a multi-MB base64 logo would otherwise bury
+            // the meaningful fields in a truncated audit / approval preview.
+            "imageBase64"
         ]
         for pattern in sensitivePatterns {
             if text.localizedCaseInsensitiveContains(pattern) {
