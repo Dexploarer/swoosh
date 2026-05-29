@@ -14,6 +14,11 @@ public struct MemoriesPane: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var selectedTab = 0
+    @State private var busyIDs: Set<String> = []
+    @State private var isBulkApproving = false
+    @State private var bulkProgress = 0
+    @State private var showApproveAllConfirm = false
+    @State private var actionMessage: String?
 
     public init() {}
 
@@ -107,17 +112,72 @@ public struct MemoriesPane: View {
                 emptyState
             } else {
                 LazyVStack(spacing: 4) {
+                    if selectedTab == 1 {
+                        approveAllBar
+                    }
                     ForEach(currentList) { memory in
-                        memoryRow(memory)
+                        memoryRow(memory, showActions: selectedTab == 1)
                     }
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
             }
         }
+        .confirmationDialog(
+            "Approve all \(pending.count) pending memories?",
+            isPresented: $showApproveAllConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Approve all \(pending.count)") { Task { await approveAll() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("These become long-term memory the agent can recall. You can still remove any later.")
+        }
     }
 
-    private func memoryRow(_ memory: MemorySummary) -> some View {
+    // MARK: - Approve-all bar (pending tab)
+
+    private var approveAllBar: some View {
+        HStack(spacing: 10) {
+            if let actionMessage {
+                Text(actionMessage)
+                    .font(.system(size: 11))
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+            } else if isBulkApproving {
+                ProgressView().controlSize(.small)
+                Text("Approving \(bulkProgress) of \(pending.count)…")
+                    .font(.system(size: 11))
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+            } else {
+                Text("\(pending.count) awaiting review")
+                    .font(.system(size: 11))
+                    .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+            }
+            Spacer()
+            Button { showApproveAllConfirm = true } label: {
+                Text("Approve All")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(VoltPaper.accentFg)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(VoltPaper.accent))
+            }
+            .buttonStyle(.plain)
+            .disabled(isBulkApproving || pending.isEmpty)
+            .opacity(isBulkApproving || pending.isEmpty ? 0.5 : 1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(VoltPaper.accent.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(VoltPaper.accent.opacity(0.18), lineWidth: 0.5)
+        )
+        .padding(.bottom, 4)
+    }
+
+    private func memoryRow(_ memory: MemorySummary, showActions: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 Text(memory.text)
@@ -142,6 +202,9 @@ public struct MemoriesPane: View {
                 Text(memory.createdAt)
                     .font(.system(size: 10))
                     .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+            }
+            if showActions {
+                rowActions(memory)
             }
         }
         .padding(12)
@@ -215,7 +278,81 @@ public struct MemoriesPane: View {
         .padding(.top, 80)
     }
 
+    @ViewBuilder
+    private func rowActions(_ memory: MemorySummary) -> some View {
+        let busy = busyIDs.contains(memory.id)
+        HStack(spacing: 8) {
+            Spacer()
+            Button { Task { await reject(memory) } } label: {
+                Text("Reject")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(VoltPaper.destructive)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(VoltPaper.destructive.opacity(0.1)))
+            }
+            .buttonStyle(.plain)
+            .disabled(busy || isBulkApproving)
+
+            Button { Task { await approve(memory) } } label: {
+                HStack(spacing: 4) {
+                    if busy { ProgressView().controlSize(.mini) }
+                    Text("Approve")
+                }
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(VoltPaper.accentFg)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(VoltPaper.accent))
+            }
+            .buttonStyle(.plain)
+            .disabled(busy || isBulkApproving)
+        }
+        .opacity(busy ? 0.6 : 1)
+    }
+
     // MARK: - Network
+
+    private func approve(_ memory: MemorySummary) async {
+        guard let client = SwooshDaemonClient.client() else { return }
+        busyIDs.insert(memory.id)
+        defer { busyIDs.remove(memory.id) }
+        do {
+            _ = try await client.approveMemory(id: memory.id)
+            await loadMemories()
+        } catch {
+            actionMessage = "Approve failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func reject(_ memory: MemorySummary) async {
+        guard let client = SwooshDaemonClient.client() else { return }
+        busyIDs.insert(memory.id)
+        defer { busyIDs.remove(memory.id) }
+        do {
+            _ = try await client.rejectMemory(id: memory.id)
+            await loadMemories()
+        } catch {
+            actionMessage = "Reject failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func approveAll() async {
+        guard let client = SwooshDaemonClient.client() else { return }
+        let ids = pending.map(\.id)
+        guard !ids.isEmpty else { return }
+        isBulkApproving = true
+        bulkProgress = 0
+        actionMessage = nil
+        let result = await MemoryApproval.approveAll(ids: ids, client: client) { done in
+            bulkProgress = done
+        }
+        isBulkApproving = false
+        actionMessage = result.failed == 0
+            ? "Approved \(result.approved)."
+            : "Approved \(result.approved), \(result.failed) failed."
+        await loadMemories()
+    }
 
     private func loadMemories() async {
         guard let client = SwooshDaemonClient.client() else {
