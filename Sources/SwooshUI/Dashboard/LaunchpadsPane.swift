@@ -16,12 +16,6 @@ public struct LaunchpadsPane: View {
     @State private var showLaunchSheet = false
     @State private var launchPlatformID = ""
 
-    // Launch form
-    @State private var tokenName = ""
-    @State private var tokenSymbol = ""
-    @State private var tokenDescription = ""
-    @State private var initialBuySOL = "0.1"
-
     public init() {}
 
     private var staticPlatforms: [LaunchpadPlatformSummary] {
@@ -43,7 +37,13 @@ public struct LaunchpadsPane: View {
         }
         .background(SwooshNeonTokens.Canvas.bg)
         .task { await loadPlatforms() }
-        .sheet(isPresented: $showLaunchSheet) { launchSheet }
+        .sheet(isPresented: $showLaunchSheet) {
+            LaunchTokenSheet(
+                platformID: launchPlatformID,
+                platformName: displayPlatforms.first { $0.id == launchPlatformID }?.name ?? launchPlatformID,
+                onClose: { showLaunchSheet = false }
+            )
+        }
     }
 
     // ── Header ────────────────────────────────────────────────────
@@ -252,70 +252,6 @@ public struct LaunchpadsPane: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(SwooshNeonTokens.Line.rule, lineWidth: 0.5)
         )
-    }
-
-    // ── Launch sheet ──────────────────────────────────────────────
-
-    private var launchSheet: some View {
-        let platformName = displayPlatforms.first { $0.id == launchPlatformID }?.name ?? launchPlatformID
-        return VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Launch Token on \(platformName)")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                Spacer()
-                Button { showLaunchSheet = false } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                }
-                .buttonStyle(.plain)
-            }
-
-            VStack(alignment: .leading, spacing: 10) {
-                formField("Token Name", text: $tokenName, placeholder: "My Token")
-                formField("Symbol", text: $tokenSymbol, placeholder: "MYTKN")
-                formField("Description", text: $tokenDescription, placeholder: "The next big thing…")
-                formField("Initial Buy (SOL)", text: $initialBuySOL, placeholder: "0.1")
-            }
-
-            HStack {
-                Spacer()
-                Button("Cancel") { showLaunchSheet = false }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                Button {
-                    // TODO: Wire to daemon chat — "launch token on {platform} name={name} symbol={sym}"
-                    showLaunchSheet = false
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "bolt.fill")
-                        Text("Launch")
-                    }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(VoltPaper.foreground)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
-                    .background(VoltPaper.primary.gradient)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .disabled(tokenName.isEmpty || tokenSymbol.isEmpty)
-            }
-        }
-        .padding(24)
-        .frame(width: 420)
-    }
-
-    private func formField(_ label: String, text: Binding<String>, placeholder: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-            TextField(placeholder, text: text)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13))
-        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────
