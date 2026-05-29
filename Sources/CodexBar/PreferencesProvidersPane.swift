@@ -1,6 +1,7 @@
 import AppKit
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct ProvidersPane: View {
@@ -105,7 +106,7 @@ struct ProvidersPane: View {
                     })
             } else {
                 Text(L("select_a_provider"))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
         }

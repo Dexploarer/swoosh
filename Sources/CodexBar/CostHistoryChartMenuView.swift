@@ -1,6 +1,7 @@
 import Charts
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct CostHistoryChartMenuView: View {
@@ -68,7 +69,7 @@ struct CostHistoryChartMenuView: View {
             if model.points.isEmpty {
                 Text(L("No cost history data."))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .accessibilityLabel(L("No cost history data."))
             } else {
                 Chart {
@@ -124,7 +125,7 @@ struct CostHistoryChartMenuView: View {
                 VStack(alignment: .leading, spacing: Self.detailSpacing) {
                     Text(detail.primary)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(height: Self.detailPrimaryLineHeight, alignment: .leading)
@@ -140,7 +141,7 @@ struct CostHistoryChartMenuView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(row.title)
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(VoltPaper.mutedFg)
                                     .lineLimit(1)
                                     .truncationMode(.tail)
                                     .frame(height: Self.detailTitleLineHeight, alignment: .leading)
@@ -184,7 +185,7 @@ struct CostHistoryChartMenuView: View {
                     self.windowLabel ?? Self.windowLabel(days: self.historyDays),
                     self.costString(total)))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(1)
                     .truncationMode(.head)
             }

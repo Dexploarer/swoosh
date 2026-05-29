@@ -1,5 +1,6 @@
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct GlobalQuotaWarningSettingsView: View {
@@ -59,7 +60,7 @@ struct ProviderQuotaWarningSettingsView: View {
         ProviderSettingsSection(title: L("quota_warnings_title")) {
             Text(L("quota_warning_provider_inherits"))
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .fixedSize(horizontal: false, vertical: true)
 
             self.windowRow(.session)
@@ -125,7 +126,7 @@ struct ProviderQuotaWarningSettingsView: View {
                 } else {
                     Text(L("quota_warning_off"))
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .padding(.leading, 20)
                 }
             } else {
@@ -133,7 +134,7 @@ struct ProviderQuotaWarningSettingsView: View {
                     self.settings.quotaWarningThresholds(window),
                     enabled: self.settings.quotaWarningWindowEnabled(window))))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .padding(.leading, 20)
             }
         }
@@ -181,7 +182,7 @@ private struct QuotaWarningThresholdField: View {
 
                 Text(L("quota_warning_upper"))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
 
                 TextField("50", text: self.$upperText)
                     .textFieldStyle(.roundedBorder)
@@ -194,7 +195,7 @@ private struct QuotaWarningThresholdField: View {
 
                 Text(L("quota_warning_lower"))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
 
                 TextField("20", text: self.$lowerText)
                     .textFieldStyle(.roundedBorder)
@@ -212,7 +213,7 @@ private struct QuotaWarningThresholdField: View {
             if !self.subtitle.isEmpty {
                 Text(self.subtitle)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

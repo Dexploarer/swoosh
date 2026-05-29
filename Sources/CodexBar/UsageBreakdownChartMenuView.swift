@@ -1,6 +1,7 @@
 import Charts
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct UsageBreakdownChartMenuView: View {
@@ -33,7 +34,7 @@ struct UsageBreakdownChartMenuView: View {
             if model.points.isEmpty {
                 Text(L("No usage breakdown data."))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .accessibilityLabel(L("No usage breakdown data available."))
             } else {
                 Chart {
@@ -93,13 +94,13 @@ struct UsageBreakdownChartMenuView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(detail.primary)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(height: 16, alignment: .leading)
                     Text(detail.secondary ?? " ")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(height: 16, alignment: .leading)
@@ -118,7 +119,7 @@ struct UsageBreakdownChartMenuView: View {
                                 .frame(width: 7, height: 7)
                             Text(service)
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(VoltPaper.mutedFg)
                                 .lineLimit(1)
                         }
                     }
@@ -143,7 +144,7 @@ struct UsageBreakdownChartMenuView: View {
 
         func color(for service: String) -> Color {
             guard let idx = self.services.firstIndex(of: service), idx < self.serviceColors.count else {
-                return .secondary
+                return VoltPaper.mutedFg
             }
             return self.serviceColors[idx]
         }
@@ -231,16 +232,16 @@ struct UsageBreakdownChartMenuView: View {
     private static func colorForService(_ service: String) -> Color {
         let lower = service.lowercased()
         if lower == "cli" {
-            return Color(red: 0.26, green: 0.55, blue: 0.96)
+            return VoltPaper.primary
         }
         if lower.contains("github"), lower.contains("review") {
-            return Color(red: 0.94, green: 0.53, blue: 0.18)
+            return VoltPaper.Chart.c4
         }
         let palette: [Color] = [
-            Color(red: 0.46, green: 0.75, blue: 0.36),
-            Color(red: 0.80, green: 0.45, blue: 0.92),
-            Color(red: 0.26, green: 0.78, blue: 0.86),
-            Color(red: 0.94, green: 0.74, blue: 0.26),
+            VoltPaper.Chart.c2,
+            VoltPaper.Chart.c5,
+            VoltPaper.Chart.c3,
+            VoltPaper.Chart.c4,
         ]
         let idx = abs(service.hashValue) % palette.count
         return palette[idx]

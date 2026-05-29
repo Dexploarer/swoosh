@@ -1,4 +1,5 @@
 import SwiftUI
+import SwooshGenerativeUI
 
 struct ProviderErrorDisplay {
     let preview: String
@@ -17,7 +18,7 @@ struct ProviderErrorView: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(self.title)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                 Spacer()
                 Button {
                     self.onCopy()
@@ -25,13 +26,13 @@ struct ProviderErrorView: View {
                     Image(systemName: "doc.on.doc")
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .help("Copy error")
             }
 
             Text(self.display.preview)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
 

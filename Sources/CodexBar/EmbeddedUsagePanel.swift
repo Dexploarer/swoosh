@@ -5,6 +5,7 @@
 
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 /// Self-contained usage panel showing all enabled AI provider usage.
 struct EmbeddedUsagePanel: View {
@@ -18,7 +19,7 @@ struct EmbeddedUsagePanel: View {
                 HStack {
                     Label("AI Usage", systemImage: "chart.bar.fill")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(VoltPaper.foreground)
                     Spacer()
                     if store.isRefreshing {
                         ProgressView()
@@ -29,7 +30,7 @@ struct EmbeddedUsagePanel: View {
                         } label: {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(Color.white.opacity(0.64))
+                                .foregroundStyle(VoltPaper.foreground.opacity(0.64))
                         }
                         .buttonStyle(.plain)
                     }
@@ -55,20 +56,20 @@ struct EmbeddedUsagePanel: View {
                 }
             }
         }
-        .background(Color.black)
+        .background(VoltPaper.background)
     }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "chart.bar.xaxis")
                 .font(.system(size: 28))
-                .foregroundStyle(Color.white.opacity(0.40))
+                .foregroundStyle(VoltPaper.foreground.opacity(0.40))
             Text("No providers configured")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.64))
+                .foregroundStyle(VoltPaper.foreground.opacity(0.64))
             Text("Enable providers in Settings\nto see usage here.")
                 .font(.system(size: 11))
-                .foregroundStyle(Color.white.opacity(0.40))
+                .foregroundStyle(VoltPaper.foreground.opacity(0.40))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -95,7 +96,7 @@ struct EmbeddedUsagePanel: View {
                 } else if let identity = snapshot?.identity {
                     Text(identity.accountEmail ?? "")
                         .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -120,12 +121,12 @@ struct EmbeddedUsagePanel: View {
             } else if let error = error {
                 Text(error)
                     .font(.system(size: 10))
-                    .foregroundStyle(.red.opacity(0.8))
+                    .foregroundStyle(VoltPaper.destructive.opacity(0.8))
                     .lineLimit(2)
             } else {
                 Text("Loading…")
                     .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
 
             // Status indicator
@@ -137,7 +138,7 @@ struct EmbeddedUsagePanel: View {
                     if let desc = status.description {
                         Text(desc)
                             .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(VoltPaper.mutedFg)
                     }
                 }
             }
@@ -147,16 +148,16 @@ struct EmbeddedUsagePanel: View {
     }
 
     private var neonCyan: Color {
-        Color(red: 0x26 / 255.0, green: 0xE0 / 255.0, blue: 0xE8 / 255.0)
+        VoltPaper.accent
     }
     private var neonGreen: Color {
-        Color(red: 0x3C / 255.0, green: 0xDF / 255.0, blue: 0x52 / 255.0)
+        VoltPaper.accent
     }
     private var neonGold: Color {
-        Color(red: 0xF2 / 255.0, green: 0xB5 / 255.0, blue: 0x30 / 255.0)
+        VoltPaper.Chart.c4
     }
     private var neonError: Color {
-        Color(red: 0xFF / 255.0, green: 0x52 / 255.0, blue: 0x52 / 255.0)
+        VoltPaper.destructive
     }
 
     @ViewBuilder
@@ -165,16 +166,16 @@ struct EmbeddedUsagePanel: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(title)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.64))
+                    .foregroundStyle(VoltPaper.foreground.opacity(0.64))
                 Spacer()
                 Text(String(format: "%.0f%% left", percent))
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(percent < 20 ? neonError : Color.white)
+                    .foregroundStyle(percent < 20 ? neonError : VoltPaper.foreground)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(Color.white.opacity(0.08))
+                        .fill(VoltPaper.foreground.opacity(0.08))
                     RoundedRectangle(cornerRadius: 3)
                         .fill(barColor(percent))
                         .frame(width: geo.size.width * min(1, max(0, percent / 100)))
@@ -184,7 +185,7 @@ struct EmbeddedUsagePanel: View {
             if let resetText = resetText {
                 Text(resetText)
                     .font(.system(size: 9))
-                    .foregroundStyle(Color.white.opacity(0.40))
+                    .foregroundStyle(VoltPaper.foreground.opacity(0.40))
             }
         }
     }
@@ -201,7 +202,7 @@ struct EmbeddedUsagePanel: View {
         case .minor: return neonGold
         case .major, .critical: return neonError
         case .maintenance: return neonGold
-        case .unknown: return .gray
+        case .unknown: return VoltPaper.mutedFg
         }
     }
 }

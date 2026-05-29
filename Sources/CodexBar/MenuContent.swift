@@ -1,6 +1,7 @@
 import AppKit
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct MenuContent: View {
@@ -48,7 +49,7 @@ struct MenuContent: View {
                 Text(text)
                     .accessibilityLabel(text)
             case .secondary:
-                Text(text).foregroundStyle(.secondary).font(.footnote)
+                Text(text).foregroundStyle(VoltPaper.mutedFg).font(.footnote)
                     .accessibilityLabel(text)
             }
         case let .action(title, action):

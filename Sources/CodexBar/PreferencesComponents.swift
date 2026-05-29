@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct PreferenceToggleRow: View {
@@ -78,11 +79,11 @@ struct AboutLinkRow: View {
             HStack(spacing: 8) {
                 Image(systemName: self.icon)
                 Text(self.title)
-                    .underline(self.hovering, color: .accentColor)
+                    .underline(self.hovering, color: VoltPaper.primary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
-            .foregroundColor(.accentColor)
+            .foregroundColor(VoltPaper.primary)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())

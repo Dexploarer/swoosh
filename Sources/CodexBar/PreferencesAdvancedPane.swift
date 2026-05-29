@@ -1,5 +1,6 @@
 import KeyboardShortcuts
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct AdvancedPane: View {
@@ -13,7 +14,7 @@ struct AdvancedPane: View {
                 SettingsSection(contentSpacing: 8) {
                     Text(L("section_keyboard_shortcut"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
                     HStack(alignment: .center, spacing: 12) {
                         Text(L("open_menu_shortcut_title"))

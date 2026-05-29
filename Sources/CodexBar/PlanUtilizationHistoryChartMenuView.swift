@@ -1,6 +1,7 @@
 import Charts
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct PlanUtilizationHistoryChartMenuView: View {
@@ -117,7 +118,7 @@ struct PlanUtilizationHistoryChartMenuView: View {
                 ZStack {
                     Text(Self.emptyStateText(title: effectiveSelectedSeries?.title))
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: Layout.emptyStateHeight)
@@ -160,7 +161,7 @@ struct PlanUtilizationHistoryChartMenuView: View {
 
                 Text(self.detailLine(model: model, windowMinutes: effectiveSelectedSeries?.history.windowMinutes ?? 0))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(height: Layout.detailHeight, alignment: .leading)

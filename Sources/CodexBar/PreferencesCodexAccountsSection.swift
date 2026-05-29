@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwooshGenerativeUI
 
 protocol CodexAmbientLoginRunning: Sendable {
     func run(timeout: TimeInterval) async -> CodexLoginRunner.Result
@@ -154,7 +155,7 @@ struct CodexAccountsSectionView: View {
 
                     Text("Choose which Codex account CodexBar should follow.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
 
                     self.systemRow(selection: self.systemSelectionBinding)
                 }
@@ -183,7 +184,7 @@ struct CodexAccountsSectionView: View {
             if self.state.visibleAccounts.isEmpty {
                 Text("No Codex accounts detected yet.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             } else {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(self.state.visibleAccounts) { account in
@@ -261,7 +262,7 @@ struct CodexAccountsSectionView: View {
                 } label: {
                     Text(self.state.systemDisplayName)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
                 .disabled(self.state.isSystemSelectionDisabled)
             } else {
@@ -275,7 +276,7 @@ struct CodexAccountsSectionView: View {
 
         Text("The default Codex account on this Mac.")
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(VoltPaper.mutedFg)
     }
 }
 
@@ -297,13 +298,13 @@ private struct CodexAccountsSectionRowView: View {
                     if self.showsSystemBadge {
                         Text("(System)")
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(VoltPaper.mutedFg)
                     }
                 }
                 if let health = self.account.authenticationHealthLabel {
                     Text(health)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(VoltPaper.Chart.c4)
                 }
             }
 

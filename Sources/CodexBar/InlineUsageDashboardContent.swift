@@ -1,5 +1,6 @@
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 struct InlineUsageDashboardModel: Equatable {
     struct KPI: Equatable {
@@ -648,13 +649,13 @@ struct InlineUsageDashboardContent: View {
         private func fill(for point: InlineUsageDashboardModel.Point, maxValue: Double) -> Color {
             let ratio = max(0.18, min(1, point.value / maxValue))
             if self.isHighlighted {
-                return Color.white.opacity(0.55 + ratio * 0.35)
+                return VoltPaper.foreground.opacity(0.55 + ratio * 0.35)
             }
             switch self.model.valueStyle {
             case .currencyUSD, .currency:
-                return Color(red: 0.81, green: 0.56, blue: 0.24).opacity(0.42 + ratio * 0.58)
+                return VoltPaper.Chart.c4.opacity(0.42 + ratio * 0.58)
             case .tokens:
-                return Color(red: 0.48, green: 0.41, blue: 0.86).opacity(0.42 + ratio * 0.58)
+                return VoltPaper.Chart.c1.opacity(0.42 + ratio * 0.58)
             }
         }
     }

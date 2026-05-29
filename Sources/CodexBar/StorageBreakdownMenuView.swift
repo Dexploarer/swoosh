@@ -1,6 +1,7 @@
 import AppKit
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 struct StorageMenuCardSectionView: View {
     let storageText: String
@@ -72,13 +73,13 @@ struct StorageBreakdownMenuView: View {
                     .fontWeight(.medium)
                 Text(String(format: L("Total: %@"), UsageFormatter.byteCountString(self.footprint.totalBytes)))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
 
             if self.visibleComponents.isEmpty {
                 Text(L("No local data found"))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(self.visibleComponents) { component in
@@ -90,7 +91,7 @@ struct StorageBreakdownMenuView: View {
             if self.footprint.components.count > self.visibleComponents.count {
                 Text(String(format: L("%d more items"), self.footprint.components.count - self.visibleComponents.count))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
             if !self.cleanupRecommendations.isEmpty {
                 Divider()
@@ -107,7 +108,7 @@ struct StorageBreakdownMenuView: View {
             if !self.footprint.unreadablePaths.isEmpty {
                 Text(String(format: L("%d unreadable item(s) skipped"), self.footprint.unreadablePaths.count))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
         }
         .padding(.horizontal, 16)
@@ -129,7 +130,7 @@ struct StorageBreakdownMenuView: View {
                 StoragePathCopyButton(path: component.path)
                 Text(UsageFormatter.byteCountString(component.totalBytes))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(1)
             }
             GeometryReader { proxy in
@@ -155,13 +156,13 @@ struct StorageBreakdownMenuView: View {
                 Spacer()
                 Text(UsageFormatter.byteCountString(recommendation.bytes))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(1)
             }
             HStack(spacing: 4) {
                 Text(recommendation.path)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(recommendation.path)
@@ -171,7 +172,7 @@ struct StorageBreakdownMenuView: View {
             }
             Text(L(recommendation.consequence))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -205,7 +206,7 @@ struct StoragePathCopyButton: View {
         } label: {
             Image(systemName: self.didCopy ? "checkmark" : "doc.on.doc")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .frame(width: 18, height: 18)
                 .contentShape(Rectangle())
         }

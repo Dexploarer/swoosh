@@ -1,5 +1,6 @@
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct DisplayPane: View {
@@ -19,7 +20,7 @@ struct DisplayPane: View {
                 SettingsSection(contentSpacing: 12) {
                     Text(L("section_menu_bar"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
                     PreferenceToggleRow(
                         title: L("merge_icons_title"),
@@ -68,7 +69,7 @@ struct DisplayPane: View {
                 SettingsSection(contentSpacing: 12) {
                     Text(L("section_menu_content"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
                     PreferenceToggleRow(
                         title: L("show_usage_as_used_title"),

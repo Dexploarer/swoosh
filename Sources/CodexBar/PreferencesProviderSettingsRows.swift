@@ -1,4 +1,5 @@
 import SwiftUI
+import SwooshGenerativeUI
 
 struct ProviderSettingsSection<Content: View>: View {
     let title: String
@@ -45,7 +46,7 @@ struct ProviderSettingsToggleRowView: View {
                         .font(.subheadline.weight(.semibold))
                     Text(self.toggle.subtitle)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
@@ -58,7 +59,7 @@ struct ProviderSettingsToggleRowView: View {
                 if let status = self.toggle.statusText?(), !status.isEmpty {
                     Text(status)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(4)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -117,7 +118,7 @@ struct ProviderSettingsPickerRowView: View {
                 if let trailingText = self.picker.trailingText?(), !trailingText.isEmpty {
                     Text(trailingText)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .padding(.leading, 4)
@@ -130,7 +131,7 @@ struct ProviderSettingsPickerRowView: View {
             if !subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -163,7 +164,7 @@ struct ProviderSettingsFieldRowView: View {
                     if !trimmedSubtitle.isEmpty {
                         Text(trimmedSubtitle)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(VoltPaper.mutedFg)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -200,7 +201,7 @@ struct ProviderSettingsFieldRowView: View {
             if let footer = self.field.footerText, !footer.isEmpty {
                 Text(footer)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -219,7 +220,7 @@ struct ProviderSettingsActionsRowView: View {
             if !self.descriptor.subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(self.descriptor.subtitle)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -270,7 +271,7 @@ struct ProviderSettingsTokenAccountsRowView: View {
             if !self.descriptor.subtitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(self.descriptor.subtitle)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -278,7 +279,7 @@ struct ProviderSettingsTokenAccountsRowView: View {
             if accounts.isEmpty {
                 Text("No token accounts yet.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(accounts.enumerated()), id: \.element.id) { index, account in
@@ -291,7 +292,7 @@ struct ProviderSettingsTokenAccountsRowView: View {
                                         "checkmark.circle.fill" : "circle")
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundStyle(self.isActive(index: index, accountCount: accounts.count) ?
-                                            Color.accentColor : Color.secondary)
+                                            VoltPaper.primary : VoltPaper.mutedFg)
                                     Text(account.displayName)
                                         .font(
                                             .footnote.weight(
@@ -405,7 +406,7 @@ struct ProviderSettingsOrganizationsRowView: View {
             {
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -413,7 +414,7 @@ struct ProviderSettingsOrganizationsRowView: View {
             if entries.allSatisfy(\.isLocked) {
                 Text("No organizations loaded. Click Refresh after setting your API key.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(entries) { entry in
@@ -430,7 +431,7 @@ struct ProviderSettingsOrganizationsRowView: View {
                                     {
                                         Text(subtitle)
                                             .font(.caption)
-                                            .foregroundStyle(.secondary)
+                                            .foregroundStyle(VoltPaper.mutedFg)
                                     }
                                 }
                             }
@@ -455,7 +456,7 @@ struct ProviderSettingsOrganizationsRowView: View {
                 if let errorMessage = self.errorMessage, !errorMessage.isEmpty {
                     Text(errorMessage)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(VoltPaper.destructive)
                 }
             }
         }

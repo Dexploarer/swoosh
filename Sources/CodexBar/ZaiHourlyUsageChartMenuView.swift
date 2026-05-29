@@ -1,5 +1,6 @@
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct ZaiHourlyUsageChartMenuView: View {
@@ -20,12 +21,12 @@ struct ZaiHourlyUsageChartMenuView: View {
     private let maxLabelCount = 5
 
     private let colorPalette: [Color] = [
-        Color(red: 10 / 255, green: 132 / 255, blue: 1),
-        Color(red: 255 / 255, green: 159 / 255, blue: 10 / 255),
-        Color(red: 48 / 255, green: 209 / 255, blue: 88 / 255),
-        Color(red: 94 / 255, green: 92 / 255, blue: 230 / 255),
-        Color(red: 100 / 255, green: 210 / 255, blue: 255 / 255),
-        Color(red: 255 / 255, green: 55 / 255, blue: 95 / 255),
+        VoltPaper.Chart.c1,
+        VoltPaper.Chart.c4,
+        VoltPaper.Chart.c2,
+        VoltPaper.Chart.c5,
+        VoltPaper.Chart.c3,
+        VoltPaper.Chart.c1,
     ]
 
     init(modelUsage: ZaiModelUsageData, width: CGFloat) {
@@ -56,7 +57,7 @@ struct ZaiHourlyUsageChartMenuView: View {
                     label: {
                         Image(systemName: self.isExpanded ? "chevron.down" : "chevron.right")
                             .font(.system(size: 8))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(VoltPaper.mutedFg)
                             .frame(width: 10)
                     })
                     .buttonStyle(.plain)
@@ -77,7 +78,7 @@ struct ZaiHourlyUsageChartMenuView: View {
                     if self.bars.isEmpty {
                         Text(L("No data"))
                             .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(VoltPaper.mutedFg)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 16)
                     } else {
@@ -203,7 +204,7 @@ struct ZaiHourlyUsageChartMenuView: View {
                             .frame(width: 6, height: 6)
                         Text(name)
                             .font(.system(size: 9))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(VoltPaper.mutedFg)
                             .lineLimit(1)
                     }
                 }
@@ -217,7 +218,7 @@ struct ZaiHourlyUsageChartMenuView: View {
                 if index < self.bars.count {
                     Text(self.bars[index].label)
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(VoltPaper.mutedFg)
                         .frame(maxWidth: .infinity)
                 }
             }

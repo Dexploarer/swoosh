@@ -1,5 +1,6 @@
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 import UniformTypeIdentifiers
 
 @MainActor
@@ -27,7 +28,7 @@ struct ProviderSidebarListView: View {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .fill(
                                     self.selection == provider
-                                        ? Color(nsColor: .selectedContentBackgroundColor)
+                                        ? VoltPaper.primary
                                         : Color.clear)
                                 .padding(.horizontal, 4))
                         .contentShape(Rectangle())
@@ -97,7 +98,7 @@ private struct ProviderSidebarRowView: View {
                 }
                 Text(statusText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(2)
                     .frame(height: ProviderSettingsMetrics.sidebarSubtitleHeight, alignment: .topLeading)
             }
@@ -159,12 +160,12 @@ private struct ProviderSidebarBrandIcon: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: ProviderSettingsMetrics.iconSize, height: ProviderSettingsMetrics.iconSize)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .accessibilityHidden(true)
         } else {
             Image(systemName: "circle.dotted")
                 .font(.system(size: ProviderSettingsMetrics.iconSize, weight: .regular))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .accessibilityHidden(true)
         }
     }

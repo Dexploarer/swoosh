@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct AboutPane: View {
@@ -38,7 +39,7 @@ struct AboutPane: View {
                         .frame(width: 92, height: 92)
                         .cornerRadius(16)
                         .scaleEffect(self.iconHover ? 1.05 : 1.0)
-                        .shadow(color: self.iconHover ? .accentColor.opacity(0.25) : .clear, radius: 6)
+                        .shadow(color: self.iconHover ? VoltPaper.primary.opacity(0.25) : .clear, radius: 6)
                 }
                 .buttonStyle(.plain)
                 .onHover { hovering in
@@ -52,15 +53,15 @@ struct AboutPane: View {
                 Text("CodexBar")
                     .font(.title3).bold()
                 Text(String(format: L("version_format"), self.versionString))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                 if let buildTimestamp {
                     Text(String(format: L("built_format"), buildTimestamp))
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
                 Text(L("about_tagline"))
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
 
             VStack(alignment: .center, spacing: 10) {
@@ -98,7 +99,7 @@ struct AboutPane: View {
                         .frame(maxWidth: 280)
                         Text(self.updateChannel.description)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(VoltPaper.mutedFg)
                             .multilineTextAlignment(.center)
                             .frame(maxWidth: 280)
                     }
@@ -106,12 +107,12 @@ struct AboutPane: View {
                 }
             } else {
                 Text(self.updater.unavailableReason ?? L("updates_unavailable"))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
 
             Text(L("copyright"))
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .padding(.top, 4)
 
             Spacer(minLength: 0)

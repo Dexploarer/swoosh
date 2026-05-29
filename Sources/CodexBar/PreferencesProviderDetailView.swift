@@ -1,5 +1,6 @@
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct ProviderDetailView<SupplementaryContent: View>: View {
@@ -225,7 +226,7 @@ private struct ProviderDetailHeaderView: View {
 
                     Text(self.detailSubtitle)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
 
                 Spacer(minLength: 12)
@@ -275,12 +276,12 @@ private struct ProviderDetailBrandIcon: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 28, height: 28)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .accessibilityHidden(true)
         } else {
             Image(systemName: "circle.dotted")
                 .font(.system(size: 24, weight: .regular))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .accessibilityHidden(true)
         }
     }
@@ -334,7 +335,7 @@ private struct ProviderDetailInfoGrid: View {
             }
         }
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(VoltPaper.mutedFg)
     }
 
     private var updatedText: String {
@@ -388,7 +389,7 @@ struct ProviderMetricsInlineView: View {
             if !hasMetrics, !hasUsageNotes, !hasProviderCost, !hasCredits, !hasTokenUsage {
                 Text(self.placeholderText)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             } else {
                 ForEach(self.model.metrics, id: \.id) { metric in
                     ProviderMetricInlineRow(
@@ -467,13 +468,13 @@ private struct ProviderMetricInlineRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(self.metric.percentLabel)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .monospacedDigit()
                     Spacer(minLength: 8)
                     if let resetText = self.metric.resetText, !resetText.isEmpty {
                         Text(resetText)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(VoltPaper.mutedFg)
                     }
                 }
 
@@ -484,13 +485,13 @@ private struct ProviderMetricInlineRow: View {
                         if let leftDetail = self.metric.detailLeftText, !leftDetail.isEmpty {
                             Text(leftDetail)
                                 .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(VoltPaper.mutedFg)
                         }
                         Spacer(minLength: 8)
                         if let rightDetail = self.metric.detailRightText, !rightDetail.isEmpty {
                             Text(rightDetail)
                                 .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(VoltPaper.mutedFg)
                         }
                     }
                 }
@@ -527,7 +528,7 @@ private struct ProviderUsageNotesInlineView: View {
                 ForEach(Array(self.notes.enumerated()), id: \.offset) { _, note in
                     Text(note)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -551,7 +552,7 @@ private struct ProviderMetricInlineTextRow: View {
 
             Text(self.value)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
 
             Spacer(minLength: 0)
         }
@@ -583,13 +584,13 @@ private struct ProviderMetricInlineCostRow: View {
                     if let percentLine = self.section.percentLine {
                         Text(percentLine)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(VoltPaper.mutedFg)
                             .monospacedDigit()
                     }
                     Spacer(minLength: 8)
                     Text(self.section.spendLine)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
             }
 

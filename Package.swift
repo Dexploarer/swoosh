@@ -583,6 +583,7 @@ let package = Package(
                 .product(name: "Vortex", package: "Vortex"),
                 "CodexBarMacroSupport",
                 "CodexBarCore",
+                "SwooshGenerativeUI",
             ],
             resources: [
                 .process("Resources"),

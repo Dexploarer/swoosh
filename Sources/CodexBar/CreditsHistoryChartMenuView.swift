@@ -1,6 +1,7 @@
 import Charts
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 @MainActor
 struct CreditsHistoryChartMenuView: View {
@@ -31,7 +32,7 @@ struct CreditsHistoryChartMenuView: View {
             if model.points.isEmpty {
                 Text("No credits history data.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .accessibilityLabel("No credits history data available.")
             } else {
                 Chart {
@@ -87,13 +88,13 @@ struct CreditsHistoryChartMenuView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(detail.primary)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(height: 16, alignment: .leading)
                     Text(detail.secondary ?? " ")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(height: 16, alignment: .leading)
@@ -103,7 +104,7 @@ struct CreditsHistoryChartMenuView: View {
                 if let total = model.totalCreditsUsed {
                     Text("Total (30d): \(total.formatted(.number.precision(.fractionLength(0...2)))) credits")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
             }
         }
@@ -124,7 +125,7 @@ struct CreditsHistoryChartMenuView: View {
         let maxCreditsUsed: Double
     }
 
-    private static let barColor = Color(red: 73 / 255, green: 163 / 255, blue: 176 / 255)
+    private static let barColor = VoltPaper.Chart.c1
     private static let selectionBandColor = Color(nsColor: .labelColor).opacity(0.1)
     private static func capHeight(maxValue: Double) -> Double {
         maxValue * 0.05

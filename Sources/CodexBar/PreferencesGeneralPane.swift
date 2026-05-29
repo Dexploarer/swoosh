@@ -1,6 +1,7 @@
 import AppKit
 import CodexBarCore
 import SwiftUI
+import SwooshGenerativeUI
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     case system = ""
@@ -39,7 +40,7 @@ struct GeneralPane: View {
                 SettingsSection(contentSpacing: 12) {
                     Text(L("section_system"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -75,7 +76,7 @@ struct GeneralPane: View {
                 SettingsSection(contentSpacing: 12) {
                     Text(L("section_usage"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -119,7 +120,7 @@ struct GeneralPane: View {
                 SettingsSection(contentSpacing: 12) {
                     Text(L("section_automation"))
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .top, spacing: 12) {
@@ -143,7 +144,7 @@ struct GeneralPane: View {
                         if self.settings.refreshFrequency == .manual {
                             Text(L("manual_refresh_hint"))
                                 .font(.footnote)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(VoltPaper.mutedFg)
                         }
                     }
                     PreferenceToggleRow(
