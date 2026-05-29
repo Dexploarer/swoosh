@@ -1,48 +1,30 @@
-// SwooshUI/Dashboard/SettingsPane.swift — Settings page in the dashboard
+// SwooshUI/Dashboard/SettingsPane.swift — Settings page in the dashboard — 0.9Y
 //
-// Top-level settings: appearance, providers, permissions, about.
+// Appearance, daemon connection (read-only, live from the daemon),
+// personalisation, and about. Provider/model setup lives in the Models tab
+// (ProvidersPane) — it is NOT duplicated here. The old @AppStorage provider
+// block was dead config (keys written to UserDefaults that nothing read);
+// it was removed rather than relocated.
 
 #if os(macOS)
 
 import SwiftUI
 import SwooshGenerativeUI
+import SwooshClient
 
 public struct SettingsPane: View {
     @AppStorage("swoosh.appearance.theme") private var themeName: String = "midnight"
     @AppStorage("swoosh.appearance.accentColor") private var accentName: String = "cyan"
-    @AppStorage("swoosh.daemon.autostart") private var autostart: Bool = true
-    @AppStorage("swoosh.daemon.port") private var port: Int = 9099
     @AppStorage("swoosh.scout.personalisation") private var personalisationDepth: String = "standard"
 
-    // ── Provider settings ─────────────────────────────────────────
-    @AppStorage("swoosh.provider.openai.enabled") private var openAIEnabled: Bool = false
-    @AppStorage("swoosh.provider.openai.model") private var openAIModel: String = "gpt-4o"
-    @AppStorage("swoosh.provider.openai.key") private var openAIKey: String = ""
-
-    @AppStorage("swoosh.provider.openrouter.enabled") private var openRouterEnabled: Bool = false
-    @AppStorage("swoosh.provider.openrouter.model") private var openRouterModel: String = "anthropic/claude-sonnet-4"
-    @AppStorage("swoosh.provider.openrouter.key") private var openRouterKey: String = ""
-
-    @AppStorage("swoosh.provider.detourcloud.enabled") private var detourCloudEnabled: Bool = false
-    @AppStorage("swoosh.provider.detourcloud.model") private var detourCloudModel: String = "detour-cloud-v1"
-    @AppStorage("swoosh.provider.detourcloud.key") private var detourCloudKey: String = ""
-
-    @AppStorage("swoosh.provider.local.enabled") private var localEnabled: Bool = false
-    @AppStorage("swoosh.provider.local.model") private var localModel: String = "llama3.3"
-    @AppStorage("swoosh.provider.local.baseURL") private var localBaseURL: String = "http://127.0.0.1:11434/v1"
-
-    @AppStorage("swoosh.provider.mlx.enabled") private var mlxEnabled: Bool = false
-    @AppStorage("swoosh.provider.mlx.model") private var mlxModel: String = "mlx-community/Llama-3.3-70B"
-
-    @AppStorage("swoosh.provider.codex.enabled") private var codexEnabled: Bool = false
-    @AppStorage("swoosh.provider.codex.model") private var codexModel: String = "codex"
+    @State private var connection: RuntimeConfigResponse?
+    @State private var versionString: String?
 
     public init() {}
 
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Title
                 Text("Settings")
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(SwooshNeonTokens.Canvas.text1)
@@ -50,7 +32,6 @@ public struct SettingsPane: View {
 
                 // ── Appearance ───────────────────────────────
                 sectionHeader("Appearance")
-
                 cardGroup {
                     settingRow(icon: "paintpalette", title: "Theme") {
                         Picker("", selection: $themeName) {
@@ -62,47 +43,42 @@ public struct SettingsPane: View {
                         .labelsHidden()
                         .frame(width: 140)
                     }
-
                     cardDivider
-
                     settingRow(icon: "circle.fill", title: "Accent colour") {
                         Picker("", selection: $accentName) {
-                            Text("Cyan").tag("cyan")
-                            Text("Purple").tag("purple")
-                            Text("Green").tag("green")
-                            Text("Orange").tag("orange")
-                            Text("Pink").tag("pink")
+                            Text("Violet").tag("cyan")
+                            Text("Lime").tag("green")
                         }
                         .labelsHidden()
                         .frame(width: 140)
                     }
                 }
 
-                // ── Daemon ──────────────────────────────────
+                // ── Daemon (read-only, live) ─────────────────
                 sectionHeader("Daemon")
                     .padding(.top, 24)
-
                 cardGroup {
-                    settingRow(icon: "bolt.fill", title: "Start at login") {
-                        Toggle("", isOn: $autostart)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
+                    settingRow(icon: "network", title: "Connection") {
+                        Text(connectionText)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(SwooshNeonTokens.Canvas.text2)
                     }
-
                     cardDivider
-
-                    settingRow(icon: "network", title: "Port") {
-                        TextField("", value: $port, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 80)
+                    settingRow(icon: "bolt.horizontal.circle", title: "Status") {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(connection != nil ? VoltPaper.accent : VoltPaper.destructive)
+                                .frame(width: 7, height: 7)
+                            Text(connection != nil ? "Running (in-process)" : "Unreachable")
+                                .font(.system(size: 12))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text2)
+                        }
                     }
                 }
 
                 // ── Personalisation ─────────────────────────
                 sectionHeader("Personalisation")
                     .padding(.top, 24)
-
                 cardGroup {
                     settingRow(icon: "person.and.background.dotted", title: "Scout depth") {
                         Picker("", selection: $personalisationDepth) {
@@ -116,91 +92,67 @@ public struct SettingsPane: View {
                     }
                 }
 
-                // ── Providers ───────────────────────────────
-                sectionHeader("Providers")
+                // ── Providers (managed elsewhere) ────────────
+                sectionHeader("Providers & Models")
                     .padding(.top, 24)
+                cardGroup {
+                    HStack(spacing: 12) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(SwooshNeonTokens.Accent.cyan)
+                            .frame(width: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Manage providers in the Models tab")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text1)
+                            Text("API keys, OAuth, and the active model are configured there and saved to the daemon + Keychain.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                }
 
-                providerCard(
-                    icon: "brain.head.profile",
-                    name: "OpenAI API",
-                    detail: "GPT-4o, o3, o4-mini — direct API",
-                    isEnabled: $openAIEnabled,
-                    model: $openAIModel,
-                    apiKey: $openAIKey,
-                    baseURL: nil
-                )
-
-                providerCard(
-                    icon: "arrow.triangle.branch",
-                    name: "OpenRouter",
-                    detail: "Claude, Gemini, Llama, Mistral — multi-model gateway",
-                    isEnabled: $openRouterEnabled,
-                    model: $openRouterModel,
-                    apiKey: $openRouterKey,
-                    baseURL: nil
-                )
-                .padding(.top, 8)
-
-                providerCard(
-                    icon: "cloud.fill",
-                    name: "Detour Cloud",
-                    detail: "Hosted inference with $DTOUR affiliate revenue",
-                    isEnabled: $detourCloudEnabled,
-                    model: $detourCloudModel,
-                    apiKey: $detourCloudKey,
-                    baseURL: nil
-                )
-                .padding(.top, 8)
-
-                providerCard(
-                    icon: "desktopcomputer",
-                    name: "Local (Ollama / LM Studio / vLLM)",
-                    detail: "Any OpenAI-compatible server on localhost",
-                    isEnabled: $localEnabled,
-                    model: $localModel,
-                    apiKey: nil,
-                    baseURL: $localBaseURL
-                )
-                .padding(.top, 8)
-
-                providerCard(
-                    icon: "apple.logo",
-                    name: "MLX Local",
-                    detail: "Apple Silicon on-device — MLXLLM / MLXVLM",
-                    isEnabled: $mlxEnabled,
-                    model: $mlxModel,
-                    apiKey: nil,
-                    baseURL: nil
-                )
-                .padding(.top, 8)
-
-                providerCard(
-                    icon: "terminal.fill",
-                    name: "ChatGPT (via Codex CLI)",
-                    detail: "Bridge through installed Codex CLI binary",
-                    isEnabled: $codexEnabled,
-                    model: $codexModel,
-                    apiKey: nil,
-                    baseURL: nil
-                )
+                // ── Agent & Safety (pointer) ─────────────────
+                cardGroup {
+                    HStack(spacing: 12) {
+                        Image(systemName: "shield.lefthalf.filled")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(VoltPaper.accent)
+                            .frame(width: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Permissions & safety in the Safety tab")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text1)
+                            Text("Permission preset, the enforced safety flags, Firewall grants, and the Approvals queue live under Agent.")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                }
                 .padding(.top, 8)
 
                 // ── About ───────────────────────────────────
                 sectionHeader("About")
                     .padding(.top, 24)
-
                 cardGroup {
                     HStack(spacing: 12) {
                         Image(systemName: "app.badge.checkmark")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(SwooshNeonTokens.Accent.cyan)
                             .frame(width: 22)
-
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Detour Agent")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                            Text("v0.9R · macOS 26 · Swift 6.3")
+                            Text(versionText)
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(SwooshNeonTokens.Canvas.text3)
                         }
@@ -217,6 +169,25 @@ public struct SettingsPane: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(SwooshNeonTokens.Canvas.bg)
+        .task { await loadConnection() }
+    }
+
+    private var connectionText: String {
+        guard let connection else { return "—" }
+        let host = connection.daemonHost ?? "127.0.0.1"
+        let port = connection.daemonPort.map(String.init) ?? "8787"
+        return "\(host):\(port)"
+    }
+
+    private var versionText: String {
+        let v = versionString ?? "—"
+        return "\(v) · macOS 26 · Swift 6.3"
+    }
+
+    private func loadConnection() async {
+        guard let client = SwooshDaemonClient.client() else { return }
+        connection = try? await client.runtimeConfig()
+        versionString = try? await client.version().version
     }
 
     // MARK: - Helpers
@@ -253,150 +224,16 @@ public struct SettingsPane: View {
     }
 
     @ViewBuilder
-    private func providerCard(
-        icon: String,
-        name: String,
-        detail: String,
-        isEnabled: Binding<Bool>,
-        model: Binding<String>,
-        apiKey: Binding<String>?,
-        baseURL: Binding<String>?
-    ) -> some View {
-        VStack(spacing: 0) {
-            // Header row
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isEnabled.wrappedValue ? SwooshNeonTokens.Accent.cyan : SwooshNeonTokens.Canvas.text3)
-                    .frame(width: 24)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-                    Text(detail)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 12)
-
-                Toggle("", isOn: isEnabled)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-
-            // Expanded config when enabled
-            if isEnabled.wrappedValue {
-                VStack(spacing: 0) {
-                    Rectangle()
-                        .fill(SwooshNeonTokens.Line.rule)
-                        .frame(height: 0.5)
-                        .padding(.leading, 44)
-
-                    // Model
-                    HStack(spacing: 12) {
-                        Image(systemName: "cpu")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                            .frame(width: 24)
-                        Text("Model")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                        Spacer(minLength: 12)
-                        TextField("model-id", text: model)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 200)
-                            .font(.system(size: 11, design: .monospaced))
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-
-                    // API Key (if applicable)
-                    if let apiKey {
-                        Rectangle()
-                            .fill(SwooshNeonTokens.Line.rule)
-                            .frame(height: 0.5)
-                            .padding(.leading, 44)
-
-                        HStack(spacing: 12) {
-                            Image(systemName: "key.fill")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                                .frame(width: 24)
-                            Text("API Key")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                            Spacer(minLength: 12)
-                            SecureField("sk-•••", text: apiKey)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 200)
-                                .font(.system(size: 11, design: .monospaced))
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                    }
-
-                    // Base URL (if applicable)
-                    if let baseURL {
-                        Rectangle()
-                            .fill(SwooshNeonTokens.Line.rule)
-                            .frame(height: 0.5)
-                            .padding(.leading, 44)
-
-                        HStack(spacing: 12) {
-                            Image(systemName: "link")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text3)
-                                .frame(width: 24)
-                            Text("Base URL")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(SwooshNeonTokens.Canvas.text2)
-                            Spacer(minLength: 12)
-                            TextField("http://127.0.0.1:11434/v1", text: baseURL)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 200)
-                                .font(.system(size: 11, design: .monospaced))
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(SwooshNeonTokens.Canvas.text1.opacity(0.03))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(
-                            isEnabled.wrappedValue ? SwooshNeonTokens.Accent.cyan.opacity(0.3) : SwooshNeonTokens.Line.rule,
-                            lineWidth: 0.5
-                        )
-                )
-        )
-        .animation(.easeInOut(duration: 0.2), value: isEnabled.wrappedValue)
-    }
-
-    @ViewBuilder
     private func settingRow(icon: String, title: String, @ViewBuilder trailing: () -> some View) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(SwooshNeonTokens.Accent.cyan)
                 .frame(width: 22)
-
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(SwooshNeonTokens.Canvas.text1)
-
             Spacer(minLength: 12)
-
             trailing()
         }
         .padding(.horizontal, 14)
