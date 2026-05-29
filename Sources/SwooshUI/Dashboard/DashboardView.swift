@@ -21,6 +21,7 @@ public struct DashboardView: View {
 
     @State var selectedTab: DashboardTab = .chat
     @State var sidebarVisible: Bool = true
+    @State private var toasts = ToastCenter()
     @State var gamingSelectedSource: GameSource? = nil
     @State var gamingControllerLayout: InteractiveControllerView.Layout? = nil
     @State var gamingShowSettings: Bool = false
@@ -93,6 +94,7 @@ public struct DashboardView: View {
                         sidebarRow("Chat", icon: "bubble.left.and.bubble.right", tab: .chat)
                         sidebarRow("Memories", icon: "brain.head.profile", tab: .memories)
                         sidebarRow("Skills", icon: "lightbulb", tab: .skills)
+                        sidebarRow("Safety", icon: "shield.lefthalf.filled", tab: .safety)
                         sidebarRow("Gaming", icon: "gamecontroller.fill", tab: .gaming)
                     }
 
@@ -280,6 +282,8 @@ public struct DashboardView: View {
             MemoriesPane()
         case .skills:
             SkillsPane()
+        case .safety:
+            SafetyPane()
         case .gaming:
             GamingPane(
                 selectedSource: $gamingSelectedSource,
@@ -325,6 +329,32 @@ public struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SwooshNeonTokens.Canvas.bg)
+        .toastHost(toasts)
+        .task { await pollPendingMemories() }
+    }
+
+    // MARK: - Pending-memory toast
+
+    private func pollPendingMemories() async {
+        guard let client = SwooshDaemonClient.client() else { return }
+        guard let response = try? await client.memories() else { return }
+        let pending = response.pending
+        guard !pending.isEmpty else { return }
+        let ids = pending.map(\.id)
+        toasts.show(
+            icon: "brain.head.profile",
+            title: "\(pending.count) memories to review",
+            message: "Detour proposed \(pending.count) things to remember. Approve them, or open Memories to review one by one.",
+            actions: [
+                .init("Review") { selectedTab = .memories },
+                .init("Approve All", prominent: true) {
+                    Task {
+                        _ = await MemoryApproval.approveAll(ids: ids, client: client)
+                    }
+                }
+            ],
+            dedupeKey: "pending-memories-\(pending.count)"
+        )
     }
 }
 
@@ -333,66 +363,8 @@ public struct DashboardView: View {
 // ═══════════════════════════════════════════════════════════════════
 
 public enum DashboardTab: String, CaseIterable, Identifiable, Hashable {
-    case chat, memories, skills, gaming, wallet, launchpads, models, tools, audit, voice, settings
+    case chat, memories, skills, safety, gaming, wallet, launchpads, models, tools, audit, voice, settings
     public var id: String { rawValue }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MARK: - SidebarPlatformTile (hover + toggle)
-// ═══════════════════════════════════════════════════════════════════
-
-private struct SidebarPlatformTile: View {
-    let name: String
-    let iconOn: String
-    let iconOff: String
-    let accent: Color
-    let isSelected: Bool
-    let action: () -> Void
-
-    @State private var isHovered: Bool = false
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                let showOn = isSelected || isHovered
-                let imgName = showOn ? iconOn : iconOff
-                if let url = Bundle.module.url(forResource: imgName, withExtension: "png", subdirectory: "GamingIcons"),
-                   let nsImage = NSImage(contentsOf: url) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 28, height: 28)
-                } else if let url = Bundle.main.url(forResource: imgName, withExtension: "png", subdirectory: "GamingIcons"),
-                          let nsImage = NSImage(contentsOf: url) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 28, height: 28)
-                } else {
-                    Image(systemName: imgName.contains("localwindow") ? "desktopcomputer" : "gamecontroller")
-                        .font(.system(size: 18))
-                        .foregroundStyle(isSelected ? accent : isHovered ? accent.opacity(0.7) : VoltPaper.foreground.opacity(0.35))
-                        .frame(width: 28, height: 28)
-                }
-
-                Text(name)
-                    .font(.system(size: 8, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? accent : isHovered ? accent.opacity(0.7) : VoltPaper.foreground.opacity(0.4))
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? accent.opacity(0.1) : isHovered ? accent.opacity(0.05) : Color.clear)
-            )
-            .shadow(color: isSelected ? accent.opacity(0.5) : isHovered ? accent.opacity(0.3) : .clear, radius: 8)
-        }
-        .buttonStyle(.plain)
-        .onHover { h in
-            withAnimation(.easeInOut(duration: 0.15)) { isHovered = h }
-        }
-    }
 }
 
 #endif

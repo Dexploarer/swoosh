@@ -135,7 +135,7 @@ private struct DetourMenuContent: View {
             auditMenuItems
         case .voice:
             voiceMenuItems
-        case .settings:
+        case .safety, .settings:
             settingsMenuItems
         }
 
