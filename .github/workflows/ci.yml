@@ -50,7 +50,7 @@ jobs:
             .build
             ~/Library/Caches/org.swift.swiftpm
             ~/Library/org.swift.swiftpm
-          key: spm-${{ runner.os }}-xcode26-${{ hashFiles('Package.resolved') }}
+          key: spm-${{ runner.os }}-xcode26-${{ hashFiles('Package.resolved', 'Package.swift') }}
           restore-keys: |
             spm-${{ runner.os }}-xcode26-
 
@@ -61,8 +61,13 @@ jobs:
           xcodebuild -version || true
           swift --version
 
-      - name: Build
-        run: swift build
+      # `--build-tests` compiles the modules AND all ~23 test targets in one
+      # pass, so the cache (saved after this job) covers test-target artifacts.
+      # The Test step then reuses them instead of recompiling the test bundle
+      # from scratch — the single biggest warm-run win for this package.
+      - name: Build (incl. tests)
+        run: swift build --build-tests
 
+      # Tests are already built above, so this is mostly execution (~14s warm).
       - name: Test (hermetic, orphan-safe wrapper)
         run: ./Scripts/swift-test-safe.sh
