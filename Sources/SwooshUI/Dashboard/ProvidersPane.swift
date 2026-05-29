@@ -47,13 +47,13 @@ private enum CapCategory: String, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .reasoning:  return SwooshNeonTokens.Accent.cyan
-        case .coding:     return .green
-        case .vision:     return .blue
-        case .audio:      return .orange
-        case .generation: return .pink
-        case .retrieval:  return .purple
-        case .agents:     return .red
-        case .other:      return .gray
+        case .coding:     return VoltPaper.Chart.c2
+        case .vision:     return VoltPaper.Chart.c5
+        case .audio:      return VoltPaper.Chart.c3
+        case .generation: return VoltPaper.Chart.c4
+        case .retrieval:  return VoltPaper.Chart.c1
+        case .agents:     return VoltPaper.Chart.c5
+        case .other:      return VoltPaper.mutedFg
         }
     }
 
@@ -178,12 +178,12 @@ public struct ProvidersPane: View {
                         Text("\(nsfwCount) NSFW")
                             .font(.system(size: 10, weight: .medium))
                     }
-                    .foregroundStyle(showNSFW ? .red : SwooshNeonTokens.Canvas.text3)
+                    .foregroundStyle(showNSFW ? VoltPaper.destructive : SwooshNeonTokens.Canvas.text3)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(showNSFW ? Color.red.opacity(0.12) : Color.white.opacity(0.04))
+                    .background(showNSFW ? VoltPaper.destructive.opacity(0.12) : VoltPaper.foreground.opacity(0.04))
                     .clipShape(Capsule())
-                    .overlay(Capsule().strokeBorder(showNSFW ? Color.red.opacity(0.3) : SwooshNeonTokens.Line.rule, lineWidth: 0.5))
+                    .overlay(Capsule().strokeBorder(showNSFW ? VoltPaper.destructive.opacity(0.3) : SwooshNeonTokens.Line.rule, lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
 
@@ -214,7 +214,7 @@ public struct ProvidersPane: View {
                 }
             }
             .padding(8)
-            .background(Color.white.opacity(0.04))
+            .background(VoltPaper.foreground.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -243,7 +243,7 @@ public struct ProvidersPane: View {
                     id: "openrouter",
                     name: "OpenRouter",
                     icon: "globe",
-                    color: .purple,
+                    color: VoltPaper.Chart.c5,
                     authLabel: "Sign In",
                     authDescription: "OAuth — opens browser"
                 ) {
@@ -255,7 +255,7 @@ public struct ProvidersPane: View {
                     id: "codex",
                     name: "Codex (ChatGPT)",
                     icon: "sparkles",
-                    color: .green,
+                    color: VoltPaper.Chart.c2,
                     authLabel: codexAuthState == .pending ? "Signing in…" : "Sign In",
                     authDescription: "OAuth — opens browser"
                 ) {
@@ -267,7 +267,7 @@ public struct ProvidersPane: View {
                     id: "openai",
                     name: "OpenAI API",
                     icon: "key",
-                    color: .blue,
+                    color: VoltPaper.Chart.c3,
                     authLabel: "Add Key",
                     authDescription: "Paste from platform.openai.com"
                 ) {
@@ -293,7 +293,7 @@ public struct ProvidersPane: View {
                     id: "mlx-local",
                     name: "MLX Local",
                     icon: "desktopcomputer",
-                    color: .orange,
+                    color: VoltPaper.Chart.c4,
                     authLabel: nil,
                     authDescription: "On-device · no key needed"
                 ) {}
@@ -303,7 +303,7 @@ public struct ProvidersPane: View {
                     id: "local-openai",
                     name: "Ollama / Local",
                     icon: "server.rack",
-                    color: .gray,
+                    color: VoltPaper.mutedFg,
                     authLabel: nil,
                     authDescription: "Connects to localhost:11434"
                 ) {}
@@ -322,7 +322,7 @@ public struct ProvidersPane: View {
                             .foregroundStyle(SwooshNeonTokens.Canvas.text3)
                         Text(url)
                             .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(VoltPaper.primary)
                             .onTapGesture {
                                 if let u = URL(string: url) { NSWorkspace.shared.open(u) }
                             }
@@ -332,15 +332,15 @@ public struct ProvidersPane: View {
                         Task { await cancelCodexAuth() }
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(VoltPaper.destructive)
                     .font(.system(size: 10, weight: .medium))
                 }
                 .padding(10)
-                .background(Color.green.opacity(0.05))
+                .background(VoltPaper.accent.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(Color.green.opacity(0.2), lineWidth: 0.5)
+                        .strokeBorder(VoltPaper.accent.opacity(0.2), lineWidth: 0.5)
                 )
             }
         }
@@ -376,10 +376,10 @@ public struct ProvidersPane: View {
                     if isActive {
                         Text("ACTIVE")
                             .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(.green)
+                            .foregroundStyle(VoltPaper.accent)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
-                            .background(Color.green.opacity(0.12))
+                            .background(VoltPaper.accent.opacity(0.12))
                             .clipShape(Capsule())
                     }
                 }
@@ -394,11 +394,11 @@ public struct ProvidersPane: View {
             if isConfigured {
                 // Connected state
                 HStack(spacing: 4) {
-                    Circle().fill(.green).frame(width: 6, height: 6)
-                        .shadow(color: .green.opacity(0.4), radius: 2)
+                    Circle().fill(VoltPaper.accent).frame(width: 6, height: 6)
+                        .shadow(color: VoltPaper.accent.opacity(0.4), radius: 2)
                     Text("Connected")
                         .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(VoltPaper.accent)
                 }
                 // Set Active button if not already active
                 if !isActive {
@@ -420,7 +420,7 @@ public struct ProvidersPane: View {
                 Button(action: action) {
                     Text(label)
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(VoltPaper.foreground)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 5)
                         .background(color.gradient)
@@ -432,7 +432,7 @@ public struct ProvidersPane: View {
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isActive ? color.opacity(0.04) : Color.white.opacity(0.02))
+                .fill(isActive ? color.opacity(0.04) : VoltPaper.foreground.opacity(0.02))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -469,13 +469,13 @@ public struct ProvidersPane: View {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.up.right.square")
                         .font(.system(size: 12))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(VoltPaper.primary)
                     Text("Get your key from")
                         .font(.system(size: 12))
                         .foregroundStyle(SwooshNeonTokens.Canvas.text2)
                     Text("platform.openai.com/api-keys")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(VoltPaper.primary)
                         .onTapGesture {
                             if let url = URL(string: "https://platform.openai.com/api-keys") {
                                 NSWorkspace.shared.open(url)
@@ -506,10 +506,10 @@ public struct ProvidersPane: View {
                 } label: {
                     Text("Connect")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(VoltPaper.foreground)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 8)
-                        .background(Color.blue.gradient)
+                        .background(VoltPaper.primary.gradient)
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -625,19 +625,19 @@ public struct ProvidersPane: View {
                 if isNSFW {
                     Text("18+")
                         .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(VoltPaper.destructive)
                         .padding(.horizontal, 3)
                         .padding(.vertical, 1)
-                        .background(Color.red.opacity(0.15))
+                        .background(VoltPaper.destructive.opacity(0.15))
                         .clipShape(Capsule())
                 }
                 if entry.isLoRA {
                     Text("LoRA")
                         .font(.system(size: 7, weight: .bold))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(VoltPaper.Chart.c4)
                         .padding(.horizontal, 3)
                         .padding(.vertical, 1)
-                        .background(Color.orange.opacity(0.12))
+                        .background(VoltPaper.Chart.c4.opacity(0.12))
                         .clipShape(Capsule())
                 }
             }
@@ -684,7 +684,7 @@ public struct ProvidersPane: View {
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? accentColor.opacity(0.08) : (isHovered ? Color.white.opacity(0.04) : Color.white.opacity(0.02)))
+                .fill(isSelected ? accentColor.opacity(0.08) : (isHovered ? VoltPaper.foreground.opacity(0.04) : VoltPaper.foreground.opacity(0.02)))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -703,10 +703,10 @@ public struct ProvidersPane: View {
     private func runtimeDot(_ runtime: ModelRuntimeKind) -> some View {
         let (label, color): (String, Color) = switch runtime {
         case .router, .codex, .openAI, .openRouter, .detourCloud: ("☁", SwooshNeonTokens.Accent.cyan)
-        case .localMLX:       ("M", Color.purple)
-        case .localOpenAI:    ("O", .orange)
-        case .localFoundation:("A", .gray)
-        case .localLiteRT:    ("L", .green)
+        case .localMLX:       ("M", VoltPaper.Chart.c1)
+        case .localOpenAI:    ("O", VoltPaper.Chart.c4)
+        case .localFoundation:("A", VoltPaper.mutedFg)
+        case .localLiteRT:    ("L", VoltPaper.Chart.c2)
         }
         return Text(label)
             .font(.system(size: 8, weight: .bold))
@@ -742,9 +742,9 @@ public struct ProvidersPane: View {
 
     private func memColor(_ gb: Double) -> Color {
         switch gb {
-        case ..<4: return .green
-        case ..<10: return .orange
-        default: return .red
+        case ..<4: return VoltPaper.accent
+        case ..<10: return VoltPaper.Chart.c4
+        default: return VoltPaper.destructive
         }
     }
 

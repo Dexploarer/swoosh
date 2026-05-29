@@ -3,6 +3,7 @@
 // Reads from SwooshToolbarManager and renders items in user-configured order.
 
 import SwiftUI
+import SwooshGenerativeUI
 
 // MARK: - Main toolbar modifier
 
@@ -134,10 +135,10 @@ private struct BadgeView: View {
     var body: some View {
         Text(count > 99 ? "99+" : "\(count)")
             .font(.system(size: 8, weight: .bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(VoltPaper.foreground)
             .padding(.horizontal, 3)
             .padding(.vertical, 1)
-            .background(Capsule().fill(.red))
+            .background(Capsule().fill(VoltPaper.destructive))
             .offset(x: 6, y: -4)
     }
 }

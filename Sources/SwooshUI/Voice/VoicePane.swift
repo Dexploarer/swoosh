@@ -205,9 +205,9 @@ public struct VoicePane: View {
     private var liveTranscript: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(.green)
+                .fill(VoltPaper.accent)
                 .frame(width: 6, height: 6)
-                .shadow(color: .green.opacity(0.7), radius: 3)
+                .shadow(color: VoltPaper.accent.opacity(0.7), radius: 3)
             Text(shell.speech.transcript.isEmpty ? "Listening…" : shell.speech.transcript)
                 .font(.system(size: 14, weight: .medium, design: .monospaced))
                 .foregroundStyle(SwooshNeonTokens.Canvas.text1)
@@ -218,10 +218,10 @@ public struct VoicePane: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(.green.opacity(0.06))
+                .fill(VoltPaper.accent.opacity(0.06))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(.green.opacity(0.2), lineWidth: 0.5)
+                        .strokeBorder(VoltPaper.accent.opacity(0.2), lineWidth: 0.5)
                 )
         )
         .frame(maxWidth: 400)
@@ -296,9 +296,9 @@ public struct VoicePane: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
                 .background(
-                    Capsule().fill(voice.isActive ? Color.red : Color.cyan)
+                    Capsule().fill(voice.isActive ? VoltPaper.destructive : VoltPaper.primary)
                 )
-                .foregroundStyle(.white)
+                .foregroundStyle(VoltPaper.foreground)
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.space, modifiers: [.option, .shift])
@@ -467,7 +467,7 @@ public struct VoicePane: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: isUser ? "person.crop.circle" : "sparkles")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(isUser ? .yellow : SwooshNeonTokens.Accent.cyan)
+                .foregroundStyle(isUser ? VoltPaper.Chart.c4 : SwooshNeonTokens.Accent.cyan)
                 .frame(width: 20, alignment: .center)
                 .padding(.top, 2)
 

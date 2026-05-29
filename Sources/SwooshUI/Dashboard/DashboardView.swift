@@ -371,13 +371,13 @@ private struct SidebarPlatformTile: View {
                 } else {
                     Image(systemName: imgName.contains("localwindow") ? "desktopcomputer" : "gamecontroller")
                         .font(.system(size: 18))
-                        .foregroundStyle(isSelected ? accent : isHovered ? accent.opacity(0.7) : Color.white.opacity(0.35))
+                        .foregroundStyle(isSelected ? accent : isHovered ? accent.opacity(0.7) : VoltPaper.foreground.opacity(0.35))
                         .frame(width: 28, height: 28)
                 }
 
                 Text(name)
                     .font(.system(size: 8, weight: isSelected ? .bold : .medium))
-                    .foregroundStyle(isSelected ? accent : isHovered ? accent.opacity(0.7) : Color.white.opacity(0.4))
+                    .foregroundStyle(isSelected ? accent : isHovered ? accent.opacity(0.7) : VoltPaper.foreground.opacity(0.4))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)

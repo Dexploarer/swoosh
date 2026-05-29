@@ -159,7 +159,7 @@ public struct ModelPicker: View {
     StatefulPreview()
         .padding(40)
         .frame(width: 320)
-        .background(Color.black)
+        .background(VoltPaper.background)
 }
 
 private struct StatefulPreview: View {

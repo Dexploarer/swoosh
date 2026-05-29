@@ -6,6 +6,7 @@
 // to `~/.swoosh/theme.json` with a sensory-feedback confirmation.
 
 import SwiftUI
+import SwooshGenerativeUI
 #if canImport(UniformTypeIdentifiers)
 import UniformTypeIdentifiers
 #endif
@@ -133,7 +134,7 @@ public struct AppearanceEditorView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Theme File")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                 Text("~/.swoosh/theme.json")
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(.tertiary)
@@ -241,7 +242,7 @@ private struct PresetRow: View {
                         .foregroundStyle(.primary)
                     Text(preset.tagline)
                         .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .lineLimit(2)
                 }
 
@@ -258,7 +259,7 @@ private struct PresetRow: View {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(isActive
                           ? Color(hex: preset.config.colors.accent).opacity(0.12)
-                          : (isHovered ? Color.secondary.opacity(0.08) : .clear))
+                          : (isHovered ? VoltPaper.mutedFg.opacity(0.08) : .clear))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)

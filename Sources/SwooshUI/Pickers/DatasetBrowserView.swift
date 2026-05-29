@@ -128,10 +128,10 @@ public struct DatasetBrowserView: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(VoltPaper.foreground.opacity(0.04))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                        .strokeBorder(VoltPaper.foreground.opacity(0.08), lineWidth: 0.5)
                 )
         )
         .padding(.horizontal, 16)
@@ -168,7 +168,7 @@ public struct DatasetBrowserView: View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(isActive ? .white : SwooshNeonTokens.Canvas.text2)
+                .foregroundStyle(isActive ? VoltPaper.foreground : SwooshNeonTokens.Canvas.text2)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background {
@@ -186,10 +186,10 @@ public struct DatasetBrowserView: View {
                             )
                     } else {
                         Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(VoltPaper.foreground.opacity(0.06))
                             .overlay(
                                 Capsule(style: .continuous)
-                                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
+                                    .strokeBorder(VoltPaper.foreground.opacity(0.1), lineWidth: 0.5)
                             )
                     }
                 }
@@ -362,7 +362,7 @@ public struct DatasetBrowserView: View {
                                 .padding(.vertical, 2)
                                 .background(
                                     Capsule(style: .continuous)
-                                        .fill(Color.white.opacity(0.05))
+                                        .fill(VoltPaper.foreground.opacity(0.05))
                                 )
                         }
                     }
@@ -415,8 +415,8 @@ public struct DatasetBrowserView: View {
     private func sizeColor(bytes: Int64?) -> Color {
         guard let bytes else { return SwooshNeonTokens.Canvas.text3 }
         let gb = Double(bytes) / 1_073_741_824
-        if gb > 10 { return .red }
-        if gb >= 1 { return .orange }
+        if gb > 10 { return VoltPaper.destructive }
+        if gb >= 1 { return VoltPaper.Chart.c4 }
         return SwooshNeonTokens.Accent.green
     }
 

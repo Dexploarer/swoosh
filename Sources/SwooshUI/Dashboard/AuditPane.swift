@@ -118,10 +118,10 @@ public struct AuditPane: View {
     private func eventRow(_ event: AuditEventSummary) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Circle()
-                .fill(event.success ? Color.green : Color.red)
+                .fill(event.success ? VoltPaper.accent : VoltPaper.destructive)
                 .frame(width: 6, height: 6)
                 .padding(.top, 6)
-                .shadow(color: (event.success ? Color.green : Color.red).opacity(0.5), radius: 3)
+                .shadow(color: (event.success ? VoltPaper.accent : VoltPaper.destructive).opacity(0.5), radius: 3)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
@@ -146,7 +146,7 @@ public struct AuditPane: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(Color.white.opacity(0.015))
+        .background(VoltPaper.foreground.opacity(0.015))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 

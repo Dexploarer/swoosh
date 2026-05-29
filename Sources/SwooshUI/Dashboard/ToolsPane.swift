@@ -83,7 +83,7 @@ public struct ToolsPane: View {
                     .foregroundStyle(SwooshNeonTokens.Canvas.text1)
             }
             .padding(8)
-            .background(Color.white.opacity(0.04))
+            .background(VoltPaper.foreground.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -168,10 +168,10 @@ public struct ToolsPane: View {
                         Text("HUMAN")
                             .font(.system(size: 8, weight: .bold))
                             .tracking(0.5)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(VoltPaper.Chart.c4)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.12))
+                            .background(VoltPaper.Chart.c4.opacity(0.12))
                             .clipShape(Capsule())
                     }
                 }
@@ -187,7 +187,7 @@ public struct ToolsPane: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(Color.white.opacity(0.015))
+        .background(VoltPaper.foreground.opacity(0.015))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
@@ -206,10 +206,10 @@ public struct ToolsPane: View {
 
     private func riskColor(_ risk: String) -> Color {
         switch risk.lowercased() {
-        case "high", "critical": return .red
-        case "medium": return .orange
-        case "low": return .green
-        default: return .gray
+        case "high", "critical": return VoltPaper.destructive
+        case "medium": return VoltPaper.Chart.c4
+        case "low": return VoltPaper.accent
+        default: return VoltPaper.mutedFg
         }
     }
 
@@ -252,7 +252,7 @@ public struct ToolsPane: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 28))
-                .foregroundStyle(.orange.opacity(0.5))
+                .foregroundStyle(VoltPaper.Chart.c4.opacity(0.5))
             Text(message)
                 .font(.system(size: 12))
                 .foregroundStyle(SwooshNeonTokens.Canvas.text2)

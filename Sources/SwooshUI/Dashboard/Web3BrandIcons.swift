@@ -5,6 +5,7 @@
 
 #if os(macOS)
 import SwiftUI
+import SwooshGenerativeUI
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - Launchpad brand icons
@@ -17,7 +18,7 @@ public enum Web3BrandIcon {
         let size: CGFloat
         let color: Color
 
-        public init(size: CGFloat = 24, color: Color = .purple) {
+        public init(size: CGFloat = 24, color: Color = VoltPaper.primary) {
             self.size = size
             self.color = color
         }
@@ -39,7 +40,7 @@ public enum Web3BrandIcon {
         let size: CGFloat
         let color: Color
 
-        public init(size: CGFloat = 24, color: Color = .purple) {
+        public init(size: CGFloat = 24, color: Color = VoltPaper.primary) {
             self.size = size
             self.color = color
         }
@@ -61,7 +62,7 @@ public enum Web3BrandIcon {
         let size: CGFloat
         let color: Color
 
-        public init(size: CGFloat = 24, color: Color = .yellow) {
+        public init(size: CGFloat = 24, color: Color = VoltPaper.Chart.c4) {
             self.size = size
             self.color = color
         }
@@ -83,7 +84,7 @@ public enum Web3BrandIcon {
         let size: CGFloat
         let color: Color
 
-        public init(size: CGFloat = 24, color: Color = .yellow) {
+        public init(size: CGFloat = 24, color: Color = VoltPaper.Chart.c4) {
             self.size = size
             self.color = color
         }
@@ -177,21 +178,21 @@ public enum Web3BrandIcon {
     public static func icon(for platformID: String, size: CGFloat = 32) -> some View {
         switch platformID {
         case "pumpportal":
-            PumpPortalIcon(size: size, color: .purple)
+            PumpPortalIcon(size: size, color: VoltPaper.primary)
         case "bags":
             BagsIcon(size: size, color: Color(red: 0.6, green: 0.2, blue: 1.0))
         case "flap":
-            FlapIcon(size: size, color: .yellow)
+            FlapIcon(size: size, color: VoltPaper.Chart.c4)
         case "four-meme":
-            FourMemeIcon(size: size, color: .yellow)
+            FourMemeIcon(size: size, color: VoltPaper.Chart.c4)
         default:
             ZStack {
                 Circle()
-                    .fill(Color.gray.opacity(0.15))
+                    .fill(VoltPaper.mutedFg.opacity(0.15))
                     .frame(width: size, height: size)
                 Image(systemName: "rocket.fill")
                     .font(.system(size: size * 0.45))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
         }
     }
@@ -207,12 +208,12 @@ public enum Web3BrandIcon {
             EthereumIcon(size: size)
         default:
             Circle()
-                .fill(Color.gray.opacity(0.3))
+                .fill(VoltPaper.mutedFg.opacity(0.3))
                 .frame(width: size, height: size)
                 .overlay(
                     Text(String(chain.prefix(1)).uppercased())
                         .font(.system(size: size * 0.5, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(VoltPaper.foreground)
                 )
         }
     }

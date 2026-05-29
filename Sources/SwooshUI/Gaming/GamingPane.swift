@@ -106,9 +106,9 @@ public struct GamingPane: View {
                         } label: {
                             Image(systemName: "keyboard")
                                 .font(.system(size: 13))
-                                .foregroundStyle(Color.white.opacity(0.7))
+                                .foregroundStyle(VoltPaper.foreground.opacity(0.7))
                                 .padding(8)
-                                .background(Circle().fill(Color.white.opacity(0.1)))
+                                .background(Circle().fill(VoltPaper.foreground.opacity(0.1)))
                         }
                         .buttonStyle(.plain)
 
@@ -142,7 +142,7 @@ public struct GamingPane: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black)
+        .background(VoltPaper.background)
         .onChange(of: selectedSource) { _, newSource in
             webBridge = nil
             streamStatus = .disconnected
@@ -207,10 +207,10 @@ public struct GamingPane: View {
                         if streamStatus != .playing {
                             Text(streamStatus.rawValue.uppercased())
                                 .font(.system(size: 9, weight: .bold, design: .monospaced))
-                                .foregroundStyle(.white.opacity(0.5))
+                                .foregroundStyle(VoltPaper.foreground.opacity(0.5))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Capsule().fill(Color.black.opacity(0.4)))
+                                .background(Capsule().fill(VoltPaper.background.opacity(0.4)))
                                 .padding(12)
                         }
                     }
@@ -222,9 +222,9 @@ public struct GamingPane: View {
             ZStack {
                 LinearGradient(
                     colors: [
-                        Color(white: 0.06),
-                        Color(white: 0.03),
-                        Color.black
+                        VoltPaper.surface,
+                        VoltPaper.muted,
+                        VoltPaper.background
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -242,7 +242,7 @@ public struct GamingPane: View {
                         )
                     Text(selectedSource == nil ? "Select a platform to begin" : "Connecting…")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.3))
+                        .foregroundStyle(VoltPaper.foreground.opacity(0.3))
                 }
             }
         }
@@ -266,25 +266,25 @@ public struct GamingPane: View {
                 Circle()
                     .fill(
                         isRunning
-                            ? Color.red.opacity(0.2)
-                            : Color.green.opacity(0.15)
+                            ? VoltPaper.destructive.opacity(0.2)
+                            : VoltPaper.accent.opacity(0.15)
                     )
                     .frame(width: 34, height: 34)
                     .overlay(
                         Circle()
                             .strokeBorder(
-                                isRunning ? Color.red.opacity(0.6) : Color.green.opacity(0.5),
+                                isRunning ? VoltPaper.destructive.opacity(0.6) : VoltPaper.accent.opacity(0.5),
                                 lineWidth: 1.5
                             )
                     )
                     .shadow(
-                        color: (isRunning ? Color.red : Color.green).opacity(0.5),
+                        color: (isRunning ? VoltPaper.destructive : VoltPaper.accent).opacity(0.5),
                         radius: isRunning ? 8 : 4
                     )
 
                 Image(systemName: "power")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(isRunning ? Color.red : Color.green)
+                    .foregroundStyle(isRunning ? VoltPaper.destructive : VoltPaper.accent)
             }
         }
         .buttonStyle(.plain)
@@ -309,13 +309,13 @@ public struct GamingPane: View {
 
     private var statusDotColor: Color {
         if isRecording || isRunning {
-            return .red
+            return VoltPaper.destructive
         } else if selectedSource != nil && (streamStatus == .playing || streamStatus == .paused) {
-            return .green
+            return VoltPaper.accent
         } else if selectedSource != nil {
-            return Color(white: 0.45)  // grey — source selected but not yet connected
+            return VoltPaper.mutedFg  // grey — source selected but not yet connected
         } else {
-            return Color(white: 0.3)   // dim grey — nothing selected
+            return VoltPaper.mutedFg.opacity(0.6)   // dim grey — nothing selected
         }
     }
 
@@ -382,7 +382,7 @@ public struct GamingPane: View {
                 } label: {
                     Text("Done")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(VoltPaper.foreground)
                         .padding(.horizontal, 24)
                         .padding(.vertical, 10)
                         .background(Capsule().fill(controllerBrandColor))
@@ -468,7 +468,7 @@ public struct GamingPane: View {
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.green, SwooshNeonTokens.Accent.cyan],
+                            colors: [VoltPaper.accent, SwooshNeonTokens.Accent.cyan],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -499,7 +499,7 @@ public struct GamingPane: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(VoltPaper.foreground.opacity(0.06))
                         RoundedRectangle(cornerRadius: 2, style: .continuous)
                             .fill(
                                 LinearGradient(
@@ -520,7 +520,7 @@ public struct GamingPane: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 12))
-                    .foregroundStyle(.green)
+                    .foregroundStyle(VoltPaper.accent)
                     .frame(width: 18)
                 Text("MPS Ready")
                     .font(.system(size: 12, weight: .medium))
@@ -731,10 +731,10 @@ public struct GamingPane: View {
                         HStack(spacing: 6) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.system(size: 12))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(VoltPaper.Chart.c4)
                             Text("App not detected")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.orange)
+                                .foregroundStyle(VoltPaper.Chart.c4)
                         }
 
                         Text(src.setupInstructions)
@@ -777,10 +777,10 @@ public struct GamingPane: View {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 12))
-                                .foregroundStyle(.green)
+                                .foregroundStyle(VoltPaper.accent)
                             Text("\(discoveredWindows.count) window\(discoveredWindows.count == 1 ? "" : "s") detected")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.green)
+                                .foregroundStyle(VoltPaper.accent)
                         }
 
                         ForEach(discoveredWindows, id: \.id) { window in
@@ -875,9 +875,9 @@ public struct GamingPane: View {
                     Spacer()
 
                     Circle()
-                        .fill(streamStatus == .playing ? Color.green : Color.orange)
+                        .fill(streamStatus == .playing ? VoltPaper.accent : VoltPaper.Chart.c4)
                         .frame(width: 8, height: 8)
-                        .shadow(color: streamStatus == .playing ? .green.opacity(0.6) : .clear, radius: 4)
+                        .shadow(color: streamStatus == .playing ? VoltPaper.accent.opacity(0.6) : .clear, radius: 4)
                 }
 
                 HStack(spacing: 8) {
@@ -907,18 +907,18 @@ public struct GamingPane: View {
                 if isCloudSource {
                     Text(streamStatus.rawValue.uppercased())
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
-                        .foregroundStyle(streamStatus == .playing ? .green : SwooshNeonTokens.Canvas.text3)
+                        .foregroundStyle(streamStatus == .playing ? VoltPaper.accent : SwooshNeonTokens.Canvas.text3)
                 }
             }
 
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(0.03))
+                    .fill(VoltPaper.foreground.opacity(0.03))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .strokeBorder(
                                 streamStatus == .playing
-                                    ? Color.green.opacity(0.3)
+                                    ? VoltPaper.accent.opacity(0.3)
                                     : SwooshNeonTokens.Line.rule,
                                 lineWidth: streamStatus == .playing ? 1.0 : 0.5
                             )
@@ -977,10 +977,10 @@ public struct GamingPane: View {
             // Running indicator
             HStack(spacing: 8) {
                 Circle()
-                    .fill(isRunning ? Color.green : Color.red.opacity(0.6))
+                    .fill(isRunning ? VoltPaper.accent : VoltPaper.destructive.opacity(0.6))
                     .frame(width: 8, height: 8)
                     .shadow(
-                        color: isRunning ? .green.opacity(0.7) : .clear,
+                        color: isRunning ? VoltPaper.accent.opacity(0.7) : .clear,
                         radius: isRunning ? 4 : 0
                     )
                     .scaleEffect(isRunning && pulseAnimation ? 1.3 : 1.0)
@@ -993,7 +993,7 @@ public struct GamingPane: View {
 
                 Text(isRunning ? "Running" : "Stopped")
                     .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(isRunning ? .green : SwooshNeonTokens.Canvas.text2)
+                    .foregroundStyle(isRunning ? VoltPaper.accent : SwooshNeonTokens.Canvas.text2)
 
                 Spacer()
             }
@@ -1024,7 +1024,7 @@ public struct GamingPane: View {
             HStack(spacing: 8) {
                 Image(systemName: isRecording ? "record.circle.fill" : "record.circle")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(isRecording ? .red : SwooshNeonTokens.Canvas.text3)
+                    .foregroundStyle(isRecording ? VoltPaper.destructive : SwooshNeonTokens.Canvas.text3)
                     .symbolEffect(.pulse, isActive: isRecording)
 
                 Text("Recording")
@@ -1062,7 +1062,7 @@ public struct GamingPane: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+                .fill(VoltPaper.foreground.opacity(0.03))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .strokeBorder(SwooshNeonTokens.Line.rule, lineWidth: 0.5)
@@ -1153,7 +1153,7 @@ public struct GamingPane: View {
                     .padding(.vertical, 5)
                     .background(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
+                            .fill(VoltPaper.foreground.opacity(0.06))
                     )
                 }
                 .menuStyle(.borderlessButton)
@@ -1291,7 +1291,7 @@ public struct GamingPane: View {
                 } label: {
                     Text("Done")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(VoltPaper.foreground)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 8)
                         .background(Capsule().fill(controllerBrandColor))

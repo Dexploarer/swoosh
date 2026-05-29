@@ -12,6 +12,7 @@
 // from a single `SwooshInspectorTarget` value injected through environment.
 
 import SwiftUI
+import SwooshGenerativeUI
 
 // MARK: - Target
 
@@ -129,11 +130,11 @@ public struct SwooshInspectorView: View {
         VStack(spacing: 12) {
             Image(systemName: "sidebar.right")
                 .font(.system(size: 36))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .swooshBreathe()
             Text("Select a row to inspect")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -154,7 +155,7 @@ public struct SwooshInspectorView: View {
                 if !r.memoryIDs.isEmpty {
                     Text("Memories used")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                         .textCase(.uppercase)
                     ForEach(r.memoryIDs, id: \.self) { id in
                         HStack {
@@ -171,7 +172,7 @@ public struct SwooshInspectorView: View {
 
                 Text("Context flags")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .textCase(.uppercase)
                 flagPill("Setup report",   on: r.setupReportUsed)
                 flagPill("Permissions",    on: r.permissionSummaryUsed)
@@ -198,13 +199,13 @@ public struct SwooshInspectorView: View {
 
                 Text("Arguments")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .textCase(.uppercase)
                 Text(a.argumentsJSON)
                     .font(.system(size: 11, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
-                    .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                    .background(VoltPaper.mutedFg.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
 
                 HStack {
                     Button(role: .destructive) {
@@ -243,7 +244,7 @@ public struct SwooshInspectorView: View {
 
                 Text("Current step")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .textCase(.uppercase)
                 Text(run.currentStep)
                     .font(.system(size: 12))
@@ -254,11 +255,11 @@ public struct SwooshInspectorView: View {
                 HStack {
                     Image(systemName: "circle.fill")
                         .font(.system(size: 8))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(VoltPaper.accent)
                         .swooshPulse()
                     Text("Running")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(VoltPaper.mutedFg)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -277,7 +278,7 @@ public struct SwooshInspectorView: View {
                     .font(.system(size: 16, weight: .semibold))
                 Text(subtitle)
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -289,7 +290,7 @@ public struct SwooshInspectorView: View {
         HStack {
             Text(key)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
                 .frame(width: 90, alignment: .leading)
             Text(value)
                 .font(.system(size: 12, design: monospaced ? .monospaced : .default))
@@ -302,7 +303,7 @@ public struct SwooshInspectorView: View {
     private func flagPill(_ label: String, on: Bool) -> some View {
         HStack(spacing: 6) {
             Image(systemName: on ? "checkmark.circle.fill" : "xmark.circle")
-                .foregroundStyle(on ? .green : .secondary)
+                .foregroundStyle(on ? VoltPaper.accent : VoltPaper.mutedFg)
             Text(label)
                 .font(.system(size: 12))
         }

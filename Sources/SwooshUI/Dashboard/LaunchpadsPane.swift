@@ -72,16 +72,16 @@ public struct LaunchpadsPane: View {
     private var connectionBadge: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(isConnected ? .green : .red)
+                .fill(isConnected ? VoltPaper.accent : VoltPaper.destructive)
                 .frame(width: 7, height: 7)
-                .shadow(color: isConnected ? .green.opacity(0.5) : .clear, radius: 3)
+                .shadow(color: isConnected ? VoltPaper.accent.opacity(0.5) : .clear, radius: 3)
             Text(isConnected ? "Connected" : "Offline")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(isConnected ? .green : SwooshNeonTokens.Canvas.text3)
+                .foregroundStyle(isConnected ? VoltPaper.accent : SwooshNeonTokens.Canvas.text3)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
-        .background(Color.white.opacity(0.04))
+        .background(VoltPaper.foreground.opacity(0.04))
         .clipShape(Capsule())
     }
 
@@ -131,7 +131,7 @@ public struct LaunchpadsPane: View {
                         Text("Launch")
                             .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(VoltPaper.foreground)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(chainCol.gradient)
@@ -161,7 +161,7 @@ public struct LaunchpadsPane: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? chainCol.opacity(0.06) : Color.white.opacity(0.02))
+                .fill(isSelected ? chainCol.opacity(0.06) : VoltPaper.foreground.opacity(0.02))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -246,7 +246,7 @@ public struct LaunchpadsPane: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.02))
+                .fill(VoltPaper.foreground.opacity(0.02))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -293,10 +293,10 @@ public struct LaunchpadsPane: View {
                         Text("Launch")
                     }
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(VoltPaper.foreground)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 8)
-                    .background(Color.purple.gradient)
+                    .background(VoltPaper.primary.gradient)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -335,19 +335,19 @@ public struct LaunchpadsPane: View {
 
     private func chainColor(_ chain: String) -> Color {
         switch chain.lowercased() {
-        case "solana": return .purple
-        case "bnb chain", "bsc", "bnb": return .yellow
-        case "ethereum": return .blue
-        default: return .gray
+        case "solana": return VoltPaper.Chart.c1
+        case "bnb chain", "bsc", "bnb": return VoltPaper.Chart.c4
+        case "ethereum": return VoltPaper.Chart.c3
+        default: return VoltPaper.mutedFg
         }
     }
 
     private func riskColor(_ risk: String) -> Color {
         switch risk.lowercased() {
-        case "high", "critical": return .red
-        case "medium": return .orange
-        case "low": return .green
-        default: return .gray
+        case "high", "critical": return VoltPaper.destructive
+        case "medium": return VoltPaper.Chart.c4
+        case "low": return VoltPaper.accent
+        default: return VoltPaper.mutedFg
         }
     }
 

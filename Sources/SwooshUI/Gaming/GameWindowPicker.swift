@@ -51,7 +51,7 @@ public struct GameWindowPicker: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.white.opacity(0.04))
+                    .fill(VoltPaper.foreground.opacity(0.04))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .strokeBorder(SwooshNeonTokens.Line.rule, lineWidth: 0.5)
@@ -126,7 +126,7 @@ public struct GameWindowPicker: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.white.opacity(0.03))
+                    .fill(VoltPaper.foreground.opacity(0.03))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .strokeBorder(SwooshNeonTokens.Line.rule, lineWidth: 0.5)
@@ -163,7 +163,7 @@ public struct GameWindowPicker: View {
                     .overlay(
                         Image(systemName: window.icon)
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(VoltPaper.foreground)
                     )
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -215,15 +215,15 @@ struct MockWindow: Identifiable {
 
     static let placeholders: [MockWindow] = [
         MockWindow(id: "1", title: "Minecraft", bundleID: "com.mojang.minecraftpe",
-                   icon: "cube.fill", color: .green),
+                   icon: "cube.fill", color: VoltPaper.Chart.c1),
         MockWindow(id: "2", title: "Counter-Strike 2", bundleID: "com.valvesoftware.cs2",
-                   icon: "scope", color: .orange),
+                   icon: "scope", color: VoltPaper.Chart.c2),
         MockWindow(id: "3", title: "Doom Eternal", bundleID: "com.bethesda.dooneternal",
-                   icon: "flame.fill", color: .red),
+                   icon: "flame.fill", color: VoltPaper.Chart.c3),
         MockWindow(id: "4", title: "Stardew Valley", bundleID: "com.chucklefish.stardewvalley",
-                   icon: "leaf.fill", color: .mint),
+                   icon: "leaf.fill", color: VoltPaper.Chart.c4),
         MockWindow(id: "5", title: "Hades II", bundleID: "com.supergiant.hades2",
-                   icon: "bolt.fill", color: .purple),
+                   icon: "bolt.fill", color: VoltPaper.Chart.c5),
     ]
 }
 

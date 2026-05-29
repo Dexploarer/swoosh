@@ -75,9 +75,9 @@ public struct ModelsPane: View {
 
         return HStack(spacing: 12) {
             statCard("Total", value: "\(generalCount)", icon: "cpu", color: SwooshNeonTokens.Accent.cyan)
-            statCard("MLX Local", value: "\(mlxCount)", icon: "memorychip", color: .green)
-            statCard("Cloud", value: "\(cloudCount)", icon: "cloud", color: .blue)
-            statCard("NSFW", value: "\(nsfwCount)", icon: "eye.slash", color: .red)
+            statCard("MLX Local", value: "\(mlxCount)", icon: "memorychip", color: VoltPaper.accent)
+            statCard("Cloud", value: "\(cloudCount)", icon: "cloud", color: VoltPaper.primary)
+            statCard("NSFW", value: "\(nsfwCount)", icon: "eye.slash", color: VoltPaper.destructive)
         }
     }
 
@@ -123,7 +123,7 @@ public struct ModelsPane: View {
                         .background(
                             Capsule().fill(selectedRuntime == filter
                                            ? SwooshNeonTokens.Accent.cyan.opacity(0.12)
-                                           : Color.white.opacity(0.03))
+                                           : VoltPaper.foreground.opacity(0.03))
                         )
                         .overlay(
                             Capsule().strokeBorder(selectedRuntime == filter
@@ -165,7 +165,7 @@ public struct ModelsPane: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+                .fill(VoltPaper.foreground.opacity(0.03))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -245,30 +245,30 @@ public struct ModelsPane: View {
                 if isNSFW {
                     Text("⚠️ NSFW")
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.red)
+                        .foregroundStyle(VoltPaper.destructive)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(Color.red.opacity(0.12))
+                        .background(VoltPaper.destructive.opacity(0.12))
                         .clipShape(Capsule())
                 }
 
                 if isAbliterated && !isNSFW {
                     Text("UNCENSORED")
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(VoltPaper.Chart.c4)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(Color.orange.opacity(0.12))
+                        .background(VoltPaper.Chart.c4.opacity(0.12))
                         .clipShape(Capsule())
                 }
 
                 if model.isLoRA {
                     Text("LoRA")
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(VoltPaper.Chart.c5)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 2)
-                        .background(Color.purple.opacity(0.12))
+                        .background(VoltPaper.Chart.c5.opacity(0.12))
                         .clipShape(Capsule())
                 }
             }
@@ -326,7 +326,7 @@ public struct ModelsPane: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(0.025))
+                .fill(VoltPaper.foreground.opacity(0.025))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -362,36 +362,36 @@ public struct ModelsPane: View {
 
     private func runtimeInfo(_ runtime: ModelRuntimeKind) -> (String, Color) {
         switch runtime {
-        case .localMLX: return ("MLX", .green)
-        case .localOpenAI: return ("OLLAMA", .orange)
-        case .localLiteRT: return ("LITERT", .mint)
-        case .localFoundation: return ("APPLE", .blue)
-        case .openAI: return ("OPENAI", .cyan)
-        case .openRouter: return ("OPENROUTER", .purple)
-        case .codex: return ("CODEX", .cyan)
-        case .router: return ("AUTO", .gray)
-        case .detourCloud: return ("DETOUR", .pink)
+        case .localMLX: return ("MLX", VoltPaper.Chart.c2)
+        case .localOpenAI: return ("OLLAMA", VoltPaper.Chart.c4)
+        case .localLiteRT: return ("LITERT", VoltPaper.Chart.c3)
+        case .localFoundation: return ("APPLE", VoltPaper.Chart.c1)
+        case .openAI: return ("OPENAI", VoltPaper.Chart.c3)
+        case .openRouter: return ("OPENROUTER", VoltPaper.Chart.c5)
+        case .codex: return ("CODEX", VoltPaper.Chart.c1)
+        case .router: return ("AUTO", VoltPaper.mutedFg)
+        case .detourCloud: return ("DETOUR", VoltPaper.Chart.c5)
         }
     }
 
     private func capColor(_ cap: ModelCapability) -> Color {
         switch cap {
-        case .textGeneration, .summarization, .questionAnswering, .translation: return .cyan
-        case .coding, .codeCompletion: return .green
-        case .toolCalling: return .orange
-        case .vision, .ocr, .objectDetection, .imageSegmentation, .depthEstimation, .imageClassification: return .purple
-        case .embedding: return .yellow
-        case .reranking: return .mint
-        case .speechToText, .vad, .diarization, .audioSeparation: return .teal
-        case .textToSpeech, .voiceCloning, .voiceDesign, .soundEffects: return .indigo
-        case .imageGeneration, .imageEditing: return .pink
-        case .videoGeneration: return Color(red: 1.0, green: 0.4, blue: 0.0)
-        case .musicGeneration: return Color(red: 0.9, green: 0.2, blue: 0.5)
-        case .threeD, .threeDReconstruction: return .brown
-        case .sentimentAnalysis, .classification, .namedEntityRecognition: return .teal
-        case .structuredOutput, .guard_, .judge: return .gray
-        case .documentLayout: return .secondary
-        @unknown default: return .gray
+        case .textGeneration, .summarization, .questionAnswering, .translation: return VoltPaper.Chart.c1
+        case .coding, .codeCompletion: return VoltPaper.Chart.c2
+        case .toolCalling: return VoltPaper.Chart.c4
+        case .vision, .ocr, .objectDetection, .imageSegmentation, .depthEstimation, .imageClassification: return VoltPaper.Chart.c5
+        case .embedding: return VoltPaper.Chart.c1
+        case .reranking: return VoltPaper.Chart.c2
+        case .speechToText, .vad, .diarization, .audioSeparation: return VoltPaper.Chart.c3
+        case .textToSpeech, .voiceCloning, .voiceDesign, .soundEffects: return VoltPaper.Chart.c3
+        case .imageGeneration, .imageEditing: return VoltPaper.Chart.c4
+        case .videoGeneration: return VoltPaper.Chart.c4
+        case .musicGeneration: return VoltPaper.Chart.c5
+        case .threeD, .threeDReconstruction: return VoltPaper.Chart.c4
+        case .sentimentAnalysis, .classification, .namedEntityRecognition: return VoltPaper.Chart.c3
+        case .structuredOutput, .guard_, .judge: return VoltPaper.mutedFg
+        case .documentLayout: return VoltPaper.mutedFg
+        @unknown default: return VoltPaper.mutedFg
         }
     }
 }
@@ -447,16 +447,16 @@ private enum ModelCategory: CaseIterable {
 
     var color: Color {
         switch self {
-        case .languageModels: return .cyan
-        case .visionVLM: return .purple
-        case .tts: return .indigo
-        case .imageGen: return .pink
-        case .videoGen: return .orange
-        case .music: return Color(red: 0.9, green: 0.2, blue: 0.5)
-        case .threeD: return .brown
-        case .embeddings: return .yellow
-        case .rerankers: return .mint
-        case .sentiment: return .teal
+        case .languageModels: return VoltPaper.Chart.c1
+        case .visionVLM: return VoltPaper.Chart.c5
+        case .tts: return VoltPaper.Chart.c3
+        case .imageGen: return VoltPaper.Chart.c4
+        case .videoGen: return VoltPaper.Chart.c4
+        case .music: return VoltPaper.Chart.c5
+        case .threeD: return VoltPaper.Chart.c4
+        case .embeddings: return VoltPaper.Chart.c1
+        case .rerankers: return VoltPaper.Chart.c2
+        case .sentiment: return VoltPaper.Chart.c3
         }
     }
 

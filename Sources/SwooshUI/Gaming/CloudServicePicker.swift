@@ -10,6 +10,7 @@
 
 import SwiftUI
 import SwooshCloudGaming
+import SwooshGenerativeUI
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - CloudServicePicker
@@ -144,7 +145,7 @@ private struct PlatformTile: View {
 
             Text(title)
                 .font(.system(size: 9, weight: isSelected ? .bold : .medium))
-                .foregroundStyle(isSelected ? accentColor : Color.white.opacity(0.45))
+                .foregroundStyle(isSelected ? accentColor : VoltPaper.foreground.opacity(0.45))
                 .lineLimit(1)
                 .frame(width: iconSize + 20)
         }
@@ -229,7 +230,7 @@ extension NativeGameSource {
         case .greenlight:   Color(hex: "#107C10")  // Xbox green
         case .steamLink:    Color(hex: "#1B2838")  // Steam dark blue
         case .playstation:  Color(hex: "#006FCD")  // PlayStation blue
-        case .localWindow:  .cyan
+        case .localWindow:  VoltPaper.primary
         }
     }
 

@@ -14,6 +14,7 @@
 #if os(macOS)
 
 import SwiftUI
+import SwooshGenerativeUI
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - GamingAgentOrb
@@ -52,39 +53,39 @@ public struct GamingAgentOrb: View {
     private var orbConfig: SwooshOrbConfiguration {
         if voiceMode.isListening {
             return SwooshOrbConfiguration(
-                backgroundColors: [.cyan, .green, .teal],
-                glowColor: .cyan,
+                backgroundColors: [VoltPaper.primary, VoltPaper.accent, VoltPaper.Chart.c3],
+                glowColor: VoltPaper.primary,
                 coreGlowIntensity: 1.0,
                 showParticles: true,
                 speed: 60
             )
         } else if voiceMode.isSpeaking {
             return SwooshOrbConfiguration(
-                backgroundColors: [.purple, .indigo, .blue],
-                glowColor: .purple,
+                backgroundColors: [VoltPaper.Chart.c5, VoltPaper.primary, VoltPaper.Chart.c3],
+                glowColor: VoltPaper.Chart.c5,
                 coreGlowIntensity: 0.85,
                 speed: 45
             )
         } else if voiceMode.shell.isAwaitingResponse {
             // Agent is thinking — amber pulse
             return SwooshOrbConfiguration(
-                backgroundColors: [.orange.opacity(0.8), .yellow.opacity(0.6), .red.opacity(0.5)],
-                glowColor: .orange,
+                backgroundColors: [VoltPaper.Chart.c4.opacity(0.8), VoltPaper.Chart.c4.opacity(0.6), VoltPaper.Chart.c5.opacity(0.5)],
+                glowColor: VoltPaper.Chart.c4,
                 coreGlowIntensity: 0.7,
                 showParticles: true,
                 speed: 50
             )
         } else if voiceMode.isActive {
             return SwooshOrbConfiguration(
-                backgroundColors: [.cyan.opacity(0.7), .green.opacity(0.7), .teal.opacity(0.7)],
-                glowColor: .cyan,
+                backgroundColors: [VoltPaper.primary.opacity(0.7), VoltPaper.accent.opacity(0.7), VoltPaper.Chart.c3.opacity(0.7)],
+                glowColor: VoltPaper.primary,
                 coreGlowIntensity: 0.5,
                 speed: 25
             )
         } else {
             return SwooshOrbConfiguration(
-                backgroundColors: [.cyan.opacity(0.2), .blue.opacity(0.2), .purple.opacity(0.2)],
-                glowColor: .cyan.opacity(0.3),
+                backgroundColors: [VoltPaper.primary.opacity(0.2), VoltPaper.Chart.c3.opacity(0.2), VoltPaper.Chart.c5.opacity(0.2)],
+                glowColor: VoltPaper.primary.opacity(0.3),
                 coreGlowIntensity: 0.2,
                 showParticles: false,
                 speed: 15
@@ -101,9 +102,9 @@ public struct GamingAgentOrb: View {
                         // NitroGen status ring
                         if isNitroGenRunning {
                             Circle()
-                                .strokeBorder(Color.green.opacity(0.6), lineWidth: 2)
+                                .strokeBorder(VoltPaper.accent.opacity(0.6), lineWidth: 2)
                                 .frame(width: orbSize + 8, height: orbSize + 8)
-                                .shadow(color: .green.opacity(0.4), radius: 6)
+                                .shadow(color: VoltPaper.accent.opacity(0.4), radius: 6)
                         }
 
                         SwooshOrbView(configuration: orbConfig)
@@ -125,7 +126,7 @@ public struct GamingAgentOrb: View {
                     if voiceMode.isActive {
                         Text(stateLabel)
                             .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(VoltPaper.foreground.opacity(0.7))
                             .transition(.opacity.combined(with: .scale(scale: 0.8)))
                     }
                 }
@@ -190,13 +191,13 @@ public struct GamingAgentOrb: View {
     private var transcriptBubble: some View {
         HStack(spacing: 6) {
             Circle()
-                .fill(.green)
+                .fill(VoltPaper.accent)
                 .frame(width: 5, height: 5)
-                .shadow(color: .green.opacity(0.7), radius: 2)
+                .shadow(color: VoltPaper.accent.opacity(0.7), radius: 2)
 
             Text(voiceMode.shell.speech.transcript)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(VoltPaper.foreground.opacity(0.9))
                 .lineLimit(2)
                 .truncationMode(.head)
         }
@@ -204,10 +205,10 @@ public struct GamingAgentOrb: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.black.opacity(0.7))
+                .fill(VoltPaper.background.opacity(0.7))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(.green.opacity(0.3), lineWidth: 0.5)
+                        .strokeBorder(VoltPaper.accent.opacity(0.3), lineWidth: 0.5)
                 )
         )
         .offset(x: 80, y: -10)
@@ -226,12 +227,12 @@ public struct GamingAgentOrb: View {
                     ForEach(voiceMode.shell.messages.suffix(5)) { msg in
                         HStack(alignment: .top, spacing: 6) {
                             Circle()
-                                .fill(msg.role == .user ? Color.cyan.opacity(0.6) : Color.purple.opacity(0.6))
+                                .fill(msg.role == .user ? VoltPaper.primary.opacity(0.6) : VoltPaper.Chart.c5.opacity(0.6))
                                 .frame(width: 6, height: 6)
                                 .padding(.top, 4)
                             Text(msg.text)
                                 .font(.system(size: 11, weight: .regular, design: .rounded))
-                                .foregroundStyle(.white.opacity(0.85))
+                                .foregroundStyle(VoltPaper.foreground.opacity(0.85))
                                 .lineLimit(4)
                         }
                     }
@@ -244,12 +245,12 @@ public struct GamingAgentOrb: View {
                 TextField("Ask agent…", text: $chatInput)
                     .textFieldStyle(.plain)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(VoltPaper.foreground)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(Color.white.opacity(0.08))
+                            .fill(VoltPaper.foreground.opacity(0.08))
                     )
                     .onSubmit {
                         submitChat()
@@ -260,7 +261,7 @@ public struct GamingAgentOrb: View {
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundStyle(.cyan)
+                        .foregroundStyle(VoltPaper.primary)
                 }
                 .buttonStyle(.plain)
                 .disabled(chatInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -273,9 +274,9 @@ public struct GamingAgentOrb: View {
                 .fill(.ultraThinMaterial)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(.cyan.opacity(0.2), lineWidth: 0.5)
+                        .strokeBorder(VoltPaper.primary.opacity(0.2), lineWidth: 0.5)
                 )
-                .shadow(color: .black.opacity(0.4), radius: 12, y: 4)
+                .shadow(color: VoltPaper.background.opacity(0.4), radius: 12, y: 4)
         )
     }
 

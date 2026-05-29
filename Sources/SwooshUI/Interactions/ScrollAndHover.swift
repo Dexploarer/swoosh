@@ -5,6 +5,7 @@
 // implementations degrade cleanly on older OSes.
 
 import SwiftUI
+import SwooshGenerativeUI
 
 // MARK: - Scroll fade-in
 
@@ -55,7 +56,7 @@ public struct SwooshHoverLift: ViewModifier {
     public func body(content: Content) -> some View {
         content
             .scaleEffect(isHovered ? scale : 1)
-            .shadow(color: .black.opacity(isHovered ? 0.18 : 0),
+            .shadow(color: VoltPaper.background.opacity(isHovered ? 0.18 : 0),
                     radius: isHovered ? elevation : 0,
                     x: 0, y: isHovered ? elevation * 0.4 : 0)
             .animation(.smooth(duration: 0.25), value: isHovered)

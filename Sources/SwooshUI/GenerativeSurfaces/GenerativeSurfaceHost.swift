@@ -92,7 +92,7 @@ public struct GenerativeSurfaceView: View {
                     .foregroundStyle(.tertiary)
                 Text("Waiting for surface '\(surfaceID)'")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

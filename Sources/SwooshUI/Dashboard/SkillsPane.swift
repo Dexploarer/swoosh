@@ -83,7 +83,7 @@ public struct SkillsPane: View {
                     .foregroundStyle(SwooshNeonTokens.Canvas.text1)
             }
             .padding(8)
-            .background(Color.white.opacity(0.04))
+            .background(VoltPaper.foreground.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -182,7 +182,7 @@ public struct SkillsPane: View {
             }
         }
         .padding(14)
-        .background(Color.white.opacity(0.025))
+        .background(VoltPaper.foreground.opacity(0.025))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -206,11 +206,11 @@ public struct SkillsPane: View {
     private func trustColor(_ trust: String) -> Color {
         switch trust.lowercased() {
         case "frozen": return SwooshNeonTokens.Accent.cyan
-        case "promoted": return .green
-        case "reviewed": return .blue
-        case "draft": return .orange
-        case "rejected": return .red
-        default: return .gray
+        case "promoted": return VoltPaper.accent
+        case "reviewed": return VoltPaper.primary
+        case "draft": return VoltPaper.Chart.c4
+        case "rejected": return VoltPaper.destructive
+        default: return VoltPaper.mutedFg
         }
     }
 

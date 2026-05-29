@@ -9,6 +9,7 @@
 // Usage: attach .swooshChatContextMenu(message: m) to a message row.
 
 import SwiftUI
+import SwooshGenerativeUI
 #if os(macOS)
 import AppKit
 #endif
@@ -245,7 +246,7 @@ public struct ToolResultContextMenu: ViewModifier {
         content.contextMenu {
             Text(result.toolName)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(VoltPaper.mutedFg)
 
             Divider()
 
@@ -276,7 +277,7 @@ public struct ToolResultContextMenu: ViewModifier {
                 Button { onReport?() } label: {
                     Label("Report Error", systemImage: "exclamationmark.triangle")
                 }
-                .foregroundStyle(.orange)
+                .foregroundStyle(VoltPaper.Chart.c4)
             }
         }
     }

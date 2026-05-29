@@ -61,9 +61,9 @@ public struct MemoriesPane: View {
 
     private var tabBar: some View {
         HStack(spacing: 2) {
-            memoryTab("Approved", count: approved.count, index: 0, color: .green)
-            memoryTab("Pending", count: pending.count, index: 1, color: .orange)
-            memoryTab("Rejected", count: rejected.count, index: 2, color: .red)
+            memoryTab("Approved", count: approved.count, index: 0, color: VoltPaper.accent)
+            memoryTab("Pending", count: pending.count, index: 1, color: VoltPaper.Chart.c4)
+            memoryTab("Rejected", count: rejected.count, index: 2, color: VoltPaper.destructive)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 8)
@@ -84,7 +84,7 @@ public struct MemoriesPane: View {
             .foregroundStyle(isSelected ? SwooshNeonTokens.Canvas.text1 : SwooshNeonTokens.Canvas.text2)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(isSelected ? Color.white.opacity(0.06) : Color.clear)
+            .background(isSelected ? VoltPaper.foreground.opacity(0.06) : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -145,7 +145,7 @@ public struct MemoriesPane: View {
             }
         }
         .padding(12)
-        .background(Color.white.opacity(0.02))
+        .background(VoltPaper.foreground.opacity(0.02))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -167,8 +167,8 @@ public struct MemoriesPane: View {
 
     @ViewBuilder
     private func sensitivityBadge(_ sensitivity: String) -> some View {
-        let color: Color = sensitivity == "high" ? .red :
-                           sensitivity == "medium" ? .orange : .gray
+        let color: Color = sensitivity == "high" ? VoltPaper.destructive :
+                           sensitivity == "medium" ? VoltPaper.Chart.c4 : VoltPaper.mutedFg
         Text(sensitivity.uppercased())
             .font(.system(size: 8, weight: .bold))
             .tracking(0.5)
@@ -181,12 +181,12 @@ public struct MemoriesPane: View {
 
     private func categoryColor(_ category: String) -> Color {
         switch category.lowercased() {
-        case "preference": return .blue
+        case "preference": return VoltPaper.Chart.c1
         case "fact": return SwooshNeonTokens.Accent.cyan
-        case "context": return .purple
-        case "personality": return .pink
-        case "routine": return .green
-        default: return .gray
+        case "context": return VoltPaper.Chart.c5
+        case "personality": return VoltPaper.Chart.c4
+        case "routine": return VoltPaper.Chart.c2
+        default: return VoltPaper.mutedFg
         }
     }
 

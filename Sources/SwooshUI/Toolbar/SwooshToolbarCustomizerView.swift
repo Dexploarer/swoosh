@@ -3,6 +3,7 @@
 // per-item visibility, label style, icon size, badge toggle.
 
 import SwiftUI
+import SwooshGenerativeUI
 
 public struct SwooshToolbarCustomizerView: View {
     @Bindable var manager: SwooshToolbarManager
@@ -81,7 +82,7 @@ public struct SwooshToolbarCustomizerView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("TOOLBAR ITEMS")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
 
@@ -109,7 +110,7 @@ public struct SwooshToolbarCustomizerView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("AVAILABLE ITEMS")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
 
@@ -126,7 +127,7 @@ public struct SwooshToolbarCustomizerView: View {
                             withAnimation { manager.add(item: item) }
                         } label: {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(.green)
+                                .foregroundStyle(VoltPaper.accent)
                         }
                         .buttonStyle(.plain)
                     }
@@ -156,8 +157,8 @@ public struct SwooshToolbarCustomizerView: View {
                                 .background(
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(manager.config.iconSize == CGFloat(size)
-                                              ? Color.accentColor.opacity(0.2)
-                                              : Color.secondary.opacity(0.1))
+                                              ? VoltPaper.primary.opacity(0.2)
+                                              : VoltPaper.mutedFg.opacity(0.1))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -189,7 +190,7 @@ public struct SwooshToolbarCustomizerView: View {
                 Button("Restore Defaults") {
                     withAnimation { manager.config = .default }
                 }
-                .foregroundStyle(.red)
+                .foregroundStyle(VoltPaper.destructive)
             }
         }
         .formStyle(.grouped)
@@ -210,21 +211,21 @@ private struct ToolbarPresetCard: View {
                 HStack {
                     Image(systemName: preset.icon)
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(isCurrent ? .white : .secondary)
+                        .foregroundStyle(isCurrent ? VoltPaper.foreground : VoltPaper.mutedFg)
                     Spacer()
                     if isCurrent {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(VoltPaper.foreground)
                     }
                 }
 
                 Text(preset.name)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(isCurrent ? .white : .primary)
+                    .foregroundStyle(isCurrent ? VoltPaper.foreground : .primary)
 
                 Text(preset.description)
                     .font(.system(size: 11))
-                    .foregroundStyle(isCurrent ? .white.opacity(0.85) : .secondary)
+                    .foregroundStyle(isCurrent ? VoltPaper.foreground.opacity(0.85) : VoltPaper.mutedFg)
                     .lineLimit(2)
 
                 // Mini item preview
@@ -232,12 +233,12 @@ private struct ToolbarPresetCard: View {
                     ForEach(preset.config.items.prefix(6), id: \.id) { cfg in
                         if cfg.item.isLayoutElement {
                             Rectangle()
-                                .fill(.white.opacity(0.3))
+                                .fill(VoltPaper.foreground.opacity(0.3))
                                 .frame(width: 1, height: 16)
                         } else {
                             Image(systemName: cfg.item.icon)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(isCurrent ? .white.opacity(0.9) : cfg.item.accentColor)
+                                .foregroundStyle(isCurrent ? VoltPaper.foreground.opacity(0.9) : cfg.item.accentColor)
                         }
                     }
                 }
@@ -246,12 +247,12 @@ private struct ToolbarPresetCard: View {
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(isCurrent
-                          ? AnyShapeStyle(LinearGradient(colors: [.accentColor, .accentColor.opacity(0.7)],
+                          ? AnyShapeStyle(LinearGradient(colors: [VoltPaper.primary, VoltPaper.primary.opacity(0.7)],
                                                          startPoint: .topLeading, endPoint: .bottomTrailing))
-                          : AnyShapeStyle(Color.secondary.opacity(0.08)))
+                          : AnyShapeStyle(VoltPaper.mutedFg.opacity(0.08)))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(isCurrent ? Color.accentColor : Color.secondary.opacity(0.2), lineWidth: 1)
+                            .stroke(isCurrent ? VoltPaper.primary : VoltPaper.mutedFg.opacity(0.2), lineWidth: 1)
                     )
             )
         }
@@ -304,7 +305,7 @@ private struct ToolbarItemRow: View {
 
             Button(action: onRemove) {
                 Image(systemName: "minus.circle.fill")
-                    .foregroundStyle(.red.opacity(0.7))
+                    .foregroundStyle(VoltPaper.destructive.opacity(0.7))
             }
             .buttonStyle(.plain)
         }

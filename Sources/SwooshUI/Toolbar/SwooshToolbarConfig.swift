@@ -6,6 +6,7 @@
 import SwiftUI
 import Foundation
 import SwooshSecrets
+import SwooshGenerativeUI
 
 // MARK: - Toolbar item definitions
 
@@ -65,18 +66,18 @@ public enum SwooshToolbarItem: String, Codable, Sendable, CaseIterable, Identifi
 
     public var accentColor: Color {
         switch self {
-        case .newChat:       return .cyan
-        case .runWorkflow:   return .green
-        case .board:         return .indigo
-        case .approvals:     return .orange
-        case .agentStatus:   return .purple
-        case .providers:     return .blue
-        case .modelSelector: return .pink
-        case .search:        return .secondary
-        case .memoryVault:   return .yellow
-        case .toolLog:       return .mint
-        case .settings:      return .secondary
-        case .spacer, .divider: return .secondary
+        case .newChat:       return VoltPaper.Chart.c3
+        case .runWorkflow:   return VoltPaper.Chart.c2
+        case .board:         return VoltPaper.Chart.c1
+        case .approvals:     return VoltPaper.Chart.c4
+        case .agentStatus:   return VoltPaper.Chart.c5
+        case .providers:     return VoltPaper.primary
+        case .modelSelector: return VoltPaper.Chart.c5
+        case .search:        return VoltPaper.mutedFg
+        case .memoryVault:   return VoltPaper.Chart.c4
+        case .toolLog:       return VoltPaper.Chart.c2
+        case .settings:      return VoltPaper.mutedFg
+        case .spacer, .divider: return VoltPaper.mutedFg
         }
     }
 

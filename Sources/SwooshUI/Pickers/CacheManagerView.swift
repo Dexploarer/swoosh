@@ -171,12 +171,12 @@ public struct CacheManagerView: View {
             ZStack {
                 // Background ring
                 Circle()
-                    .stroke(Color.white.opacity(0.06), lineWidth: 20)
+                    .stroke(VoltPaper.foreground.opacity(0.06), lineWidth: 20)
 
                 // Used (non-model) arc
                 Circle()
                     .trim(from: 0, to: chartAppeared ? usedFrac : 0)
-                    .stroke(Color.white.opacity(0.20), style: StrokeStyle(lineWidth: 20, lineCap: .round))
+                    .stroke(VoltPaper.foreground.opacity(0.20), style: StrokeStyle(lineWidth: 20, lineCap: .round))
                     .rotationEffect(.degrees(-90))
 
                 // Model arc
@@ -215,7 +215,7 @@ public struct CacheManagerView: View {
 
             // Legend row
             HStack(spacing: 16) {
-                legendDot(color: Color.white.opacity(0.20), label: "System: \(String(format: "%.0f", otherUsedGB)) GB")
+                legendDot(color: VoltPaper.foreground.opacity(0.20), label: "System: \(String(format: "%.0f", otherUsedGB)) GB")
                 legendDot(color: SwooshNeonTokens.Accent.cyan, label: "Models: \(String(format: "%.1f", modelGB)) GB")
                 legendDot(color: SwooshNeonTokens.Accent.green.opacity(0.3), label: "Free: \(String(format: "%.0f", freeGB)) GB")
             }
@@ -257,7 +257,7 @@ public struct CacheManagerView: View {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
-                                .fill(Color.white.opacity(0.06))
+                                .fill(VoltPaper.foreground.opacity(0.06))
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
                                 .fill(
                                     LinearGradient(
@@ -283,10 +283,10 @@ public struct CacheManagerView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+                .fill(VoltPaper.foreground.opacity(0.03))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                        .stroke(VoltPaper.foreground.opacity(0.06), lineWidth: 0.5)
                 )
         )
     }
@@ -361,7 +361,7 @@ public struct CacheManagerView: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 11))
-                    .foregroundStyle(.red.opacity(0.7))
+                    .foregroundStyle(VoltPaper.destructive.opacity(0.7))
                     .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
@@ -372,7 +372,7 @@ public struct CacheManagerView: View {
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.02))
+                .fill(VoltPaper.foreground.opacity(0.02))
         )
     }
 
@@ -390,15 +390,15 @@ public struct CacheManagerView: View {
                     Text("Clear All Caches")
                         .font(.system(size: 12, weight: .semibold))
                 }
-                .foregroundStyle(.red)
+                .foregroundStyle(VoltPaper.destructive)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(.red.opacity(0.08))
+                        .fill(VoltPaper.destructive.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(.red.opacity(0.20), lineWidth: 0.5)
+                                .stroke(VoltPaper.destructive.opacity(0.20), lineWidth: 0.5)
                         )
                 )
             }
@@ -478,7 +478,7 @@ public struct CacheManagerView: View {
 
     private func sourceColor(_ source: CacheSource) -> Color {
         switch source {
-        case .ollama:      return .purple
+        case .ollama:      return VoltPaper.Chart.c5
         case .huggingface: return SwooshNeonTokens.Accent.gold
         case .mlx:         return SwooshNeonTokens.Accent.cyan
         case .swoosh:      return SwooshNeonTokens.Accent.green
@@ -487,8 +487,8 @@ public struct CacheManagerView: View {
 
     /// Color-code size badges: green < 2 GB, orange 2-8 GB, red > 8 GB.
     private func sizeBadgeColor(_ gb: Double) -> Color {
-        if gb > 8  { return .red }
-        if gb > 2  { return .orange }
+        if gb > 8  { return VoltPaper.destructive }
+        if gb > 2  { return VoltPaper.Chart.c4 }
         return SwooshNeonTokens.Accent.green
     }
 

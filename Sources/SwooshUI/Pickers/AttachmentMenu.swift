@@ -85,7 +85,7 @@ public struct AttachmentMenu: View {
         ZStack(alignment: .bottomLeading) {
             // ── Dismiss backdrop when expanded ──
             if isExpanded {
-                Color.black.opacity(0.001)
+                VoltPaper.background.opacity(0.001)
                     .ignoresSafeArea()
                     .onTapGesture { collapse() }
                     .transition(.opacity)
@@ -113,14 +113,14 @@ public struct AttachmentMenu: View {
                         .fill(
                             isExpanded
                             ? SwooshNeonTokens.Accent.cyan.opacity(0.12)
-                            : Color.white.opacity(0.04)
+                            : VoltPaper.foreground.opacity(0.04)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: isExpanded ? 12 : 8, style: .continuous)
                                 .stroke(
                                     isExpanded
                                     ? SwooshNeonTokens.Accent.cyan.opacity(0.3)
-                                    : Color.white.opacity(0.08),
+                                    : VoltPaper.foreground.opacity(0.08),
                                     lineWidth: 0.5
                                 )
                         )
@@ -174,9 +174,9 @@ public struct AttachmentMenu: View {
                     .fill(SwooshNeonTokens.Canvas.bg)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                            .stroke(VoltPaper.foreground.opacity(0.08), lineWidth: 0.5)
                     )
-                    .shadow(color: .black.opacity(0.3), radius: 8, y: 2)
+                    .shadow(color: VoltPaper.background.opacity(0.3), radius: 8, y: 2)
             )
         }
         .buttonStyle(.plain)

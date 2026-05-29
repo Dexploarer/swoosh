@@ -11,6 +11,7 @@
 import SwiftUI
 import WebKit
 import SwooshCloudGaming
+import SwooshGenerativeUI
 
 // ═══════════════════════════════════════════════════════════════════
 // MARK: - WebStreamView
@@ -79,7 +80,7 @@ struct StreamStatusOverlay: View {
                         .shadow(color: statusColor.opacity(0.7), radius: 4)
                     Text(statusText)
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(VoltPaper.foreground)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -89,7 +90,7 @@ struct StreamStatusOverlay: View {
                 if fps > 0 {
                     Text("\(Int(fps)) FPS")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(VoltPaper.foreground.opacity(0.9))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(.ultraThinMaterial, in: Capsule())
@@ -105,11 +106,11 @@ struct StreamStatusOverlay: View {
                         Text("AGENT")
                             .font(.system(size: 9, weight: .heavy))
                     }
-                    .foregroundStyle(.green)
+                    .foregroundStyle(VoltPaper.accent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background(.green.opacity(0.15), in: Capsule())
-                    .overlay(Capsule().stroke(.green.opacity(0.5), lineWidth: 1))
+                    .background(VoltPaper.accent.opacity(0.15), in: Capsule())
+                    .overlay(Capsule().stroke(VoltPaper.accent.opacity(0.5), lineWidth: 1))
                 }
             }
             .padding(12)
@@ -120,13 +121,13 @@ struct StreamStatusOverlay: View {
 
     private var statusColor: Color {
         switch status {
-        case .disconnected: .gray
-        case .connecting:   .orange
-        case .authenticating: .orange
-        case .buffering:    .yellow
-        case .playing:      .green
-        case .paused:       .yellow
-        case .error:        .red
+        case .disconnected: VoltPaper.mutedFg
+        case .connecting:   VoltPaper.Chart.c4
+        case .authenticating: VoltPaper.Chart.c4
+        case .buffering:    VoltPaper.Chart.c4
+        case .playing:      VoltPaper.accent
+        case .paused:       VoltPaper.Chart.c4
+        case .error:        VoltPaper.destructive
         }
     }
 

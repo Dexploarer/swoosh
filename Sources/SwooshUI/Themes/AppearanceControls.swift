@@ -6,6 +6,7 @@
 // labels, monospaced numeric readouts, segmented pickers for enums.
 
 import SwiftUI
+import SwooshGenerativeUI
 
 // MARK: - Colors
 
@@ -38,7 +39,7 @@ struct ColorsControls: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(VoltPaper.mutedFg)
             .textCase(.uppercase)
             .padding(.top, 4)
     }
@@ -198,7 +199,7 @@ struct BackgroundControls: View {
             if config.background.kind != "solid" {
                 Text("Mesh Colors")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(VoltPaper.mutedFg)
                     .textCase(.uppercase)
                     .padding(.top, 6)
 
@@ -240,7 +241,7 @@ struct BackgroundControls: View {
     }
 
     private func meshColor(at idx: Int) -> Color {
-        guard config.background.meshColors.indices.contains(idx) else { return .black }
+        guard config.background.meshColors.indices.contains(idx) else { return VoltPaper.background }
         return Color(hex: config.background.meshColors[idx])
     }
 
@@ -282,7 +283,7 @@ private func labeled<Content: View>(_ title: String, @ViewBuilder content: () ->
     VStack(alignment: .leading, spacing: 6) {
         Text(title)
             .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(VoltPaper.mutedFg)
             .textCase(.uppercase)
         content()
     }

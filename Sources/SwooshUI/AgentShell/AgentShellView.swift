@@ -158,11 +158,11 @@ public struct AgentShellView: View {
                                     .font(.system(size: 9, weight: .semibold))
                                     .tracking(0.8)
                             }
-                            .foregroundStyle(Color.cyan)
+                            .foregroundStyle(VoltPaper.primary)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(
-                                Capsule().fill(Color.cyan.opacity(0.12))
+                                Capsule().fill(VoltPaper.primary.opacity(0.12))
                             )
                             .accessibilityLabel("Served by local model \(local)")
                         }
@@ -276,11 +276,11 @@ public struct AgentShellView: View {
                             ? AnyShapeStyle(
                                 AngularGradient(
                                     colors: [
-                                        .cyan,
-                                        .cyan.opacity(0.3),
-                                        .purple,
-                                        .purple.opacity(0.3),
-                                        .cyan
+                                        VoltPaper.primary,
+                                        VoltPaper.primary.opacity(0.3),
+                                        VoltPaper.Chart.c5,
+                                        VoltPaper.Chart.c5.opacity(0.3),
+                                        VoltPaper.primary
                                     ],
                                     center: .center,
                                     angle: .degrees(gradientRotation)
@@ -293,7 +293,7 @@ public struct AgentShellView: View {
                     )
             )
             .shadow(
-                color: isListening ? .cyan.opacity(0.35) : .clear,
+                color: isListening ? VoltPaper.primary.opacity(0.35) : .clear,
                 radius: isListening ? 12 : 0
             )
             .animation(.easeInOut(duration: 0.3), value: isListening)

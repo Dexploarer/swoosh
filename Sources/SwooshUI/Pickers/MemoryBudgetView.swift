@@ -42,8 +42,8 @@ public struct MemoryBudgetView: View {
     }
 
     private var barColor: Color {
-        if usageRatio > 0.85 { return .red }
-        if usageRatio > 0.60 { return .orange }
+        if usageRatio > 0.85 { return VoltPaper.destructive }
+        if usageRatio > 0.60 { return VoltPaper.Chart.c4 }
         return SwooshNeonTokens.Accent.cyan
     }
 
@@ -77,7 +77,7 @@ public struct MemoryBudgetView: View {
                         .foregroundStyle(barColor)
                     Text(usageRatio > 0.85 ? "⚠ Over budget" : "\(String(format: "%.1f", available)) GB free")
                         .font(.system(size: 10))
-                        .foregroundStyle(usageRatio > 0.85 ? .red.opacity(0.8) : SwooshNeonTokens.Canvas.text3)
+                        .foregroundStyle(usageRatio > 0.85 ? VoltPaper.destructive.opacity(0.8) : SwooshNeonTokens.Canvas.text3)
                 }
             }
 
@@ -86,11 +86,11 @@ public struct MemoryBudgetView: View {
                 ZStack(alignment: .leading) {
                     // Track
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(VoltPaper.foreground.opacity(0.06))
 
                     // OS overhead segment
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Color.white.opacity(0.12))
+                        .fill(VoltPaper.foreground.opacity(0.12))
                         .frame(width: max(geo.size.width * (osOverhead / hardware.totalMemoryGB), 0))
 
                     // Total fill
@@ -110,16 +110,16 @@ public struct MemoryBudgetView: View {
 
             // ── Legend ──
             HStack(spacing: 16) {
-                legendDot(color: Color.white.opacity(0.12), label: "OS + Apps: \(String(format: "%.1f", osOverhead)) GB")
+                legendDot(color: VoltPaper.foreground.opacity(0.12), label: "OS + Apps: \(String(format: "%.1f", osOverhead)) GB")
                 legendDot(color: barColor, label: "Models: \(String(format: "%.1f", totalModelMemory)) GB")
                 Spacer()
-                legendDot(color: Color.white.opacity(0.06), label: "Available: \(String(format: "%.1f", available)) GB")
+                legendDot(color: VoltPaper.foreground.opacity(0.06), label: "Available: \(String(format: "%.1f", available)) GB")
             }
 
             // ── Disk storage row ──
             if diskTotalGB > 0 {
                 Divider()
-                    .overlay(Color.white.opacity(0.06))
+                    .overlay(VoltPaper.foreground.opacity(0.06))
 
                 HStack(spacing: 8) {
                     Image(systemName: "internaldrive")
@@ -139,7 +139,7 @@ public struct MemoryBudgetView: View {
 
                     Text(String(format: "%.1f GB cached models", cachedModelsGB))
                         .font(.system(size: 11))
-                        .foregroundStyle(cachedModelsGB > 10 ? .orange : SwooshNeonTokens.Canvas.text3)
+                        .foregroundStyle(cachedModelsGB > 10 ? VoltPaper.Chart.c4 : SwooshNeonTokens.Canvas.text3)
 
                     Spacer()
 
@@ -157,7 +157,7 @@ public struct MemoryBudgetView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white.opacity(0.03))
+                .fill(VoltPaper.foreground.opacity(0.03))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(barColor.opacity(0.2), lineWidth: 0.5)
@@ -238,8 +238,8 @@ public struct ModelMemoryBar: View {
     }
 
     private var barColor: Color {
-        if !isCompatible { return .red }
-        if ratio > 0.7 { return .orange }
+        if !isCompatible { return VoltPaper.destructive }
+        if ratio > 0.7 { return VoltPaper.Chart.c4 }
         return SwooshNeonTokens.Accent.cyan
     }
 
@@ -248,7 +248,7 @@ public struct ModelMemoryBar: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(VoltPaper.foreground.opacity(0.06))
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(barColor.opacity(0.7))
                         .frame(width: max(geo.size.width * ratio, 2))

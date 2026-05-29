@@ -57,7 +57,7 @@ public struct WalletPane: View {
         VStack(spacing: 16) {
             Image(systemName: "wifi.slash")
                 .font(.system(size: 40, weight: .ultraLight))
-                .foregroundStyle(.red.opacity(0.5))
+                .foregroundStyle(VoltPaper.destructive.opacity(0.5))
             Text("Daemon Unreachable")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(SwooshNeonTokens.Canvas.text1)
@@ -88,15 +88,15 @@ public struct WalletPane: View {
 
             // Supported chains
             HStack(spacing: 16) {
-                chainCard("Solana", icon: "s.circle.fill", color: .purple)
-                chainCard("Ethereum", icon: "e.circle.fill", color: .blue)
-                chainCard("BNB Chain", icon: "b.circle.fill", color: .yellow)
+                chainCard("Solana", icon: "s.circle.fill", color: VoltPaper.Chart.c1)
+                chainCard("Ethereum", icon: "e.circle.fill", color: VoltPaper.Chart.c3)
+                chainCard("BNB Chain", icon: "b.circle.fill", color: VoltPaper.Chart.c4)
             }
             .padding(.top, 8)
 
             HStack(spacing: 12) {
                 actionButton("Create Wallet", icon: "plus", color: SwooshNeonTokens.Accent.cyan)
-                actionButton("Import Wallet", icon: "square.and.arrow.down", color: .green)
+                actionButton("Import Wallet", icon: "square.and.arrow.down", color: VoltPaper.accent)
             }
             .padding(.top, 4)
 
@@ -117,15 +117,15 @@ public struct WalletPane: View {
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(SwooshNeonTokens.Canvas.text1)
                     HStack(spacing: 4) {
-                        Circle().fill(.green).frame(width: 7, height: 7)
-                            .shadow(color: .green.opacity(0.5), radius: 3)
+                        Circle().fill(VoltPaper.accent).frame(width: 7, height: 7)
+                            .shadow(color: VoltPaper.accent.opacity(0.5), radius: 3)
                         Text("Connected")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.green)
+                            .foregroundStyle(VoltPaper.accent)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Color.green.opacity(0.08))
+                    .background(VoltPaper.accent.opacity(0.08))
                     .clipShape(Capsule())
                 }
                 if let label = dash.walletLabel {
@@ -160,14 +160,14 @@ public struct WalletPane: View {
                         Text("\(daily)% today")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundStyle(isPositive ? .green : .red)
+                    .foregroundStyle(isPositive ? VoltPaper.accent : VoltPaper.destructive)
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(0.02))
+                    .fill(VoltPaper.foreground.opacity(0.02))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -210,7 +210,7 @@ public struct WalletPane: View {
                 let isNeg = v.hasPrefix("-")
                 Text("\(prefix)\(v)\(suffix)")
                     .font(.system(size: 16, weight: .bold, design: .monospaced))
-                    .foregroundStyle(isNeg ? .red : SwooshNeonTokens.Canvas.text1)
+                    .foregroundStyle(isNeg ? VoltPaper.destructive : SwooshNeonTokens.Canvas.text1)
             } else {
                 Text("—")
                     .font(.system(size: 16, weight: .bold))
@@ -219,7 +219,7 @@ public struct WalletPane: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.02))
+        .background(VoltPaper.foreground.opacity(0.02))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -302,7 +302,7 @@ public struct WalletPane: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.02))
+                .fill(VoltPaper.foreground.opacity(0.02))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -317,7 +317,7 @@ public struct WalletPane: View {
             HStack {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 12))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(VoltPaper.Chart.c4)
                 Text("Insights (\(insights.count))")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(SwooshNeonTokens.Canvas.text1)
@@ -353,7 +353,7 @@ public struct WalletPane: View {
             let isNeg = v.hasPrefix("-")
             Text("\(prefix)\(v)\(suffix)")
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(isNeg ? .red : .green)
+                .foregroundStyle(isNeg ? VoltPaper.destructive : VoltPaper.accent)
         } else {
             Text("—")
                 .font(.system(size: 10))
@@ -387,7 +387,7 @@ public struct WalletPane: View {
                 Text(label)
                     .font(.system(size: 12, weight: .semibold))
             }
-            .foregroundStyle(.white)
+            .foregroundStyle(VoltPaper.foreground)
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(color.gradient)
@@ -406,7 +406,7 @@ public struct WalletPane: View {
             .foregroundStyle(SwooshNeonTokens.Canvas.text2)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Color.white.opacity(0.04))
+            .background(VoltPaper.foreground.opacity(0.04))
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -415,17 +415,17 @@ public struct WalletPane: View {
     private func severityColor(_ severity: WalletInsightSeverity) -> Color {
         switch severity {
         case .info: return SwooshNeonTokens.Accent.cyan
-        case .warning: return .orange
-        case .critical: return .red
+        case .warning: return VoltPaper.Chart.c4
+        case .critical: return VoltPaper.destructive
         }
     }
 
     private func chainColorForAsset(_ chain: String) -> Color {
         switch chain.lowercased() {
-        case "solana", "sol": return .purple
-        case "ethereum", "eth": return .blue
-        case "bnb", "bsc", "bnb chain": return .yellow
-        default: return .gray
+        case "solana", "sol": return VoltPaper.Chart.c1
+        case "ethereum", "eth": return VoltPaper.Chart.c3
+        case "bnb", "bsc", "bnb chain": return VoltPaper.Chart.c4
+        default: return VoltPaper.mutedFg
         }
     }
 
