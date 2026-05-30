@@ -49,6 +49,7 @@ struct WalletTrayPanel: View {
         VStack(alignment: .leading, spacing: 14) {
             headline(d)
             if !d.assets.isEmpty {
+                WalletTrayChart(assets: d.assets)
                 assets(d.assets)
             }
         }
