@@ -68,6 +68,11 @@ jobs:
       - name: Build (incl. tests)
         run: swift build --build-tests
 
-      # Tests are already built above, so this is mostly execution (~14s warm).
-      - name: Test (hermetic, orphan-safe wrapper)
-        run: ./Scripts/swift-test-safe.sh
+      # Tests are already built above, so this is mostly execution.
+      # `--num-workers 1` serializes swift-testing: the plugin-executor tests
+      # spawn sandbox-exec subprocesses, and running many concurrently starves
+      # the cooperative test pool into a deadlock. Per-suite `.serialized`
+      # wasn't sufficient, so we bound workers here. (Root cause — the
+      # executor's subprocess/pipe wait — is a separate follow-up.)
+      - name: Test (hermetic, orphan-safe wrapper, serialized)
+        run: ./Scripts/swift-test-safe.sh --parallel --num-workers 1

@@ -49,7 +49,11 @@ private func writeShellPlugin(
     return manifest
 }
 
-@Suite("ExecutablePluginExecutor")
+// .serialized: every test here spawns a sandbox-exec subprocess and blocks on
+// it. Run in parallel with the rest of the suite, enough of these block at once
+// to starve the test thread pool into a deadlock. Serialize the suite so its
+// subprocess waits don't pile up.
+@Suite("ExecutablePluginExecutor", .serialized)
 struct ExecutablePluginExecutorTests {
 
     @Test("happy-path JSON round-trip")
@@ -245,7 +249,7 @@ struct ExecutablePluginExecutorTests {
     }
 }
 
-@Suite("Bundled HelloExec manifest")
+@Suite("Bundled HelloExec manifest", .serialized)  // spawns a sandbox-exec subprocess — serialize
 struct BundledHelloExecTests {
     private var manifestURL: URL {
         URL(fileURLWithPath: "Plugins/HelloExec/manifest.json")

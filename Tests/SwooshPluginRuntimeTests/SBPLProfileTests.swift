@@ -86,7 +86,10 @@ struct SBPLProfileBuilderTests {
 }
 
 #if os(macOS)
-@Suite("ExecutablePluginExecutor sandbox-exec")
+// .serialized: these spawn sandbox-exec subprocesses; running many in
+// parallel starves the test thread pool into a deadlock (see WalletTrayChart
+// session notes). Serialize so at most one subprocess blocks at a time here.
+@Suite("ExecutablePluginExecutor sandbox-exec", .serialized)
 struct ExecutablePluginExecutorSandboxTests {
     private func makePluginsRoot() -> URL {
         let url = FileManager.default.temporaryDirectory
@@ -120,12 +123,20 @@ struct ExecutablePluginExecutorSandboxTests {
         defer { try? FileManager.default.removeItem(at: root) }
         // Plugin attempts a TCP connect via curl. With sandbox-exec
         // denying network*, the connect fails — curl exits non-zero —
-        // and the plugin reports ok:false to the host.
+        // and the plugin reports net:blocked to the host.
+        //
+        // Use a numeric TEST-NET-1 address (RFC 5737), NOT a hostname: under
+        // network denial, curl's connect can block far longer than
+        // `--connect-timeout` (that flag doesn't reliably fire for a
+        // sandbox-blocked / non-routable connect), so this test used to hang
+        // ~30s+. Run in parallel, that long block ties up a worker thread and
+        // starves the cooperative test pool into a deadlock. `--max-time` hard-
+        // caps the ENTIRE curl invocation, so it can never block more than 2s.
         let manifest = try writeScript(
             """
             #!/bin/sh
             cat >/dev/null
-            if curl -s --connect-timeout 2 -o /dev/null http://example.com 2>/dev/null; then
+            if curl -s --connect-timeout 2 --max-time 2 -o /dev/null http://192.0.2.1 2>/dev/null; then
                 printf '{"ok":true,"output":{"net":"reachable"}}\n'
             else
                 printf '{"ok":true,"output":{"net":"blocked"}}\n'
